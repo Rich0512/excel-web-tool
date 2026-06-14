@@ -17,6 +17,75 @@ const fileInput = document.getElementById('file-input');
 const WEEKDAY_REGEX = /(星期|週|周)([一二三四五六日1-7])/;
 const weekdaysList = ["請選擇", "週一", "週二", "週三", "週四", "週五", "週六", "週日"];
 
+// ==========================================
+// 🛠️ 輔助工具函數 (防止極端邊緣錯誤)
+// ==========================================
+
+/**
+ * 智慧解析 Excel 儲存格內容，支援純文字、數值、公式結果及富文本
+ */
+function getCellValueAsString(cell) {
+    if (!cell || cell.value === null || cell.value === undefined) {
+        return "";
+    }
+    
+    const val = cell.value;
+    
+    // 1. 處理公式儲存格 (Formula)
+    if (typeof val === 'object' && val !== null && 'formula' in val) {
+        if (val.result !== null && val.result !== undefined) {
+            return String(val.result).trim();
+        }
+        return "";
+    }
+    
+    // 2. 處理富文本儲存格 (Rich Text)
+    if (typeof val === 'object' && val !== null && 'richText' in val) {
+        return val.richText.map(rt => rt.text || '').join('').trim();
+    }
+    
+    // 3. 處理包含 text 屬性的物件 (例如超連結)
+    if (typeof val === 'object' && val !== null && 'text' in val) {
+        return String(val.text).trim();
+    }
+    
+    // 4. 一般字串與數值直接轉字串
+    return String(val).trim();
+}
+
+/**
+ * 轉換欄位索引為 Excel 字母標記 (如 1 -> A, 27 -> AA)
+ */
+function getColLetter(colIdx) {
+    let temp = colIdx;
+    let letter = "";
+    while (temp > 0) {
+        let modulo = (temp - 1) % 26;
+        letter = String.fromCharCode(65 + modulo) + letter;
+        temp = Math.floor((temp - modulo) / 26);
+    }
+    return letter;
+}
+
+/**
+ * 提取數值作為排序鍵 (比照 Python get_numeric_sort_key)
+ */
+function getNumericSortKey(val) {
+    if (val === null || val === undefined) return Infinity;
+    const strVal = String(val).trim();
+    // 僅保留數字與小數點
+    const cleanVal = strVal.replace(/[^\d.]/g, '');
+    if (cleanVal) {
+        const num = parseFloat(cleanVal);
+        return isNaN(num) ? Infinity : num;
+    }
+    return Infinity;
+}
+
+// ==========================================
+// 📥 檔案拖曳與讀取邏輯
+// ==========================================
+
 // 拖曳視覺效果
 ['dragenter', 'dragover'].forEach(eventName => {
     dropZone.addEventListener(eventName, (e) => {
@@ -42,7 +111,7 @@ fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
 });
 
-// 1. 讀取 Excel 檔案
+// 讀取 Excel 檔案
 async function handleFileSelect(file) {
     originalFileName = file.name;
     const reader = new FileReader();
@@ -54,7 +123,7 @@ async function handleFileSelect(file) {
         try {
             await workbook.xlsx.load(arrayBuffer);
             
-            // 尋找名為「總表」的工作表 (不區分前後空白)
+            // 尋找工作表「總表」
             let sheet = null;
             workbook.eachSheet((ws) => {
                 if (ws.name.trim() === '總表') {
@@ -63,7 +132,7 @@ async function handleFileSelect(file) {
             });
             
             if (!sheet) {
-                alert("Excel 檔案中找不到名為「總表」的工作表！請檢查您的檔案結構。");
+                alert("Excel 檔案中找不到名為「總表」的工作表！請檢查您的檔案名稱。");
                 return;
             }
             
@@ -73,7 +142,7 @@ async function handleFileSelect(file) {
                 const row = sheet.getRow(r);
                 const rowValues = [];
                 row.eachCell({ includeEmpty: true }, (cell) => {
-                    rowValues.push(String(cell.value || '').trim());
+                    rowValues.push(getCellValueAsString(cell));
                 });
                 
                 // 檢查是否包含關鍵欄位
@@ -90,11 +159,10 @@ async function handleFileSelect(file) {
             }
             
             if (!foundHeader) {
-                // 退回第一行
                 const row = sheet.getRow(1);
                 detectedHeaders = [];
                 row.eachCell({ includeEmpty: true }, (cell) => {
-                    detectedHeaders.push(String(cell.value || '').trim());
+                    detectedHeaders.push(getCellValueAsString(cell));
                 });
                 headerRowIndex = 1;
             }
@@ -142,7 +210,7 @@ async function handleFileSelect(file) {
                 return;
             }
 
-            // 嘗試載入 Excel 內置對照表 (如果有的話)
+            // 嘗試載入 Excel 內置對照工作表
             const excelSchedule = loadScheduleFromExcel(workbook);
 
             // 讀取所有學生行
@@ -150,17 +218,20 @@ async function handleFileSelect(file) {
             sheet.eachRow((row, rowNum) => {
                 if (rowNum <= headerRowIndex) return; // 跳過表頭及其上方行
                 
-                const nameVal = row.getCell(colNameIdx + 1).value;
-                const classVal = row.getCell(colClassIdx + 1).value;
+                const nameVal = getCellValueAsString(row.getCell(colNameIdx + 1));
+                const classVal = getCellValueAsString(row.getCell(colClassIdx + 1));
                 
-                // 略過空行
-                if (nameVal === null || classVal === null) return;
+                // 略過空行與合計行
+                if (!nameVal || !classVal) return;
+                if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k) || classVal.includes(k))) {
+                    return;
+                }
                 
                 const rowData = {};
                 headers.forEach((colName, idx) => {
                     if (!colName) return;
                     const cell = row.getCell(idx + 1);
-                    rowData[colName] = cell.value !== null ? String(cell.value).trim() : "";
+                    rowData[colName] = getCellValueAsString(cell);
                 });
                 sheetData.push(rowData);
             });
@@ -170,7 +241,7 @@ async function handleFileSelect(file) {
                 return;
             }
 
-            // 蒐集當前 Excel 各時段出現的社團
+            // 蒐集各時段出現的社團
             const activeClubs = {};
             slotCols.forEach(slot => {
                 activeClubs[slot.name] = new Set();
@@ -192,7 +263,6 @@ async function handleFileSelect(file) {
                 const savedSlotMap = savedConfig[slot.name] || {};
                 
                 activeClubs[slot.name].forEach(club => {
-                    // 優先度：1. 社團名稱內置星期 2. 檔案內置對照表 3. 本地記憶歷史設定
                     let day = extractWeekdayFromName(club);
                     if (!day && excelSchedule) day = excelSchedule[club];
                     if (!day) day = savedSlotMap[club];
@@ -204,8 +274,6 @@ async function handleFileSelect(file) {
 
             // 渲染 HTML 核對表
             renderMappingTable(slotsPredefined);
-            
-            // 切換至對照設定步驟
             switchStep('step-mapping');
 
         } catch (err) {
@@ -242,12 +310,12 @@ function loadScheduleFromExcel(workbook) {
     const mapping = {};
     scheduleSheet.eachRow((row, rowNum) => {
         if (rowNum === 1) return; // 跳過表頭
-        const club = row.getCell(1).value;
-        const day = row.getCell(2).value;
+        const club = getCellValueAsString(row.getCell(1));
+        const day = getCellValueAsString(row.getCell(2));
         if (club && day) {
-            const normDay = normalizeWeekdayName(String(day));
+            const normDay = normalizeWeekdayName(day);
             if (normDay) {
-                mapping[String(club).trim()] = normDay;
+                mapping[club] = normDay;
             }
         }
     });
@@ -257,7 +325,6 @@ function loadScheduleFromExcel(workbook) {
 // 正規化星期文字
 function normalizeWeekdayName(dayStr) {
     if (!dayStr) return null;
-    dayStr = dayStr.trim();
     const match = dayStr.match(WEEKDAY_REGEX);
     if (match) {
         const dayChar = match[2];
@@ -300,7 +367,6 @@ function loadLocalStorageConfig() {
     return data ? JSON.parse(data) : {};
 }
 
-// 儲存設定
 function saveLocalStorageConfig(config) {
     localStorage.setItem('yenping_club_config', JSON.stringify(config));
 }
@@ -322,7 +388,7 @@ function renderMappingTable(slotsPredefined) {
             tdSlot.innerHTML = `<span class="${badgeClass}">${slotCol}</span>`;
             tr.appendChild(tdSlot);
 
-            // 社團名稱輸入框 (可點選修改)
+            // 社團名稱輸入框
             const tdName = document.createElement('td');
             const input = document.createElement('input');
             input.type = "text";
@@ -353,7 +419,6 @@ function renderMappingTable(slotsPredefined) {
         });
     });
 
-    // 綁定鍵盤 Enter 與 Esc 事件
     window.addEventListener('keydown', handleGlobalKeydown);
 }
 
@@ -382,11 +447,14 @@ function resetToUpload() {
     switchStep('step-upload');
 }
 
-// 2. 執行彙整與 Excel 生成下載
+// ==========================================
+// ⚡ 資料轉換與下載邏輯
+// ==========================================
+
 async function processAndDownload() {
     const rows = document.getElementById('mapping-table-body').querySelectorAll('tr');
     
-    const finalMapping = {}; // 格式: { slotCol: { origClub: [editedClub, selectedDay] } }
+    const finalMapping = {};
     const unselectedClubs = [];
 
     rows.forEach(tr => {
@@ -429,7 +497,7 @@ async function processAndDownload() {
     });
     saveLocalStorageConfig(savedConfig);
 
-    // 3. 處理學生資料重組與星期對應
+    // 處理學生資料重組與星期對應
     const resultData = [];
     const activeDays = new Set();
 
@@ -456,7 +524,7 @@ async function processAndDownload() {
                     const label = slot.name.replace("時段", "").replace("Slot", "").replace("slot", "").replace("社團", "").replace("課程", "").trim();
                     const entryText = label ? `${displayName}(${label})` : displayName;
                     
-                    // 若此時段該星期已有課，進行合併處理並加上備註
+                    // 若此星期該學生已有課，進行合併並標示衝突
                     if (student.schedule[day]) {
                         student.schedule[day] += `, ${entryText}`;
                         student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
@@ -470,36 +538,46 @@ async function processAndDownload() {
         resultData.push(student);
     });
 
-    // 排序資料：優先班級（升冪），次優先座號（數值升冪）
+    // 嚴格比照 Python 排序演算法：班級數值升冪、座號數值升冪、最後以字串兜底
     resultData.sort((a, b) => {
-        // 班級比較
-        const classA = String(a.class);
-        const classB = String(b.class);
-        if (classA !== classB) {
-            return classA.localeCompare(classB, 'zh-hant');
+        const numClassA = getNumericSortKey(a.class);
+        const numClassB = getNumericSortKey(b.class);
+        if (numClassA !== numClassB) {
+            return numClassA - numClassB;
         }
-        // 座號比較 (提取數字)
-        const getNum = (val) => {
-            const match = String(val).match(/\d+/);
-            return match ? parseInt(match[0], 10) : Infinity;
-        };
-        return getNum(a.seat) - getNum(b.seat);
+        
+        const numSeatA = getNumericSortKey(a.seat);
+        const numSeatB = getNumericSortKey(b.seat);
+        if (numSeatA !== numSeatB) {
+            return numSeatA - numSeatB;
+        }
+
+        // 當數值完全一致時，使用字串比對做穩定排序 (zh-hant)
+        const strClassA = String(a.class);
+        const strClassB = String(b.class);
+        if (strClassA !== strClassB) {
+            return strClassA.localeCompare(strClassB, 'zh-hant');
+        }
+
+        const strSeatA = String(a.seat);
+        const strSeatB = String(b.seat);
+        return strSeatA.localeCompare(strSeatB, 'zh-hant');
     });
 
-    // 動態裁剪星期欄位：若全校無人使用週六或週日，則自動剔除該列，保持排版精美
+    // 動態裁剪星期直欄
     const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
     if (activeDays.has('週六')) targetWeekdays.push('週六');
     if (activeDays.has('週日')) targetWeekdays.push('週日');
 
-    // 4. 使用 ExcelJS 建立精美的延平藍週課表
+    // 建立 Excel 工作簿
     const outWorkbook = new ExcelJS.Workbook();
     const ws = outWorkbook.addWorksheet('學生週課表');
 
-    // 表頭結構
+    // 寫入表頭
     const headersOut = ['班級', '座號', '姓名', ...targetWeekdays, '備註'];
     ws.addRow(headersOut);
 
-    // 寫入學生資料行
+    // 寫入資料
     resultData.forEach(student => {
         const rowData = [
             student.class,
@@ -511,27 +589,23 @@ async function processAndDownload() {
         ws.addRow(rowData);
     });
 
-    // 💅 套用延平藍美學樣式
+    // 💅 延平深藍表頭渲染
     const headerRow = ws.getRow(1);
     headerRow.height = 28;
     
     headerRow.eachCell((cell) => {
-        // 經典延平深藍色背景 (#0f3b6d)
         cell.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FF0F3B6D' }
+            fgColor: { argb: 'FF0F3B6D' } // 經典延平藍
         };
-        // 白色加粗字體微軟正黑體
         cell.font = {
             name: 'Microsoft JhengHei',
             size: 11,
             bold: true,
             color: { argb: 'FFFFFFFF' }
         };
-        // 文字置中
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        // 框線
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.border = {
             top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
             bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
@@ -540,15 +614,14 @@ async function processAndDownload() {
         };
     });
 
-    // 資料列樣式與斑馬紋
+    // 資料行樣式與斑馬紋
     ws.eachRow((row, rowNum) => {
-        if (rowNum === 1) return; // 跳過表頭
+        if (rowNum === 1) return;
         
         row.height = 22;
         
-        // 斑馬紋交替色：白 / 淺灰藍 (#F8FAFC)
         const isEven = rowNum % 2 === 0;
-        const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
+        const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF'; // 交替色
 
         row.eachCell((cell, colNum) => {
             cell.fill = {
@@ -567,27 +640,25 @@ async function processAndDownload() {
                 right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
             };
 
-            // 對齊設定：前三列與星期置中，姓名與備註靠左
             const colName = headersOut[colNum - 1];
             if (['姓名', '備註'].includes(colName)) {
-                cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
             } else {
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             }
         });
     });
 
-    // 🏎️ 自動調整欄寬
+    // 🏎️ 智慧自適應欄寬
     ws.columns.forEach(column => {
         let maxLen = 0;
         column.eachCell({ includeEmpty: true }, (cell) => {
-            const val = cell.value ? String(cell.value) : '';
-            // 智慧字元長度計算（繁體中文字元計為 2，英文數字計為 1）
+            const val = getCellValueAsString(cell);
             let len = 0;
             for (let i = 0; i < val.length; i++) {
                 const code = val.charCodeAt(i);
                 if (code >= 0x4e00 && code <= 0x9fff) {
-                    len += 2;
+                    len += 2; // 中文字元
                 } else {
                     len += 1;
                 }
@@ -597,13 +668,11 @@ async function processAndDownload() {
         column.width = Math.max(maxLen + 4, 10);
     });
 
-    // 🔍 套用 Excel 自動篩選漏斗 (AutoFilter) 到第一列
-    ws.autoFilter = {
-        from: { row: 1, column: 1 },
-        to: { row: 1, column: headersOut.length }
-    };
+    // 🔍 自動篩選器 (AutoFilter)
+    const lastColLetter = getColLetter(headersOut.length);
+    ws.autoFilter = `A1:${lastColLetter}${ws.rowCount}`;
 
-    // 5. 匯出下載
+    // 5. 檔案下載
     const buffer = await outWorkbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     
