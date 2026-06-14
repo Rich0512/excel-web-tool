@@ -452,12 +452,16 @@ async function processAndDownload() {
                     
                     activeDays.add(day);
                     
+                    // 取得時段代碼簡稱 (例 "A時段" -> "A")
+                    const label = slot.name.replace("時段", "").replace("Slot", "").replace("slot", "").replace("社團", "").replace("課程", "").trim();
+                    const entryText = label ? `${displayName}(${label})` : displayName;
+                    
                     // 若此時段該星期已有課，進行合併處理並加上備註
                     if (student.schedule[day]) {
-                        student.schedule[day] += `+${displayName}`;
+                        student.schedule[day] += `, ${entryText}`;
                         student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
                     } else {
-                        student.schedule[day] = displayName;
+                        student.schedule[day] = entryText;
                     }
                 }
             }
