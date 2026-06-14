@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>延平國小社團課表整理工具 - 網頁版</title>
+    <!-- 引入美化字型 -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- 引入 ExcelJS (前端處理 Excel 格式與樣式的核心庫) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #0f3b6d;
+            --primary-hover: #1b4f8f;
+            --accent: #2ecc71;
+            --accent-hover: #27ae60;
+            --bg: #f1f5f9;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 15px;
+        }
+
+        .container {
+            max-width: 850px;
+            width: 100%;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* 標題區 */
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 20px;
+        }
+
+        .logo-text {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .logo-text span.icon {
+            font-size: 30px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 400;
+        }
+
+        /* 步驟容器 */
+        .step-panel {
+            display: none;
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        .step-panel.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 步驟一：拖曳上傳 */
+        .upload-zone {
+            border: 3px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: rgba(248, 250, 252, 0.6);
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(15, 59, 109, 0.04);
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            font-size: 55px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .upload-text {
+            font-size: 17px;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* 步驟二：對照設定表 */
+        .mapping-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .table-responsive {
+            max-height: 380px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #fff;
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 15px;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            box-shadow: 0 1px 0 var(--border);
+            z-index: 10;
+        }
+
+        th, td {
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .slot-badge {
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .slot-a {
+            background: rgba(192, 57, 43, 0.1);
+            color: #c0392b;
+        }
+
+        .slot-other {
+            background: rgba(15, 59, 109, 0.1);
+            color: #0f3b6d;
+        }
+
+        .club-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-main);
+            background: #f8fafc;
+            transition: all 0.2s;
+        }
+
+        .club-input:focus {
+            border-color: var(--primary);
+            background: #fff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(15, 59, 109, 0.1);
+        }
+
+        .day-select {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text-main);
+            background: #fff;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .day-select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        /* 按鈕區 */
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #94a3b8;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #64748b;
+        }
+
+        /* 記憶狀態標示 */
+        .memory-hint {
+            font-size: 13px;
+            color: #27ae60;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* 成功轉檔卡片 */
+        .success-panel {
+            text-align: center;
+            padding: 40px 10px;
+        }
+
+        .success-icon {
+            font-size: 60px;
+            color: var(--accent);
+            margin-bottom: 20px;
+            animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .success-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .success-desc {
+            font-size: 15px;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        /* 頁尾 */
+        .footer-note {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 標題區 -->
+        <div class="header">
+            <div class="logo-text"><span class="icon">🏫</span>台北市延平國小社團課表整理工具</div>
+            <div class="subtitle">網頁發佈版 ── 免安裝、純瀏覽器本地處理，100% 保障學生個資安全</div>
+        </div>
+
+        <!-- 步驟一：拖曳上傳 -->
+        <div class="step-panel active" id="step-upload">
+            <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                <span class="upload-icon">📂</span>
+                <div class="upload-text">將錄取名冊 Excel 檔案拖曳至此，或點選這裡上傳</div>
+                <div class="upload-hint">支援學校導出的 .xlsx 試算表格式</div>
+                <input type="file" id="file-input" accept=".xlsx, .xls">
+            </div>
+        </div>
+
+        <!-- 步驟二：對照設定表 -->
+        <div class="step-panel" id="step-mapping">
+            <div class="mapping-container">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-weight: 700; color: var(--primary); font-size: 16px;">
+                        請確認本學期社團上課星期 (可直接點擊名稱欄位修改名稱)：
+                    </div>
+                    <div class="memory-hint">
+                        <span>⚙️</span> 已自動載入瀏覽器記憶設定
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 20%;">時段</th>
+                                <th style="width: 50%;">社團名稱 (可點擊修改)</th>
+                                <th style="width: 30%;">設定上課星期</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mapping-table-body">
+                            <!-- JS 動態產生對照行 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="resetToUpload()">⬅️ 重新選取檔案</button>
+                    <button class="btn btn-primary" onclick="processAndDownload()">⚡ 開始轉換並下載課表</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步驟三：轉檔成功 -->
+        <div class="step-panel" id="step-success">
+            <div class="success-panel">
+                <div class="success-icon">🎉</div>
+                <div class="success-title">轉換成功！</div>
+                <div class="success-desc">
+                    您的「學生週課表」已整理完畢，並開始自動下載！<br>
+                    若下載未開始，請確認瀏覽器下載提示或手動檢查下載資料夾。
+                </div>
+                <button class="btn btn-primary" onclick="resetToUpload()" style="margin: 0 auto;">🔄 繼續轉換新檔案</button>
+            </div>
+        </div>
+
+        <!-- 頁尾宣告 -->
+        <div class="footer-note">
+            🛡️ 安全宣告：本工具完全在您的本機瀏覽器中處理資料，資料不會上傳至任何網路伺服器，請安心使用。
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let uploadedWorkbook = null;
+        let originalFileName = "";
+        let sheetData = [];
+        let detectedHeaders = [];
+        let headerRowIndex = 1;
+        
+        let colClassIdx = -1;
+        let colSeatIdx = -1;
+        let colNameIdx = -1;
+        let slotCols = [];
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        // 正則表達式匹配星期
+        const WEEKDAY_REGEX = /(星期|週|周)([一二三四五六日1-7])/;
+        const weekdaysList = ["請選擇", "週一", "週二", "週三", "週四", "週五", "週六", "週日"];
+
+        // 拖曳視覺效果
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        // 檔案上傳觸發
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFileSelect(files[0]);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+        });
+
+        // 1. 讀取 Excel 檔案
+        async function handleFileSelect(file) {
+            originalFileName = file.name;
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                const arrayBuffer = e.target.result;
+                const workbook = new ExcelJS.Workbook();
+                
+                try {
+                    await workbook.xlsx.load(arrayBuffer);
+                    
+                    // 尋找名為「總表」的工作表 (不區分前後空白)
+                    let sheet = null;
+                    workbook.eachSheet((ws) => {
+                        if (ws.name.trim() === '總表') {
+                            sheet = ws;
+                        }
+                    });
+                    
+                    if (!sheet) {
+                        alert("Excel 檔案中找不到名為「總表」的工作表！請檢查您的檔案結構。");
+                        return;
+                    }
+                    
+                    // 掃描前 10 行以智慧偵測表頭列位置
+                    let foundHeader = false;
+                    for (let r = 1; r <= 10; r++) {
+                        const row = sheet.getRow(r);
+                        const rowValues = [];
+                        row.eachCell({ includeEmpty: true }, (cell) => {
+                            rowValues.push(String(cell.value || '').trim());
+                        });
+                        
+                        // 檢查是否包含關鍵欄位
+                        const matchCount = ['班級', '班', '座號', '姓名'].filter(kw => 
+                            rowValues.some(val => val.includes(kw))
+                        ).length;
+                        
+                        if (matchCount >= 2) {
+                            detectedHeaders = rowValues;
+                            headerRowIndex = r;
+                            foundHeader = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!foundHeader) {
+                        // 退回第一行
+                        const row = sheet.getRow(1);
+                        detectedHeaders = [];
+                        row.eachCell({ includeEmpty: true }, (cell) => {
+                            detectedHeaders.push(String(cell.value || '').trim());
+                        });
+                        headerRowIndex = 1;
+                    }
+                    
+                    // 去重欄位名防止對照混亂
+                    const headers = [];
+                    const seenCols = {};
+                    detectedHeaders.forEach(col => {
+                        if (!col) {
+                            headers.push("");
+                            return;
+                        }
+                        if (seenCols[col]) {
+                            seenCols[col]++;
+                            headers.push(`${col}_${seenCols[col]}`);
+                        } else {
+                            seenCols[col] = 1;
+                            headers.push(col);
+                        }
+                    });
+                    detectedHeaders = headers;
+
+                    // 模糊定位關鍵欄位索引
+                    colClassIdx = findColumnByKeywords(headers, ['班級', '班', 'Class', 'class']);
+                    colSeatIdx = findColumnByKeywords(headers, ['座號', '座', '號', 'Seat', 'seat']);
+                    colNameIdx = findColumnByKeywords(headers, ['姓名', '名', 'Name', 'name']);
+
+                    if (colClassIdx === -1 || colSeatIdx === -1 || colNameIdx === -1) {
+                        alert("「總表」中缺少必要欄位（班級、座號、姓名），無法進行整理。");
+                        return;
+                    }
+
+                    // 尋找時段欄位
+                    slotCols = [];
+                    const slotKeywords = ['時段', 'Slot', 'slot', '課程', '項目', '節', '社團'];
+                    headers.forEach((col, idx) => {
+                        if (idx === colClassIdx || idx === colSeatIdx || idx === colNameIdx) return;
+                        if (slotKeywords.some(kw => col.includes(kw))) {
+                            slotCols.push({ name: col, index: idx });
+                        }
+                    });
+
+                    if (slotCols.length === 0) {
+                        alert("找不到任何包含「時段」、「課程」或「節」的社團時段欄位。");
+                        return;
+                    }
+
+                    // 嘗試載入 Excel 內置對照表 (如果有的話)
+                    const excelSchedule = loadScheduleFromExcel(workbook);
+
+                    // 讀取所有學生行
+                    sheetData = [];
+                    sheet.eachRow((row, rowNum) => {
+                        if (rowNum <= headerRowIndex) return; // 跳過表頭及其上方行
+                        
+                        const nameVal = row.getCell(colNameIdx + 1).value;
+                        const classVal = row.getCell(colClassIdx + 1).value;
+                        
+                        // 略過空行
+                        if (nameVal === null || classVal === null) return;
+                        
+                        const rowData = {};
+                        headers.forEach((colName, idx) => {
+                            if (!colName) return;
+                            const cell = row.getCell(idx + 1);
+                            rowData[colName] = cell.value !== null ? String(cell.value).trim() : "";
+                        });
+                        sheetData.push(rowData);
+                    });
+
+                    if (sheetData.length === 0) {
+                        alert("「總表」中無任何有效學生資料，請檢查檔案內容。");
+                        return;
+                    }
+
+                    // 蒐集當前 Excel 各時段出現的社團
+                    const activeClubs = {};
+                    slotCols.forEach(slot => {
+                        activeClubs[slot.name] = new Set();
+                        sheetData.forEach(row => {
+                            const val = row[slot.name];
+                            if (val && val !== "無") {
+                                activeClubs[slot.name].add(val);
+                            }
+                        });
+                    });
+
+                    // 從 LocalStorage 載入歷史設定
+                    const savedConfig = loadLocalStorageConfig();
+
+                    // 準備預填設定
+                    const slotsPredefined = {};
+                    slotCols.forEach(slot => {
+                        const predefined = {};
+                        const savedSlotMap = savedConfig[slot.name] || {};
+                        
+                        activeClubs[slot.name].forEach(club => {
+                            // 優先度：1. 社團名稱內置星期 2. 檔案內置對照表 3. 本地記憶歷史設定
+                            let day = extractWeekdayFromName(club);
+                            if (!day && excelSchedule) day = excelSchedule[club];
+                            if (!day) day = savedSlotMap[club];
+                            
+                            predefined[club] = weekdaysList.includes(day) ? day : "請選擇";
+                        });
+                        slotsPredefined[slot.name] = predefined;
+                    });
+
+                    // 渲染 HTML 核對表
+                    renderMappingTable(slotsPredefined);
+                    
+                    // 切換至對照設定步驟
+                    switchStep('step-mapping');
+
+                } catch (err) {
+                    alert("載入 Excel 失敗，可能檔案格式毀損：" + err.message);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 模糊匹配欄位索引
+        function findColumnByKeywords(headers, keywords) {
+            for (let idx = 0; idx < headers.length; idx++) {
+                const val = headers[idx];
+                if (!val) continue;
+                if (keywords.some(kw => val.includes(kw))) {
+                    return idx;
+                }
+            }
+            return -1;
+        }
+
+        // 讀取檔案內的內置對照工作表
+        function loadScheduleFromExcel(workbook) {
+            let scheduleSheet = null;
+            workbook.eachSheet((ws) => {
+                const name = ws.name.trim();
+                if (name === '社團上課時間對照表' || name === '對照表' || name === '對照') {
+                    scheduleSheet = ws;
+                }
+            });
+            if (!scheduleSheet) return null;
+
+            const mapping = {};
+            scheduleSheet.eachRow((row, rowNum) => {
+                if (rowNum === 1) return; // 跳過表頭
+                const club = row.getCell(1).value;
+                const day = row.getCell(2).value;
+                if (club && day) {
+                    const normDay = normalizeWeekdayName(String(day));
+                    if (normDay) {
+                        mapping[String(club).trim()] = normDay;
+                    }
+                }
+            });
+            return mapping;
+        }
+
+        // 正規化星期文字
+        function normalizeWeekdayName(dayStr) {
+            if (!dayStr) return null;
+            dayStr = dayStr.trim();
+            const match = dayStr.match(WEEKDAY_REGEX);
+            if (match) {
+                const dayChar = match[2];
+                const dayMap = {
+                    '一': '週一', '1': '週一',
+                    '二': '週二', '2': '週二',
+                    '三': '週三', '3': '週三',
+                    '四': '週四', '4': '週四',
+                    '五': '週五', '5': '週五',
+                    '六': '週六', '6': '週六',
+                    '日': '週日', '7': '週日'
+                };
+                return dayMap[dayChar] || null;
+            }
+            return null;
+        }
+
+        // 從社團字串自動提取星期
+        function extractWeekdayFromName(clubName) {
+            const match = clubName.match(WEEKDAY_REGEX);
+            if (match) {
+                const dayChar = match[2];
+                const dayMap = {
+                    '一': '週一', '1': '週一',
+                    '二': '週二', '2': '週二',
+                    '三': '週三', '3': '週三',
+                    '四': '週四', '4': '週四',
+                    '五': '週五', '5': '週五',
+                    '六': '週六', '6': '週六',
+                    '日': '週日', '7': '週日'
+                };
+                return dayMap[dayChar] || null;
+            }
+            return null;
+        }
+
+        // LocalStorage 管理設定
+        function loadLocalStorageConfig() {
+            const data = localStorage.getItem('yenping_club_config');
+            return data ? JSON.parse(data) : {};
+        }
+
+        function saveLocalStorageConfig(config) {
+            localStorage.setItem('yenping_club_config', JSON.stringify(config));
+        }
+
+        // 渲染對照設定表格
+        function renderMappingTable(slotsPredefined) {
+            const tbody = document.getElementById('mapping-table-body');
+            tbody.innerHTML = "";
+
+            Object.entries(slotsPredefined).forEach(([slotCol, predefined]) => {
+                const isASlot = slotCol.includes('A') || slotCol.includes('一');
+                const badgeClass = isASlot ? "slot-badge slot-a" : "slot-badge slot-other";
+
+                Object.entries(predefined).forEach(([club, day]) => {
+                    const tr = document.createElement('tr');
+                    
+                    // 時段
+                    const tdSlot = document.createElement('td');
+                    tdSlot.innerHTML = `<span class="${badgeClass}">${slotCol}</span>`;
+                    tr.appendChild(tdSlot);
+
+                    // 社團名稱輸入框 (可點選修改)
+                    const tdName = document.createElement('td');
+                    const input = document.createElement('input');
+                    input.type = "text";
+                    input.className = "club-input";
+                    input.value = club;
+                    input.dataset.slot = slotCol;
+                    input.dataset.original = club;
+                    tdName.appendChild(input);
+                    tr.appendChild(tdName);
+
+                    // 星期下拉選單
+                    const tdDay = document.createElement('td');
+                    const select = document.createElement('select');
+                    select.className = "day-select";
+                    
+                    weekdaysList.forEach(w => {
+                        const opt = document.createElement('option');
+                        opt.value = w;
+                        opt.textContent = w;
+                        if (w === day) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                    
+                    tdDay.appendChild(select);
+                    tr.appendChild(tdDay);
+
+                    tbody.appendChild(tr);
+                });
+            });
+
+            // 綁定鍵盤 Enter 與 Esc 事件
+            window.addEventListener('keydown', handleGlobalKeydown);
+        }
+
+        function handleGlobalKeydown(e) {
+            if (e.key === "Enter") {
+                processAndDownload();
+            } else if (e.key === "Escape") {
+                resetToUpload();
+            }
+        }
+
+        // 切換步驟顯示
+        function switchStep(stepId) {
+            document.querySelectorAll('.step-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.getElementById(stepId).classList.add('active');
+            
+            if (stepId !== 'step-mapping') {
+                window.removeEventListener('keydown', handleGlobalKeydown);
+            }
+        }
+
+        function resetToUpload() {
+            fileInput.value = "";
+            switchStep('step-upload');
+        }
+
+        // 2. 執行彙整與 Excel 生成下載
+        async function processAndDownload() {
+            const rows = document.getElementById('mapping-table-body').querySelectorAll('tr');
+            
+            const finalMapping = {}; // 格式: { slotCol: { origClub: [editedClub, selectedDay] } }
+            const unselectedClubs = [];
+
+            rows.forEach(tr => {
+                const input = tr.querySelector('.club-input');
+                const select = tr.querySelector('.day-select');
+                
+                const slotCol = input.dataset.slot;
+                const origClub = input.dataset.original;
+                const editedClub = input.value.trim();
+                const selectedDay = select.value;
+
+                if (!editedClub) {
+                    alert("社團名稱不能為空！");
+                    return;
+                }
+
+                if (selectedDay === "請選擇") {
+                    unselectedClubs.push(`${slotCol} 的「${origClub}」`);
+                }
+
+                if (!finalMapping[slotCol]) finalMapping[slotCol] = {};
+                finalMapping[slotCol][origClub] = {
+                    editedName: editedClub,
+                    day: selectedDay
+                };
+            });
+
+            if (unselectedClubs.length > 0) {
+                alert(`請為以下社團選擇上課星期後再行轉換：\n\n${unselectedClubs.join('\n')}`);
+                return;
+            }
+
+            // 自動更新並儲存 LocalStorage 設定
+            const savedConfig = loadLocalStorageConfig();
+            Object.entries(finalMapping).forEach(([slotCol, mapping]) => {
+                if (!savedConfig[slotCol]) savedConfig[slotCol] = {};
+                Object.entries(mapping).forEach(([origClub, data]) => {
+                    savedConfig[slotCol][origClub] = data.day;
+                });
+            });
+            saveLocalStorageConfig(savedConfig);
+
+            // 3. 處理學生資料重組與星期對應
+            const resultData = [];
+            const activeDays = new Set();
+
+            sheetData.forEach(row => {
+                const student = {
+                    class: row[detectedHeaders[colClassIdx]],
+                    seat: row[detectedHeaders[colSeatIdx]],
+                    name: row[detectedHeaders[colNameIdx]],
+                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
+                    remarks: []
+                };
+
+                slotCols.forEach(slot => {
+                    const origClub = row[slot.name];
+                    if (origClub && origClub !== "無") {
+                        const mapData = finalMapping[slot.name][origClub];
+                        if (mapData) {
+                            const day = mapData.day;
+                            const displayName = mapData.editedName;
+                            
+                            activeDays.add(day);
+                            
+                            // 若此時段該星期已有課，進行合併處理並加上備註
+                            if (student.schedule[day]) {
+                                student.schedule[day] += `+${displayName}`;
+                                student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
+                            } else {
+                                student.schedule[day] = displayName;
+                            }
+                        }
+                    }
+                });
+                
+                resultData.push(student);
+            });
+
+            // 排序資料：優先班級（升冪），次優先座號（數值升冪）
+            resultData.sort((a, b) => {
+                // 班級比較
+                const classA = String(a.class);
+                const classB = String(b.class);
+                if (classA !== classB) {
+                    return classA.localeCompare(classB, 'zh-hant');
+                }
+                // 座號比較 (提取數字)
+                const getNum = (val) => {
+                    const match = String(val).match(/\d+/);
+                    return match ? parseInt(match[0], 10) : Infinity;
+                };
+                return getNum(a.seat) - getNum(b.seat);
+            });
+
+            // 動態裁剪星期欄位：若全校無人使用週六或週日，則自動剔除該列，保持排版精美
+            const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
+            if (activeDays.has('週六')) targetWeekdays.push('週六');
+            if (activeDays.has('週日')) targetWeekdays.push('週日');
+
+            // 4. 使用 ExcelJS 建立精美的延平藍週課表
+            const outWorkbook = new ExcelJS.Workbook();
+            const ws = outWorkbook.addWorksheet('學生週課表');
+
+            // 表頭結構
+            const headersOut = ['班級', '座號', '姓名', ...targetWeekdays, '備註'];
+            ws.addRow(headersOut);
+
+            // 寫入學生資料行
+            resultData.forEach(student => {
+                const rowData = [
+                    student.class,
+                    student.seat,
+                    student.name,
+                    ...targetWeekdays.map(day => student.schedule[day]),
+                    student.remarks.join('；')
+                ];
+                ws.addRow(rowData);
+            });
+
+            // 💅 套用延平藍美學樣式
+            const headerRow = ws.getRow(1);
+            headerRow.height = 28;
+            
+            headerRow.eachCell((cell) => {
+                // 經典延平深藍色背景 (#0f3b6d)
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF0F3B6D' }
+                };
+                // 白色加粗字體微軟正黑體
+                cell.font = {
+                    name: 'Microsoft JhengHei',
+                    size: 11,
+                    bold: true,
+                    color: { argb: 'FFFFFFFF' }
+                };
+                // 文字置中
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                // 框線
+                cell.border = {
+                    top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
+                    left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+                };
+            });
+
+            // 資料列樣式與斑馬紋
+            ws.eachRow((row, rowNum) => {
+                if (rowNum === 1) return; // 跳過表頭
+                
+                row.height = 22;
+                
+                // 斑馬紋交替色：白 / 淺灰藍 (#F8FAFC)
+                const isEven = rowNum % 2 === 0;
+                const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
+
+                row.eachCell((cell, colNum) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: bgColor }
+                    };
+                    cell.font = {
+                        name: 'Microsoft JhengHei',
+                        size: 11
+                    };
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+                    };
+
+                    // 對齊設定：前三列與星期置中，姓名與備註靠左
+                    const colName = headersOut[colNum - 1];
+                    if (['姓名', '備註'].includes(colName)) {
+                        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+                    } else {
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    }
+                });
+            });
+
+            // 🏎️ 自動調整欄寬
+            ws.columns.forEach(column => {
+                let maxLen = 0;
+                column.eachCell({ includeEmpty: true }, (cell) => {
+                    const val = cell.value ? String(cell.value) : '';
+                    // 智慧字元長度計算（繁體中文字元計為 2，英文數字計為 1）
+                    let len = 0;
+                    for (let i = 0; i < val.length; i++) {
+                        const code = val.charCodeAt(i);
+                        if (code >= 0x4e00 && code <= 0x9fff) {
+                            len += 2;
+                        } else {
+                            len += 1;
+                        }
+                    }
+                    if (len > maxLen) maxLen = len;
+                });
+                column.width = Math.max(maxLen + 4, 10);
+            });
+
+            // 🔍 套用 Excel 自動篩選漏斗 (AutoFilter) 到第一列
+            ws.autoFilter = {
+                from: { row: 1, column: 1 },
+                to: { row: 1, column: headersOut.length }
+            };
+
+            // 5. 匯出下載
+            const buffer = await outWorkbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            const downloadLink = document.createElement('a');
+            const outputName = originalFileName.replace(/\.[^/.]+$/, "") + "_週一至週五彙整.xlsx";
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = outputName;
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+
+            // 切換至成功頁面
+            switchStep('step-success');
+        }
+    </script>
+</body>
+</html>
