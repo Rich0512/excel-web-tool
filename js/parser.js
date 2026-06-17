@@ -1,9 +1,35 @@
-// 模糊匹配欄位索引
+// 全域正則對照
+const WEEKDAY_REGEX = /^(星期|週|周)([一二三四五六日]|[1-7])/;
+
+// 欄位推斷規則定義 (防範無表頭貼上時的智慧識別)
+const FIELD_DETECTION_RULES = {
+    // 1. 姓名規則：2~4個純中文，且不含有班級或年級的特定詞彙
+    name: (val) => {
+        return /^[\u4e00-\u9fa5]{2,4}$/.test(val) && 
+               !['班', '年', '組', '級'].some(kw => val.includes(kw));
+    },
+    // 2. 班級規則：字串包含「班」、「年」或符合3位數代碼 (如 102)
+    class: (val) => {
+        return val.includes('班') || val.includes('年') || /^\d{3}$/.test(val);
+    },
+    // 3. 座號規則：限制在 1~60 之間的短數值字串 (避免誤判長位數的學號)
+    seat: (val, idx, guessedClass) => {
+        const num = parseInt(val, 10);
+        const isValidNumber = !isNaN(num) && num > 0 && num <= 60;
+        const isShortString = val.length <= 2;
+        // 優先考慮在班級欄位後面的數值欄位為座號
+        const isAfterClass = guessedClass === -1 || idx > guessedClass;
+        return isValidNumber && isShortString && isAfterClass;
+    }
+};
+
+// 模糊匹配欄位索引 (有標頭時使用)
 function findColumnByKeywords(headers, keywords) {
     for (let idx = 0; idx < headers.length; idx++) {
         const val = headers[idx];
         if (!val) continue;
         if (keywords.some(kw => val.includes(kw))) {
+            // 安全防範：避免將「學號」誤判為「座號」
             if (val.includes('學') && !val.includes('座')) {
                 continue;
             }
@@ -58,7 +84,7 @@ function parsePastedText(text) {
     let headerIdx = -1;
     let colClass = -1, colSeat = -1, colName = -1;
     
-    // 掃描前 5 列尋找表頭
+    // 1. 先嘗試掃描前 5 列尋找標準表頭
     for (let i = 0; i < Math.min(5, rows.length); i++) {
         const row = rows[i];
         const cIdx = row.findIndex(c => c.includes('班'));
@@ -74,7 +100,7 @@ function parsePastedText(text) {
         }
     }
     
-    // 若無表頭，智慧推測每欄代表的資料類型 (最糟糕的情況下)
+    // 2. 若無表頭 (最糟情況下)，啟用智慧推測 (根據規則進行欄位分類)
     if (headerIdx === -1) {
         let sampleRow = null;
         for (let i = 0; i < rows.length; i++) {
@@ -93,22 +119,14 @@ function parsePastedText(text) {
                 const val = sampleRow[idx];
                 if (!val) continue;
 
-                // 1. 偵測姓名：長度 2~4 的純中文，排除班級與年級字眼
-                if (/^[\u4e00-\u9fa5]{2,4}$/.test(val)) {
-                    if (!val.includes('班') && !val.includes('年') && !val.includes('組')) {
-                        guessedName = idx;
-                    }
+                if (FIELD_DETECTION_RULES.name(val)) {
+                    guessedName = idx;
                 }
-                // 2. 偵測班級：包含 "班" 或 "年"
-                if (val.includes('班') || val.includes('年') || /^\d{3}$/.test(val)) {
+                if (FIELD_DETECTION_RULES.class(val)) {
                     guessedClass = idx;
                 }
-                // 3. 偵測座號：數值且 <= 60，避免誤判學號
-                const num = parseInt(val, 10);
-                if (!isNaN(num) && num > 0 && num <= 60 && val.length <= 2) {
-                    if (guessedSeat === -1 || idx > guessedClass) {
-                        guessedSeat = idx;
-                    }
+                if (FIELD_DETECTION_RULES.seat(val, idx, guessedClass)) {
+                    guessedSeat = idx;
                 }
             }
 
@@ -117,7 +135,7 @@ function parsePastedText(text) {
             if (guessedName !== -1) colName = guessedName;
         }
 
-        // 如果智慧推測仍未成功，才使用預設索引
+        // 如果智慧規則推測皆未成功，才使用最後的硬性預設值 (0, 1, 2)
         if (colName === -1) {
             colClass = 0;
             colSeat = 1;
