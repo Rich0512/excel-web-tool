@@ -4,6 +4,9 @@ function findColumnByKeywords(headers, keywords) {
         const val = headers[idx];
         if (!val) continue;
         if (keywords.some(kw => val.includes(kw))) {
+            if (val.includes('學') && !val.includes('座')) {
+                continue;
+            }
             return idx;
         }
     }
@@ -59,7 +62,7 @@ function parsePastedText(text) {
     for (let i = 0; i < Math.min(5, rows.length); i++) {
         const row = rows[i];
         const cIdx = row.findIndex(c => c.includes('班'));
-        const sIdx = row.findIndex(c => c.includes('座') || c.includes('號'));
+        const sIdx = row.findIndex(c => (c.includes('座') || c.includes('號')) && !c.includes('學'));
         const nIdx = row.findIndex(c => c.includes('姓') || c.includes('名'));
         
         if (nIdx !== -1 && (cIdx !== -1 || sIdx !== -1)) {
