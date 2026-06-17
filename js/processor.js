@@ -165,7 +165,112 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
 }
 
 /**
- * 彙整直接貼上的名冊資料
+ * 隨機打亂陣列 (Fisher-Yates Shuffle)
+ */
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
+/**
+ * 抽籤核心邏輯 (隨機抽籤與籤序分配)
+ */
+function runClubLottery(candidates, quota, gradeStart, gradeEnd, priority) {
+    const minG = gradeStart === "新生" ? 0 : parseInt(gradeStart, 10);
+    const maxG = gradeEnd === "新生" ? 0 : parseInt(gradeEnd, 10);
+
+    const qualified = [];
+    const disqualified = [];
+
+    // 1. 年級範圍篩選
+    candidates.forEach(s => {
+        const g = parseGrade(s.class);
+        if (g >= minG && g <= maxG) {
+            qualified.push(s);
+        } else {
+            s.selected = false;
+            s.drawSequence = "";
+            disqualified.push(s);
+        }
+    });
+
+    // 2. 按年級分組
+    const groups = {};
+    qualified.forEach(s => {
+        const g = parseGrade(s.class);
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(s);
+    });
+
+    // 3. 排序年級優先順序 (以高年級優先或低年級優先)
+    const grades = Object.keys(groups).map(Number);
+    grades.sort((a, b) => {
+        if (a === 0) return 1; // 新生在最後面
+        if (b === 0) return -1;
+        if (priority === 'desc') {
+            return b - a; // 高年級優先 (6 > 5 > ...)
+        } else {
+            return a - b; // 低年級優先 (1 > 2 > ...)
+        }
+    });
+
+    // 4. 依序對各年級隨機抽籤
+    const selected = [];
+    const backup = [];
+
+    grades.forEach(g => {
+        const list = groups[g];
+        shuffleArray(list);
+        list.forEach(s => {
+            if (selected.length < quota) {
+                selected.push(s);
+            } else {
+                s.selected = false;
+                s.drawSequence = "";
+                backup.push(s);
+            }
+        });
+    });
+
+    // 5. 排序錄取名單，並發放「籤序 1, 2, 3...」
+    selected.sort((a, b) => {
+        const classA = getNumericSortKey(a.class);
+        const classB = getNumericSortKey(b.class);
+        if (classA !== classB) return classA - classB;
+        
+        const seatA = getNumericSortKey(a.seat);
+        const seatB = getNumericSortKey(b.seat);
+        if (seatA !== seatB) return seatA - seatB;
+        
+        return String(a.name).localeCompare(b.name, 'zh-hant');
+    });
+
+    selected.forEach((s, idx) => {
+        s.selected = true;
+        s.drawSequence = idx + 1;
+    });
+
+    // 6. 合併並排序整份名單 (回傳以便個別 Sheet 輸出)
+    const backupList = [...backup, ...disqualified];
+    backupList.sort((a, b) => {
+        const classA = getNumericSortKey(a.class);
+        const classB = getNumericSortKey(b.class);
+        if (classA !== classB) return classA - classB;
+        
+        const seatA = getNumericSortKey(a.seat);
+        const seatB = getNumericSortKey(b.seat);
+        if (seatA !== seatB) return seatA - seatB;
+        
+        return String(a.name).localeCompare(b.name, 'zh-hant');
+    });
+
+    return [...selected, ...backupList];
+}
+
+/**
+ * 彙整直接貼上的名冊資料 (僅包含被抽中的錄取學生)
  */
 function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
     const studentMap = {};
@@ -191,6 +296,9 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
         const entryText = label ? `${cleanName}(${label})` : cleanName;
         
         club.students.forEach(student => {
+            // 🚨 僅彙整正式被抽中錄取的學生！
+            if (student.selected === false) return;
+            
             let sClass = student.class ? student.class.trim() : "";
             let sSeat = student.seat ? student.seat.trim() : "";
             let sName = student.name ? student.name.trim() : "";

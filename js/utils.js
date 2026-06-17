@@ -1,6 +1,20 @@
-// 正則表達式匹配星期
 const WEEKDAY_REGEX = /(星期|週|周)([一二三四五六日1-7])/;
 const weekdaysList = ["請選擇", "週一", "週二", "週三", "週四", "週五", "週六", "週日"];
+
+// 解析年級數值 (新生為 0, 1-6 年級為 1-6)
+function parseGrade(classStr) {
+    if (!classStr || classStr === "新生") return 0;
+    const match = classStr.match(/([一二三四五六1-6])/);
+    if (match) {
+        const char = match[1];
+        const map = {
+            '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
+            '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6
+        };
+        return map[char] || 0;
+    }
+    return 0;
+}
 
 /**
  * 智慧解析 Excel 儲存格內容，支援純文字、數值、公式結果及富文本

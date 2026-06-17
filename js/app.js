@@ -244,6 +244,11 @@ function loadPastedClub() {
     const clubNameInput = document.getElementById('paste-club-name').value.trim();
     const pastedText = document.getElementById('paste-text-area').value.trim();
     
+    const quota = parseInt(document.getElementById('paste-quota').value, 10) || 12;
+    const gradeStart = document.getElementById('paste-grade-start').value;
+    const gradeEnd = document.getElementById('paste-grade-end').value;
+    const priority = document.getElementById('paste-priority').value;
+
     if (!clubNameInput) {
         alert("請先輸入社團名稱！");
         return;
@@ -254,17 +259,26 @@ function loadPastedClub() {
         return;
     }
     
-    const students = parsePastedText(pastedText);
-    if (students.length === 0) {
+    let rawStudents = parsePastedText(pastedText);
+    if (rawStudents.length === 0) {
         alert("無法解析名單資料。請確認資料中包含「姓名」等標題列與學生資料列。");
         return;
     }
     
+    // 執行抽籤演算法
+    const finalStudentsList = runClubLottery(rawStudents, quota, gradeStart, gradeEnd, priority);
+    const selectedCount = finalStudentsList.filter(s => s.selected).length;
+
     const newClub = {
         id: Date.now(),
         day: day,
         clubName: clubNameInput,
-        students: students
+        quota: quota,
+        gradeStart: gradeStart,
+        gradeEnd: gradeEnd,
+        priority: priority,
+        students: finalStudentsList,
+        selectedCount: selectedCount
     };
     
     pastedClubs.push(newClub);
@@ -279,17 +293,17 @@ function renderLoadedClubs() {
     const listDiv = document.getElementById('loaded-clubs-list');
     listDiv.innerHTML = "";
     
-    let totalStudents = 0;
+    let totalSelectedStudents = 0;
     
     pastedClubs.forEach((club, index) => {
-        totalStudents += club.students.length;
+        totalSelectedStudents += club.selectedCount;
         
         const item = document.createElement('div');
         item.className = "loaded-club-item";
         
         const info = document.createElement('span');
         info.className = "loaded-club-info";
-        info.textContent = `📅 ${club.day} ── 🏫 ${club.clubName} (共 ${club.students.length} 人)`;
+        info.textContent = `📅 ${club.day} ── 🏫 ${club.clubName} (正取 ${club.selectedCount}/${club.quota} 人，報名 ${club.students.length} 人，限制 ${club.gradeStart}-${club.gradeEnd}年級)`;
         
         const delBtn = document.createElement('button');
         delBtn.className = "loaded-club-delete";
@@ -309,7 +323,7 @@ function renderLoadedClubs() {
     
     if (pastedClubs.length > 0) {
         section.style.display = "block";
-        totalSpan.textContent = totalStudents;
+        totalSpan.textContent = totalSelectedStudents;
     } else {
         section.style.display = "none";
         totalSpan.textContent = "0";
@@ -342,11 +356,11 @@ async function processPastedData() {
         const seatB = getNumericSortKey(b.seat);
         if (seatA !== seatB) return seatA - seatB;
         
-        if (a.class !== b.class) return String(a.class).localeCompare(b.class);
-        return String(a.seat).localeCompare(b.seat);
+        if (a.class !== b.class) return String(a.class).localeCompare(b.class, 'zh-hant');
+        return String(a.seat).localeCompare(b.seat, 'zh-hant');
     });
     
-    await exportWeeklySchedule(resultData, activeDays, slotMode, "直接貼上名單彙整");
+    await exportWeeklySchedule(resultData, activeDays, slotMode, "直接貼上名單彙整", pastedClubs);
     
     // 重設狀態
     pastedClubs = [];
