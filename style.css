@@ -388,3 +388,132 @@ tr:last-child td {
         grid-column: span 1;
     }
 }
+
+/* 🏷️ 頁籤控制 */
+.tab-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: var(--primary);
+    background: rgba(15, 59, 109, 0.05);
+}
+
+.tab-btn.active {
+    color: #fff;
+    background: var(--primary);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* 📋 貼上區域樣式 */
+.paste-zone {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.paste-inputs {
+    display: flex;
+    gap: 15px;
+}
+
+.paste-input-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.paste-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.paste-textarea {
+    width: 100%;
+    height: 180px;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-main);
+    background: #fff;
+    resize: vertical;
+    transition: all 0.2s;
+}
+
+.paste-textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(15, 59, 109, 0.1);
+}
+
+/* 已載入社團清單樣式 */
+.loaded-clubs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.loaded-club-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 15px;
+    font-size: 14px;
+    animation: slideIn 0.2s ease forwards;
+}
+
+.loaded-club-info {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.loaded-club-delete {
+    color: #e74c3c;
+    cursor: pointer;
+    font-weight: 700;
+    background: none;
+    border: none;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.loaded-club-delete:hover {
+    color: #c0392b;
+    transform: scale(1.1);
+}

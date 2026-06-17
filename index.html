@@ -23,13 +23,84 @@
             <div class="subtitle">網頁發佈版 ── 免安裝、純瀏覽器本地處理，100% 保障學生個資安全</div>
         </div>
 
-        <!-- 步驟一：拖曳上傳 -->
+        <!-- 步驟一：資料輸入 -->
         <div class="step-panel active" id="step-upload">
-            <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-                <span class="upload-icon">📂</span>
-                <div class="upload-text">將錄取名冊 Excel 檔案拖曳至此，或點選這裡上傳</div>
-                <div class="upload-hint">支援學校導出的 .xlsx 試算表格式</div>
-                <input type="file" id="file-input" accept=".xlsx, .xls">
+            <div class="tab-container">
+                <button class="tab-btn active" id="tab-btn-file" onclick="switchInputTab('file')">📂 上傳 Excel 檔案</button>
+                <button class="tab-btn" id="tab-btn-paste" onclick="switchInputTab('paste')">📋 貼上網頁複製名單</button>
+            </div>
+            
+            <!-- 檔案上傳區 -->
+            <div id="tab-file-content" class="tab-content active">
+                <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                    <span class="upload-icon">📂</span>
+                    <div class="upload-text">將錄取名冊 Excel 檔案拖曳至此，或點選這裡上傳</div>
+                    <div class="upload-hint">支援學校導出的 .xlsx 試算表格式</div>
+                    <input type="file" id="file-input" accept=".xlsx, .xls">
+                </div>
+            </div>
+            
+            <!-- 文字貼上區 -->
+            <div id="tab-paste-content" class="tab-content">
+                <div class="paste-zone">
+                    <div class="paste-inputs">
+                        <div class="paste-input-col">
+                            <label class="paste-label">📅 上課星期：</label>
+                            <select id="paste-day-select" class="config-select">
+                                <option value="週一">週一</option>
+                                <option value="週二">週二</option>
+                                <option value="週三">週三</option>
+                                <option value="週四">週四</option>
+                                <option value="週五">週五</option>
+                                <option value="週六">週六</option>
+                                <option value="週日">週日</option>
+                            </select>
+                        </div>
+                        <div class="paste-input-col" style="flex: 1;">
+                            <label class="paste-label">🏫 社團名稱：</label>
+                            <input type="text" id="paste-club-name" class="club-input" placeholder="例：舞蹈社、籃球社 (系統會自動嘗試從貼上內容中預測，也可手動修改)">
+                        </div>
+                    </div>
+                    
+                    <div class="textarea-container" style="margin-top: 15px;">
+                        <label class="paste-label">📋 請貼上從網頁選課系統複製的名單資料 (包含欄位標題，如 班級、座號、姓名)：</label>
+                        <textarea id="paste-text-area" class="paste-textarea" placeholder="直接在此貼上 (Ctrl + V)...&#10;例：&#10;班級	座號	姓名&#10;101	05	張三&#10;102	12	李四"></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="loadPastedClub()" style="margin-top: 15px; width: 100%; justify-content: center;">
+                        ➕ 載入此社團名單
+                    </button>
+                </div>
+                
+                <!-- 已載入的社團列表 -->
+                <div id="loaded-clubs-section" style="display: none; margin-top: 20px;">
+                    <div style="font-weight: 700; color: var(--primary); font-size: 15px; margin-bottom: 10px;">
+                        已載入的社團名單列表：
+                    </div>
+                    <div class="loaded-clubs-list" id="loaded-clubs-list">
+                        <!-- 動態產生已載入社團 -->
+                    </div>
+                    
+                    <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                        <div style="flex: 1;">
+                            <label class="paste-label">📅 時段模式：</label>
+                            <select id="paste-slot-mode-select" class="config-select" style="width: 100%;">
+                                <option value="semester">一般學期模式 (無 AB 時段，課表名稱無括號)</option>
+                                <option value="vacation">寒暑假模式 (有 AB 時段，課表名稱加後綴)</option>
+                            </select>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <label class="config-checkbox-container">
+                                <input type="checkbox" id="paste-include-freshmen" checked>
+                                <span class="checkbox-text">👶 包含無班級座號之「新生」</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="processPastedData()" style="margin-top: 20px; width: 100%; justify-content: center; background: var(--accent);">
+                        ⚡ 開始彙整並下載課表 (共 <span id="total-pasted-students">0</span> 筆錄取資料)
+                    </button>
+                </div>
             </div>
         </div>
 

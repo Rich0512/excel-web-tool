@@ -925,3 +925,413 @@ async function processAndDownload() {
 
 // 綁定彙整模式切換監聽
 document.getElementById('mode-select').addEventListener('change', analyzeAndRenderMapping);
+
+// ==========================================
+// 📋 直接貼上名單模式邏輯
+// ==========================================
+
+let pastedClubs = [];
+
+function switchInputTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    if (tab === 'file') {
+        document.getElementById('tab-btn-file').classList.add('active');
+        document.getElementById('tab-file-content').classList.add('active');
+    } else {
+        document.getElementById('tab-btn-paste').classList.add('active');
+        document.getElementById('tab-paste-content').classList.add('active');
+    }
+}
+
+// 監聽貼上事件，進行智慧預估
+document.getElementById('paste-text-area').addEventListener('paste', (e) => {
+    setTimeout(() => {
+        const text = document.getElementById('paste-text-area').value;
+        guessClubAndDayFromPastedText(text);
+    }, 50);
+});
+
+function guessClubAndDayFromPastedText(text) {
+    if (!text) return;
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+    
+    // 1. 嘗試預估星期
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
+        const line = lines[i];
+        const dayMatch = WEEKDAY_REGEX.exec(line);
+        if (dayMatch) {
+            const day_char = dayMatch[2];
+            const dayMap = {
+                '一': '週一', '1': '週一',
+                '二': '週二', '2': '週二',
+                '三': '週三', '3': '週三',
+                '四': '週四', '4': '週四',
+                '五': '週五', '5': '週五',
+                '六': '週六', '6': '週六',
+                '日': '週日', '7': '週日'
+            };
+            const matchedDay = dayMap[day_char];
+            if (matchedDay) {
+                document.getElementById('paste-day-select').value = matchedDay;
+            }
+        }
+        
+        // 2. 嘗試預估社團名稱
+        let cleaned = line.replace(/延平|國小|學年度|第二學期|第一學期|學期|課後|社團|A班|B班|一時段|二時段|錄取|名冊|名單|學生|清單|班級|座號|姓名/g, '');
+        cleaned = cleaned.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '').trim();
+        if (cleaned.length >= 2 && cleaned.length <= 15) {
+            if (!cleaned.includes("班") && !cleaned.includes("座") && !cleaned.includes("名")) {
+                document.getElementById('paste-club-name').value = cleaned;
+                break;
+            }
+        }
+    }
+}
+
+function parsePastedText(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return [];
+    
+    // 預設以 Tab 分割（網頁表格複製之標準格式）
+    let rows = lines.map(line => line.split('\t').map(c => c.trim()));
+    
+    // 若無 Tab，嘗試多空格或逗號分割
+    if (rows[0].length <= 1) {
+        rows = lines.map(line => line.split(/\s{2,}|\t/).map(c => c.trim()));
+    }
+    if (rows[0].length <= 1) {
+        rows = lines.map(line => line.split(/[,\s]+/).map(c => c.trim()));
+    }
+    
+    let headerIdx = -1;
+    let colClass = -1, colSeat = -1, colName = -1;
+    
+    // 掃描前 5 列尋找表頭
+    for (let i = 0; i < Math.min(5, rows.length); i++) {
+        const row = rows[i];
+        const cIdx = row.findIndex(c => c.includes('班'));
+        const sIdx = row.findIndex(c => c.includes('座') || c.includes('號'));
+        const nIdx = row.findIndex(c => c.includes('姓') || c.includes('名'));
+        
+        if (nIdx !== -1 && (cIdx !== -1 || sIdx !== -1)) {
+            headerIdx = i;
+            colClass = cIdx;
+            colSeat = sIdx;
+            colName = nIdx;
+            break;
+        }
+    }
+    
+    // 若無表頭，預設第 0 欄為班級、第 1 欄為座號、第 2 欄為姓名
+    if (headerIdx === -1) {
+        colClass = 0;
+        colSeat = 1;
+        colName = 2;
+    }
+    
+    const students = [];
+    const startRow = headerIdx + 1;
+    
+    for (let i = startRow; i < rows.length; i++) {
+        const row = rows[i];
+        const nameVal = row[colName];
+        if (!nameVal) continue;
+        
+        if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k))) {
+            continue;
+        }
+        
+        const classVal = (colClass !== -1 && colClass < row.length) ? row[colClass] : "";
+        const seatVal = (colSeat !== -1 && colSeat < row.length) ? row[colSeat] : "";
+        
+        students.push({
+            class: classVal,
+            seat: seatVal,
+            name: nameVal
+        });
+    }
+    
+    return students;
+}
+
+function loadPastedClub() {
+    const day = document.getElementById('paste-day-select').value;
+    const clubNameInput = document.getElementById('paste-club-name').value.trim();
+    const pastedText = document.getElementById('paste-text-area').value.trim();
+    
+    if (!clubNameInput) {
+        alert("請先輸入社團名稱！");
+        return;
+    }
+    
+    if (!pastedText) {
+        alert("請貼上網頁複製的名單資料！");
+        return;
+    }
+    
+    const students = parsePastedText(pastedText);
+    if (students.length === 0) {
+        alert("無法解析名單資料。請確認資料中包含「姓名」等標題列與學生資料列。");
+        return;
+    }
+    
+    const newClub = {
+        id: Date.now(),
+        day: day,
+        clubName: clubNameInput,
+        students: students
+    };
+    
+    pastedClubs.push(newClub);
+    
+    // 清空輸入框以利輸入下一門社團
+    document.getElementById('paste-club-name').value = "";
+    document.getElementById('paste-text-area').value = "";
+    
+    renderLoadedClubs();
+}
+
+function renderLoadedClubs() {
+    const listDiv = document.getElementById('loaded-clubs-list');
+    listDiv.innerHTML = "";
+    
+    let totalStudents = 0;
+    
+    pastedClubs.forEach((club, index) => {
+        totalStudents += club.students.length;
+        
+        const item = document.createElement('div');
+        item.className = "loaded-club-item";
+        
+        const info = document.createElement('span');
+        info.className = "loaded-club-info";
+        info.textContent = `📅 ${club.day} ── 🏫 ${club.clubName} (共 ${club.students.length} 人)`;
+        
+        const delBtn = document.createElement('button');
+        delBtn.className = "loaded-club-delete";
+        delBtn.innerHTML = "🗑️ 刪除";
+        delBtn.onclick = () => {
+            pastedClubs.splice(index, 1);
+            renderLoadedClubs();
+        };
+        
+        item.appendChild(info);
+        item.appendChild(delBtn);
+        listDiv.appendChild(item);
+    });
+    
+    const section = document.getElementById('loaded-clubs-section');
+    const totalSpan = document.getElementById('total-pasted-students');
+    
+    if (pastedClubs.length > 0) {
+        section.style.display = "block";
+        totalSpan.textContent = totalStudents;
+    } else {
+        section.style.display = "none";
+        totalSpan.textContent = "0";
+    }
+}
+
+async function processPastedData() {
+    if (pastedClubs.length === 0) {
+        alert("請先載入至少一個社團名單！");
+        return;
+    }
+    
+    const slotMode = document.getElementById('paste-slot-mode-select').value;
+    const includeFreshmen = document.getElementById('paste-include-freshmen').checked;
+    
+    const studentMap = {};
+    const weekdays = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
+    const activeDays = new Set(['週一', '週二', '週三', '週四', '週五']);
+    
+    pastedClubs.forEach(club => {
+        const day = club.day;
+        const rawClubName = club.clubName;
+        activeDays.add(day);
+        
+        // 智慧提取時段
+        let slot = "";
+        const slotMatch = rawClubName.match(/([A-Ba-b]|一時段|二時段|第一節|第二節|SlotA|SlotB)$/);
+        if (slotMatch) {
+            const rawSlot = slotMatch[1].toUpperCase();
+            if (["A", "一時段", "第一節", "SLOTA"].includes(rawSlot)) slot = "A";
+            else if (["B", "二時段", "第二節", "SLOTB"].includes(rawSlot)) slot = "B";
+        }
+        
+        let cleanName = rawClubName.replace(/([A-Ba-b]|一時段|二時段|第一節|第二節|時段|Slot|slot)$/i, '').trim();
+        if (!cleanName) cleanName = rawClubName;
+        
+        const label = slotMode === 'vacation' ? slot : "";
+        const entryText = label ? `${cleanName}(${label})` : cleanName;
+        
+        club.students.forEach(student => {
+            let sClass = student.class ? student.class.trim() : "";
+            let sSeat = student.seat ? student.seat.trim() : "";
+            let sName = student.name ? student.name.trim() : "";
+            
+            if (!sName) return;
+            if (!includeFreshmen && !sClass) return;
+            
+            if (!sClass) sClass = "新生";
+            
+            const studentKey = `${sClass}_${sName}`;
+            if (!studentMap[studentKey]) {
+                studentMap[studentKey] = {
+                    class: sClass,
+                    seat: sSeat,
+                    name: sName,
+                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
+                    remarks: []
+                };
+            }
+            
+            if (!studentMap[studentKey].seat && sSeat) {
+                studentMap[studentKey].seat = sSeat;
+            }
+            
+            if (studentMap[studentKey].schedule[day]) {
+                studentMap[studentKey].schedule[day] += `, ${entryText}`;
+                studentMap[studentKey].remarks.push(`「${day}」時段衝突：同時錄取「${studentMap[studentKey].schedule[day]}」`);
+            } else {
+                studentMap[studentKey].schedule[day] = entryText;
+            }
+        });
+    });
+    
+    const resultData = Object.values(studentMap);
+    if (resultData.length === 0) {
+        alert("無任何有效學生名單資料可供彙整！");
+        return;
+    }
+    
+    // 排序
+    resultData.sort((a, b) => {
+        const classA = getNumericSortKey(a.class);
+        const classB = getNumericSortKey(b.class);
+        if (classA !== classB) return classA - classB;
+        
+        const seatA = getNumericSortKey(a.seat);
+        const seatB = getNumericSortKey(b.seat);
+        if (seatA !== seatB) return seatA - seatB;
+        
+        if (a.class !== b.class) return String(a.class).localeCompare(b.class);
+        return String(a.seat).localeCompare(b.seat);
+    });
+    
+    const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
+    if (activeDays.has('週六')) targetWeekdays.push('週六');
+    if (activeDays.has('週日')) targetWeekdays.push('週日');
+    
+    const outWorkbook = new ExcelJS.Workbook();
+    const ws = outWorkbook.addWorksheet('學生週課表');
+    
+    const headersOut = ['班級', '座號', '姓名', ...targetWeekdays, '備註'];
+    ws.addRow(headersOut);
+    
+    resultData.forEach(student => {
+        const rowData = [
+            student.class,
+            student.seat,
+            student.name,
+            ...targetWeekdays.map(day => student.schedule[day]),
+            student.remarks.join('；')
+        ];
+        ws.addRow(rowData);
+    });
+    
+    // 表頭樣式
+    const headerRow = ws.getRow(1);
+    headerRow.height = 28;
+    headerRow.eachCell((cell) => {
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF0F3B6D' }
+        };
+        cell.font = {
+            name: 'Microsoft JhengHei',
+            size: 11,
+            bold: true,
+            color: { argb: 'FFFFFFFF' }
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+        };
+    });
+    
+    // 資料行與斑馬紋
+    ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return;
+        row.height = 22;
+        const isEven = rowNum % 2 === 0;
+        const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
+        
+        row.eachCell((cell, colNum) => {
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: bgColor }
+            };
+            cell.font = { name: 'Microsoft JhengHei', size: 11 };
+            cell.border = {
+                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+            };
+            const colName = headersOut[colNum - 1];
+            if (['姓名', '備註'].includes(colName)) {
+                cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+            } else {
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            }
+        });
+    });
+    
+    // 智慧欄寬
+    ws.columns.forEach(column => {
+        let maxLen = 0;
+        column.eachCell({ includeEmpty: true }, (cell) => {
+            const val = getCellValueAsString(cell);
+            let len = 0;
+            for (let i = 0; i < val.length; i++) {
+                const code = val.charCodeAt(i);
+                if (code >= 0x4e00 && code <= 0x9fff) len += 2;
+                else len += 1;
+            }
+            if (len > maxLen) maxLen = len;
+        });
+        column.width = Math.max(maxLen + 4, 10);
+    });
+    
+    const lastColLetter = getColLetter(headersOut.length);
+    ws.autoFilter = `A1:${lastColLetter}${ws.rowCount}`;
+    
+    const buffer = await outWorkbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    
+    const downloadLink = document.createElement('a');
+    const outputSuffix = slotMode === 'semester' ? "_學期社團彙整.xlsx" : "_寒暑假社團彙整.xlsx";
+    
+    downloadLink.href = URL.createObjectURL(blob);
+    downloadLink.download = "直接貼上名單彙整" + outputSuffix;
+    
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // 重設狀態
+    pastedClubs = [];
+    renderLoadedClubs();
+    document.getElementById('paste-text-area').value = "";
+    
+    switchStep('step-success');
+}
