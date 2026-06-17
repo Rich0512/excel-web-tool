@@ -30,6 +30,21 @@
                 <button class="tab-btn" id="tab-btn-paste" onclick="switchInputTab('paste')">📋 貼上網頁複製名單</button>
             </div>
             
+            <!-- 💡 功能與使用情境指引 -->
+            <div class="feature-guide">
+                <div class="guide-title">💡 選擇您的行政任務情境：</div>
+                <div class="guide-grid">
+                    <div class="guide-item" onclick="switchInputTab('file')" style="cursor: pointer;">
+                        <strong>📂 方案一：上傳 Excel 檔案</strong>
+                        <span>適合<strong>「已有整份錄取名單 Excel」</strong>。一鍵上傳多個社團，快速轉化為以學生為單位的個人週課表。</span>
+                    </div>
+                    <div class="guide-item" onclick="switchInputTab('paste')" style="cursor: pointer;">
+                        <strong>📋 方案二：貼上網頁複製名單</strong>
+                        <span>適合<strong>「尚未抽籤」</strong>。直接貼上選課網頁複製的名冊，進行<strong>線上隨機抽籤、設定年級限制及高低年級優先權</strong>，自動產出抽籤結果並彙整課表。</span>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 檔案上傳區 -->
             <div id="tab-file-content" class="tab-content active">
                 <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
