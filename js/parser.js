@@ -1,5 +1,5 @@
 // 全域正則對照
-const WEEKDAY_REGEX = /^(星期|週|周)([一二三四五六日]|[1-7])/;
+const PARSER_WEEKDAY_REGEX = /^(星期|週|周)([一二三四五六日]|[1-7])/;
 
 // 欄位推斷規則定義 (防範無表頭貼上時的智慧識別)
 const FIELD_DETECTION_RULES = {
@@ -177,7 +177,7 @@ function guessClubAndDayFromPastedText(text) {
     // 1. 嘗試預估星期
     for (let i = 0; i < Math.min(3, lines.length); i++) {
         const line = lines[i];
-        const dayMatch = WEEKDAY_REGEX.exec(line);
+        const dayMatch = PARSER_WEEKDAY_REGEX.exec(line);
         if (dayMatch) {
             const day_char = dayMatch[2];
             const dayMap = {
