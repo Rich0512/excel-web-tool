@@ -662,7 +662,7 @@ async function processAndDownload() {
         const studentMap = {};
 
         rows.forEach(tr => {
-            const sheetName = tr.dataset.detectedSlot ? tr.dataset.original : tr.dataset.sheetName;
+            const sheetName = tr.dataset.sheetName;
             const mapData = finalMapping[sheetName];
             if (!mapData) return;
 
