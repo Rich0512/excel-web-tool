@@ -30,23 +30,11 @@
                 <button class="tab-btn" id="tab-btn-paste" onclick="switchInputTab('paste')">📋 貼上網頁複製名單</button>
             </div>
             
-            <!-- 💡 功能與使用情境指引 -->
-            <div class="feature-guide">
-                <div class="guide-title">💡 選擇您的行政任務情境：</div>
-                <div class="guide-grid">
-                    <div class="guide-item" onclick="switchInputTab('file')" style="cursor: pointer;">
-                        <strong>📂 方案一：上傳 Excel 檔案</strong>
-                        <span>適合<strong>「已有整份錄取名單 Excel」</strong>。一鍵上傳多個社團，快速轉化為以學生為單位的個人週課表。</span>
-                    </div>
-                    <div class="guide-item" onclick="switchInputTab('paste')" style="cursor: pointer;">
-                        <strong>📋 方案二：貼上網頁複製名單</strong>
-                        <span>適合<strong>「尚未抽籤」</strong>。請將<strong>所有社團逐一載入列表中，最後再一次彙整下載</strong>。支援線上抽籤、年級限制與優先權，自動生成抽籤結果並比對衝突。</span>
-                    </div>
-                </div>
-            </div>
-            
             <!-- 檔案上傳區 -->
             <div id="tab-file-content" class="tab-content active">
+                <div class="tab-intro">
+                    💡 <strong>適用情境：</strong>已有錄取名單 Excel。一鍵上傳多個社團，快速轉化為以學生為單位的個人週課表總表。
+                </div>
                 <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
                     <span class="upload-icon">📂</span>
                     <div class="upload-text">將錄取名冊 Excel 檔案拖曳至此，或點選這裡上傳</div>
@@ -56,6 +44,9 @@
             </div>
             <!-- 文字貼上區 -->
             <div id="tab-paste-content" class="tab-content">
+                <div class="tab-intro">
+                    💡 <strong>適用情境：</strong>尚未抽籤。直接貼上選課網頁複製的名冊，進行<strong>線上隨機抽籤、設定年級限制及高低年級優先權</strong>。請在<strong>載入所有社團名冊後，再一併點選下方按鈕彙整下載</strong>。
+                </div>
                 <div class="paste-zone">
                     <div class="paste-inputs">
                         <div class="paste-input-col">
@@ -149,7 +140,7 @@
                         </div>
                     </div>
                     
-                    <div style="margin-top: 15px; padding: 12px 15px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 13px; color: #b45309; line-height: 1.5; text-align: left;">
+                    <div class="warning-callout">
                         ⚠️ <strong>重要提醒：</strong>請重複「貼上名單 ➔ 點擊載入此社團名單」的步驟，將<strong>所有要整理的社團</strong>都載入到下方的列表中，最後再點選下方的彙整下載按鈕。若提早點選彙整，系統會直接清除當前載入狀態並匯出，將無法進行多社團衝堂衝突檢查！
                     </div>
                     
