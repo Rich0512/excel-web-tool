@@ -74,11 +74,55 @@ function parsePastedText(text) {
         }
     }
     
-    // 若無表頭，預設第 0 欄為班級、第 1 欄為座號、第 2 欄為姓名
+    // 若無表頭，智慧推測每欄代表的資料類型 (最糟糕的情況下)
     if (headerIdx === -1) {
-        colClass = 0;
-        colSeat = 1;
-        colName = 2;
+        let sampleRow = null;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].length >= 3 && rows[i].some(c => c.length > 0)) {
+                sampleRow = rows[i];
+                break;
+            }
+        }
+
+        if (sampleRow) {
+            let guessedClass = -1;
+            let guessedSeat = -1;
+            let guessedName = -1;
+
+            for (let idx = 0; idx < sampleRow.length; idx++) {
+                const val = sampleRow[idx];
+                if (!val) continue;
+
+                // 1. 偵測姓名：長度 2~4 的純中文，排除班級與年級字眼
+                if (/^[\u4e00-\u9fa5]{2,4}$/.test(val)) {
+                    if (!val.includes('班') && !val.includes('年') && !val.includes('組')) {
+                        guessedName = idx;
+                    }
+                }
+                // 2. 偵測班級：包含 "班" 或 "年"
+                if (val.includes('班') || val.includes('年') || /^\d{3}$/.test(val)) {
+                    guessedClass = idx;
+                }
+                // 3. 偵測座號：數值且 <= 60，避免誤判學號
+                const num = parseInt(val, 10);
+                if (!isNaN(num) && num > 0 && num <= 60 && val.length <= 2) {
+                    if (guessedSeat === -1 || idx > guessedClass) {
+                        guessedSeat = idx;
+                    }
+                }
+            }
+
+            if (guessedClass !== -1) colClass = guessedClass;
+            if (guessedSeat !== -1) colSeat = guessedSeat;
+            if (guessedName !== -1) colName = guessedName;
+        }
+
+        // 如果智慧推測仍未成功，才使用預設索引
+        if (colName === -1) {
+            colClass = 0;
+            colSeat = 1;
+            colName = 2;
+        }
     }
     
     const students = [];
