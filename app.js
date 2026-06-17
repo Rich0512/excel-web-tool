@@ -13,76 +13,6 @@ let slotCols = [];
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 
-// 正則表達式匹配星期
-const WEEKDAY_REGEX = /(星期|週|周)([一二三四五六日1-7])/;
-const weekdaysList = ["請選擇", "週一", "週二", "週三", "週四", "週五", "週六", "週日"];
-
-// ==========================================
-// 🛠️ 輔助工具函數 (防止極端邊緣錯誤)
-// ==========================================
-
-/**
- * 智慧解析 Excel 儲存格內容，支援純文字、數值、公式結果及富文本
- */
-function getCellValueAsString(cell) {
-    if (!cell || cell.value === null || cell.value === undefined) {
-        return "";
-    }
-    
-    const val = cell.value;
-    
-    // 1. 處理公式儲存格 (Formula)
-    if (typeof val === 'object' && val !== null && 'formula' in val) {
-        if (val.result !== null && val.result !== undefined) {
-            return String(val.result).trim();
-        }
-        return "";
-    }
-    
-    // 2. 處理富文本儲存格 (Rich Text)
-    if (typeof val === 'object' && val !== null && 'richText' in val) {
-        return val.richText.map(rt => rt.text || '').join('').trim();
-    }
-    
-    // 3. 處理包含 text 屬性的物件 (例如超連結)
-    if (typeof val === 'object' && val !== null && 'text' in val) {
-        return String(val.text).trim();
-    }
-    
-    // 4. 一般字串與數值直接轉字串
-    return String(val).trim();
-}
-
-/**
- * 轉換欄位索引為 Excel 字母標記 (如 1 -> A, 27 -> AA)
- */
-function getColLetter(colIdx) {
-    let temp = colIdx;
-    let letter = "";
-    while (temp > 0) {
-        let modulo = (temp - 1) % 26;
-        letter = String.fromCharCode(65 + modulo) + letter;
-        temp = Math.floor((temp - modulo) / 26);
-    }
-    return letter;
-}
-
-/**
- * 提取數值作為排序鍵 (比照 Python get_numeric_sort_key)
- */
-function getNumericSortKey(val) {
-    if (val === null || val === undefined) return Infinity;
-    const strVal = String(val).trim();
-    if (strVal === "新生" || strVal === "") return Infinity;
-    // 僅保留數字與小數點
-    const cleanVal = strVal.replace(/[^\d.]/g, '');
-    if (cleanVal) {
-        const num = parseFloat(cleanVal);
-        return isNaN(num) ? Infinity : num;
-    }
-    return Infinity;
-}
-
 // ==========================================
 // 📥 檔案拖曳與讀取邏輯
 // ==========================================
@@ -146,110 +76,6 @@ async function handleFileSelect(file) {
     };
     
     reader.readAsArrayBuffer(file);
-}
-
-// 模糊匹配欄位索引
-function findColumnByKeywords(headers, keywords) {
-    for (let idx = 0; idx < headers.length; idx++) {
-        const val = headers[idx];
-        if (!val) continue;
-        if (keywords.some(kw => val.includes(kw))) {
-            return idx;
-        }
-    }
-    return -1;
-}
-
-// 讀取檔案內的內置對照工作表
-function loadScheduleFromExcel(workbook) {
-    let scheduleSheet = null;
-    workbook.eachSheet((ws) => {
-        const name = ws.name.trim();
-        if (name === '社團上課時間對照表' || name === '對照表' || name === '對照') {
-            scheduleSheet = ws;
-        }
-    });
-    if (!scheduleSheet) return null;
-
-    const mapping = {};
-    scheduleSheet.eachRow((row, rowNum) => {
-        if (rowNum === 1) return; // 跳過表頭
-        const club = getCellValueAsString(row.getCell(1));
-        const day = getCellValueAsString(row.getCell(2));
-        if (club && day) {
-            const normDay = normalizeWeekdayName(day);
-            if (normDay) {
-                mapping[club] = normDay;
-            }
-        }
-    });
-    return mapping;
-}
-
-// 正規化星期文字
-function normalizeWeekdayName(dayStr) {
-    if (!dayStr) return null;
-    const match = dayStr.match(WEEKDAY_REGEX);
-    if (match) {
-        const dayChar = match[2];
-        const dayMap = {
-            '一': '週一', '1': '週一',
-            '二': '週二', '2': '週二',
-            '三': '週三', '3': '週三',
-            '四': '週四', '4': '週四',
-            '五': '週五', '5': '週五',
-            '六': '週六', '6': '週六',
-            '日': '週日', '7': '週日'
-        };
-        return dayMap[dayChar] || null;
-    }
-    return null;
-}
-
-// 從社團字串自動提取星期
-function extractWeekdayFromName(clubName) {
-    return normalizeWeekdayName(clubName);
-}
-
-// 智慧解析工作表名稱與時段資訊
-function parseSheetName(name) {
-    const day = normalizeWeekdayName(name);
-    let slot = "";
-    
-    // 偵測 A/B 時段後綴 (例: "週一舞蹈A", "週二羽球B時段", "第一節課桌球")
-    const slotMatch = name.match(/([A-Ba-b]|一時段|二時段|第一節|第二節|SlotA|SlotB)/i);
-    if (slotMatch) {
-        const rawSlot = slotMatch[1].toUpperCase();
-        if (rawSlot === "A" || rawSlot === "一時段" || rawSlot === "第一節" || rawSlot === "SLOTA") {
-            slot = "A";
-        } else if (rawSlot === "B" || rawSlot === "二時段" || rawSlot === "第二節" || rawSlot === "SLOTB") {
-            slot = "B";
-        }
-    }
-    
-    // 智慧去蕪存菁得到乾淨社團名 (過濾星期、時段字眼)
-    let cleanName = name;
-    cleanName = cleanName.replace(/(星期|週|周)[一二三四五六日1-7]/g, "");
-    cleanName = cleanName.replace(/([A-Ba-b]|一時段|二時段|第一節|第二節|時段|Slot|slot|社團|課程|項目)/gi, "");
-    cleanName = cleanName.trim();
-    
-    if (!cleanName) cleanName = name.trim();
-    
-    return {
-        day: day || "請選擇",
-        slot: slot,
-        clubName: cleanName
-    };
-}
-
-// LocalStorage 管理設定
-function loadLocalStorageConfig() {
-    const data = localStorage.getItem('yenping_club_config');
-    return data ? JSON.parse(data) : {};
-}
-
-function saveLocalStorageConfig(config) {
-    localStorage.setItem('yenping_club_config', JSON.stringify(config));
 }
 
 // ==========================================
@@ -405,7 +231,7 @@ function analyzeAndRenderMapping() {
                 
                 let day = extractWeekdayFromName(club);
                 if (!day && excelSchedule) day = excelSchedule[club];
-                if (!day) day = savedConfig[club]; // 優先尋找扁平記錄
+                if (!day) day = savedConfig[club];
                 if (!day) day = savedSlotMap[club];
 
                 const finalDay = weekdaysList.includes(day) ? day : "請選擇";
@@ -479,20 +305,20 @@ function analyzeAndRenderMapping() {
             tr.dataset.sheetName = name;
             tr.dataset.detectedSlot = parsed.slot;
 
-            // 時段 (多 Sheet 模式下預設改顯示工作表特徵)
+            // 時段 (多 Sheet 模式下顯示工作表特徵)
             const tdSlot = document.createElement('td');
             const displaySlot = parsed.slot ? `時段 ${parsed.slot}` : "多工作表";
             const badgeClass = parsed.slot ? (parsed.slot === 'A' ? "slot-badge slot-a" : "slot-badge slot-other") : "slot-badge slot-other";
             tdSlot.innerHTML = `<span class="${badgeClass}">${displaySlot}</span>`;
             tr.appendChild(tdSlot);
 
-            // 社團名輸入框 (預設過濾星期後的社團名)
+            // 社團名輸入框
             const tdName = document.createElement('td');
             const input = document.createElement('input');
             input.type = "text";
             input.className = "club-input";
             input.value = parsed.clubName;
-            input.dataset.original = name; // 保留原始工作表名稱作為 Key
+            input.dataset.original = name;
             tdName.appendChild(input);
             tr.appendChild(tdName);
 
@@ -547,7 +373,7 @@ function resetToUpload() {
 }
 
 // ==========================================
-// ⚡ 資料轉換與下載邏輯
+// ⚡ 資料轉換與下載邏輯 (檔案上傳模式)
 // ==========================================
 
 async function processAndDownload() {
@@ -564,7 +390,7 @@ async function processAndDownload() {
         const input = tr.querySelector('.club-input');
         const select = tr.querySelector('.day-select');
         
-        const origKey = input.dataset.original; // 單一總表下為原始社團名；多 Sheet 下為工作表名
+        const origKey = input.dataset.original;
         const editedClub = input.value.trim();
         const selectedDay = select.value;
 
@@ -594,7 +420,7 @@ async function processAndDownload() {
         return;
     }
 
-    // 自動更新並儲存 LocalStorage 設定 (平鋪存儲方便自動匹配)
+    // 自動更新並儲存 LocalStorage 設定
     const savedConfig = loadLocalStorageConfig();
     Object.entries(finalMapping).forEach(([origKey, data]) => {
         savedConfig[origKey] = data.day;
@@ -634,14 +460,12 @@ async function processAndDownload() {
                         
                         activeDays.add(day);
                         
-                        // 學期模式與寒暑假模式判斷
                         let label = "";
                         if (slotMode === 'vacation') {
                             label = slot.name.replace("時段", "").replace("Slot", "").replace("slot", "").replace("社團", "").replace("課程", "").trim();
                         }
                         const entryText = label ? `${displayName}(${label})` : displayName;
                         
-                        // 若此星期該學生已有課，進行合併並標示衝突
                         if (student.schedule[day]) {
                             student.schedule[day] += `, ${entryText}`;
                             student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
@@ -675,7 +499,7 @@ async function processAndDownload() {
 
             activeDays.add(day);
 
-            // 在每個子 Sheet 智慧定位關鍵欄位列
+            // 在每個子 Sheet 智慧定位表頭
             let localHeaders = [];
             let localHeaderRowIndex = 1;
             let foundHeader = false;
@@ -712,7 +536,7 @@ async function processAndDownload() {
             const lNameIdx = findColumnByKeywords(localHeaders, ['姓名', '名', 'Name', 'name']);
 
             if (lClassIdx === -1 || lSeatIdx === -1 || lNameIdx === -1) {
-                console.warn(`工作表「${sheetName}」缺少班級、座號或姓名，已跳過。`);
+                console.warn(`工作表「${sheetName}」缺少必要欄位，已跳過。`);
                 return;
             }
 
@@ -726,7 +550,6 @@ async function processAndDownload() {
                 if (!nameVal) return;
                 if (!includeFreshmen && !classVal) return;
 
-                // 略過合計行
                 if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k) || (classVal && classVal.includes(k)))) {
                     return;
                 }
@@ -734,7 +557,6 @@ async function processAndDownload() {
                 const studentClass = classVal || "新生";
                 const studentSeat = seatVal || "";
 
-                // 以 班級+姓名 組合為唯一 Key
                 const studentKey = `${studentClass}_${nameVal}`;
 
                 let student = studentMap[studentKey];
@@ -749,7 +571,6 @@ async function processAndDownload() {
                     studentMap[studentKey] = student;
                 }
 
-                // 組合星期格式
                 const label = (slotMode === 'vacation') ? slot : "";
                 const entryText = label ? `${displayName}(${label})` : displayName;
 
@@ -762,7 +583,6 @@ async function processAndDownload() {
             });
         });
 
-        // 轉換為陣列以便排序
         Object.values(studentMap).forEach(s => resultData.push(s));
     }
 
@@ -771,7 +591,7 @@ async function processAndDownload() {
         return;
     }
 
-    // 嚴格比照 Python 排序演算法：班級數值升冪、座號數值升冪、最後以字串兜底
+    // 排序
     resultData.sort((a, b) => {
         const numClassA = getNumericSortKey(a.class);
         const numClassB = getNumericSortKey(b.class);
@@ -785,7 +605,6 @@ async function processAndDownload() {
             return numSeatA - numSeatB;
         }
 
-        // 當數值完全一致時，使用字串比對做穩定排序 (zh-hant)
         const strClassA = String(a.class);
         const strClassB = String(b.class);
         if (strClassA !== strClassB) {
@@ -798,120 +617,6 @@ async function processAndDownload() {
     });
 
     await exportWeeklySchedule(resultData, activeDays, slotMode, originalFileName);
-}
-
-/**
- * 💅 核心彙整與導出 Excel 樣式渲染輔助函數
- */
-async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName) {
-    const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
-    if (activeDays.has('週六')) targetWeekdays.push('週六');
-    if (activeDays.has('週日')) targetWeekdays.push('週日');
-
-    const outWorkbook = new ExcelJS.Workbook();
-    const ws = outWorkbook.addWorksheet('學生週課表');
-
-    const headersOut = ['班級', '座號', '姓名', ...targetWeekdays, '備註'];
-    ws.addRow(headersOut);
-
-    resultData.forEach(student => {
-        const rowData = [
-            student.class,
-            student.seat,
-            student.name,
-            ...targetWeekdays.map(day => student.schedule[day]),
-            Array.isArray(student.remarks) ? student.remarks.join('；') : (student.remarks || '')
-        ];
-        ws.addRow(rowData);
-    });
-
-    // 💅 表頭樣式
-    const headerRow = ws.getRow(1);
-    headerRow.height = 28;
-    headerRow.eachCell((cell) => {
-        cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF0F3B6D' }
-        };
-        cell.font = {
-            name: 'Microsoft JhengHei',
-            size: 11,
-            bold: true,
-            color: { argb: 'FFFFFFFF' }
-        };
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        cell.border = {
-            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-            bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
-            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
-        };
-    });
-
-    // 資料列樣式與斑馬紋
-    ws.eachRow((row, rowNum) => {
-        if (rowNum === 1) return;
-        row.height = 22;
-        const isEven = rowNum % 2 === 0;
-        const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
-
-        row.eachCell((cell, colNum) => {
-            cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: bgColor }
-            };
-            cell.font = { name: 'Microsoft JhengHei', size: 11 };
-            cell.border = {
-                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-            };
-            const colName = headersOut[colNum - 1];
-            if (['姓名', '備註'].includes(colName)) {
-                cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-            } else {
-                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-            }
-        });
-    });
-
-    // 智慧自適應欄寬
-    ws.columns.forEach(column => {
-        let maxLen = 0;
-        column.eachCell({ includeEmpty: true }, (cell) => {
-            const val = getCellValueAsString(cell);
-            let len = 0;
-            for (let i = 0; i < val.length; i++) {
-                const code = val.charCodeAt(i);
-                if (code >= 0x4e00 && code <= 0x9fff) len += 2;
-                else len += 1;
-            }
-            if (len > maxLen) maxLen = len;
-        });
-        column.width = Math.max(maxLen + 4, 10);
-    });
-
-    const lastColLetter = getColLetter(headersOut.length);
-    ws.autoFilter = `A1:${lastColLetter}${ws.rowCount}`;
-
-    const buffer = await outWorkbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    
-    const downloadLink = document.createElement('a');
-    const outputSuffix = slotMode === 'semester' ? "_學期社團彙整.xlsx" : "_寒暑假社團彙整.xlsx";
-    const outputName = outputBaseName.replace(/\.[^/.]+$/, "") + outputSuffix;
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = outputName;
-    
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-
-    switchStep('step-success');
-}
 }
 
 // 綁定彙整模式切換監聽
@@ -936,117 +641,13 @@ function switchInputTab(tab) {
     }
 }
 
-// 監聽貼上事件，進行智慧預估
+// 監聽貼上事件
 document.getElementById('paste-text-area').addEventListener('paste', (e) => {
     setTimeout(() => {
         const text = document.getElementById('paste-text-area').value;
         guessClubAndDayFromPastedText(text);
     }, 50);
 });
-
-function guessClubAndDayFromPastedText(text) {
-    if (!text) return;
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length === 0) return;
-    
-    // 1. 嘗試預估星期
-    for (let i = 0; i < Math.min(3, lines.length); i++) {
-        const line = lines[i];
-        const dayMatch = WEEKDAY_REGEX.exec(line);
-        if (dayMatch) {
-            const day_char = dayMatch[2];
-            const dayMap = {
-                '一': '週一', '1': '週一',
-                '二': '週二', '2': '週二',
-                '三': '週三', '3': '週三',
-                '四': '週四', '4': '週四',
-                '五': '週五', '5': '週五',
-                '六': '週六', '6': '週六',
-                '日': '週日', '7': '週日'
-            };
-            const matchedDay = dayMap[day_char];
-            if (matchedDay) {
-                document.getElementById('paste-day-select').value = matchedDay;
-            }
-        }
-        
-        // 2. 嘗試預估社團名稱
-        let cleaned = line.replace(/延平|國小|學年度|第二學期|第一學期|學期|課後|社團|A班|B班|一時段|二時段|錄取|名冊|名單|學生|清單|班級|座號|姓名/g, '');
-        cleaned = cleaned.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '').trim();
-        if (cleaned.length >= 2 && cleaned.length <= 15) {
-            if (!cleaned.includes("班") && !cleaned.includes("座") && !cleaned.includes("名")) {
-                document.getElementById('paste-club-name').value = cleaned;
-                break;
-            }
-        }
-    }
-}
-
-function parsePastedText(text) {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length === 0) return [];
-    
-    // 預設以 Tab 分割（網頁表格複製之標準格式）
-    let rows = lines.map(line => line.split('\t').map(c => c.trim()));
-    
-    // 若無 Tab，嘗試多空格或逗號分割
-    if (rows[0].length <= 1) {
-        rows = lines.map(line => line.split(/\s{2,}|\t/).map(c => c.trim()));
-    }
-    if (rows[0].length <= 1) {
-        rows = lines.map(line => line.split(/[,\s]+/).map(c => c.trim()));
-    }
-    
-    let headerIdx = -1;
-    let colClass = -1, colSeat = -1, colName = -1;
-    
-    // 掃描前 5 列尋找表頭
-    for (let i = 0; i < Math.min(5, rows.length); i++) {
-        const row = rows[i];
-        const cIdx = row.findIndex(c => c.includes('班'));
-        const sIdx = row.findIndex(c => c.includes('座') || c.includes('號'));
-        const nIdx = row.findIndex(c => c.includes('姓') || c.includes('名'));
-        
-        if (nIdx !== -1 && (cIdx !== -1 || sIdx !== -1)) {
-            headerIdx = i;
-            colClass = cIdx;
-            colSeat = sIdx;
-            colName = nIdx;
-            break;
-        }
-    }
-    
-    // 若無表頭，預設第 0 欄為班級、第 1 欄為座號、第 2 欄為姓名
-    if (headerIdx === -1) {
-        colClass = 0;
-        colSeat = 1;
-        colName = 2;
-    }
-    
-    const students = [];
-    const startRow = headerIdx + 1;
-    
-    for (let i = startRow; i < rows.length; i++) {
-        const row = rows[i];
-        const nameVal = row[colName];
-        if (!nameVal) continue;
-        
-        if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k))) {
-            continue;
-        }
-        
-        const classVal = (colClass !== -1 && colClass < row.length) ? row[colClass] : "";
-        const seatVal = (colSeat !== -1 && colSeat < row.length) ? row[colSeat] : "";
-        
-        students.push({
-            class: classVal,
-            seat: seatVal,
-            name: nameVal
-        });
-    }
-    
-    return students;
-}
 
 function loadPastedClub() {
     const day = document.getElementById('paste-day-select').value;
@@ -1078,7 +679,6 @@ function loadPastedClub() {
     
     pastedClubs.push(newClub);
     
-    // 清空輸入框以利輸入下一門社團
     document.getElementById('paste-club-name').value = "";
     document.getElementById('paste-text-area').value = "";
     
@@ -1136,7 +736,6 @@ async function processPastedData() {
     const includeFreshmen = document.getElementById('paste-include-freshmen').checked;
     
     const studentMap = {};
-    const weekdays = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
     const activeDays = new Set(['週一', '週二', '週三', '週四', '週五']);
     
     pastedClubs.forEach(club => {
@@ -1144,7 +743,6 @@ async function processPastedData() {
         const rawClubName = club.clubName;
         activeDays.add(day);
         
-        // 智慧提取時段
         let slot = "";
         const slotMatch = rawClubName.match(/([A-Ba-b]|一時段|二時段|第一節|第二節|SlotA|SlotB)$/);
         if (slotMatch) {
@@ -1199,7 +797,6 @@ async function processPastedData() {
         return;
     }
     
-    // 排序
     resultData.sort((a, b) => {
         const classA = getNumericSortKey(a.class);
         const classB = getNumericSortKey(b.class);
@@ -1213,15 +810,10 @@ async function processPastedData() {
         return String(a.seat).localeCompare(b.seat);
     });
     
-    const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
-    if (activeDays.has('週六')) targetWeekdays.push('週六');
-    if (activeDays.has('週日')) targetWeekdays.push('週日');
-    
     await exportWeeklySchedule(resultData, activeDays, slotMode, "直接貼上名單彙整");
     
     // 重設狀態
     pastedClubs = [];
     renderLoadedClubs();
     document.getElementById('paste-text-area').value = "";
-}
 }
