@@ -191,7 +191,7 @@ function runClubLottery(candidates, quota, gradeStart, gradeEnd, priority) {
             qualified.push(s);
         } else {
             s.selected = false;
-            s.drawSequence = "";
+            s.drawSequence = "不符限制";
             disqualified.push(s);
         }
     });
@@ -225,16 +225,23 @@ function runClubLottery(candidates, quota, gradeStart, gradeEnd, priority) {
         shuffleArray(list);
         list.forEach(s => {
             if (selected.length < quota) {
+                s.selected = true;
+                // 籤序即為隨機抽中的順序 (1, 2, 3...)
+                s.drawSequence = selected.length + 1;
                 selected.push(s);
             } else {
                 s.selected = false;
-                s.drawSequence = "";
                 backup.push(s);
             }
         });
     });
 
-    // 5. 排序錄取名單，並發放「籤序 1, 2, 3...」
+    // 為備取名單依序發放「備取 1, 2, 3...」
+    backup.forEach((s, idx) => {
+        s.drawSequence = `備取 ${idx + 1}`;
+    });
+
+    // 5. 排序錄取名單，方便瀏覽 (不影響已隨機分配好的籤序)
     selected.sort((a, b) => {
         const classA = getNumericSortKey(a.class);
         const classB = getNumericSortKey(b.class);
@@ -247,14 +254,15 @@ function runClubLottery(candidates, quota, gradeStart, gradeEnd, priority) {
         return String(a.name).localeCompare(b.name, 'zh-hant');
     });
 
-    selected.forEach((s, idx) => {
-        s.selected = true;
-        s.drawSequence = idx + 1;
-    });
-
-    // 6. 合併並排序整份名單 (回傳以便個別 Sheet 輸出)
+    // 6. 合併並排序整份備取名單 (回傳以便個別 Sheet 輸出)
     const backupList = [...backup, ...disqualified];
     backupList.sort((a, b) => {
+        // 先按是否有備取順序（備取在前，不符資格在後）
+        const aIsBackup = String(a.drawSequence).startsWith("備取");
+        const bIsBackup = String(b.drawSequence).startsWith("備取");
+        if (aIsBackup && !bIsBackup) return -1;
+        if (!aIsBackup && bIsBackup) return 1;
+
         const classA = getNumericSortKey(a.class);
         const classB = getNumericSortKey(b.class);
         if (classA !== classB) return classA - classB;
