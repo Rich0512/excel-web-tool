@@ -196,6 +196,11 @@ function guessClubAndDayFromPastedText(text) {
         }
         
         // 2. 嘗試預估社團名稱
+        // 如果該行包含常見的表格欄位關鍵字，代表它是標頭列或資料列，跳過不預估為社團名稱
+        if (['班級', '座號', '姓名', '學號', '選課階段', '抽籤順序', '序號', '階段', '備註'].some(kw => line.includes(kw))) {
+            continue;
+        }
+
         let cleaned = line.replace(/延平|國小|學年度|第二學期|第一學期|學期|課後|社團|A班|B班|一時段|二時段|錄取|名冊|名單|學生|清單|班級|座號|姓名/g, '');
         cleaned = cleaned.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '').trim();
         if (cleaned.length >= 2 && cleaned.length <= 15) {
