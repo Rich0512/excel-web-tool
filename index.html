@@ -45,6 +45,30 @@
                     </div>
                 </div>
 
+                <!-- ⚙️ 智慧彙整與時段參數設定 -->
+                <div class="config-section">
+                    <div class="config-row">
+                        <label class="config-label">📁 彙整模式：</label>
+                        <select id="mode-select" class="config-select">
+                            <option value="single">單一總表分欄模式 (有「總表」工作表)</option>
+                            <option value="multi">多工作表分社團模式 (無總表，分不同 Sheet)</option>
+                        </select>
+                    </div>
+                    <div class="config-row">
+                        <label class="config-label">📅 時段模式：</label>
+                        <select id="slot-mode-select" class="config-select">
+                            <option value="semester">一般學期模式 (無 AB 時段，課表名稱無括號)</option>
+                            <option value="vacation">寒暑假模式 (有 AB 時段，課表名稱加後綴)</option>
+                        </select>
+                    </div>
+                    <div class="config-row full-width">
+                        <label class="config-checkbox-container">
+                            <input type="checkbox" id="include-freshmen" checked>
+                            <span class="checkbox-text">👶 包含無班級座號之「新生」名單</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table>
                         <thead>
