@@ -797,40 +797,42 @@ async function processAndDownload() {
         return strSeatA.localeCompare(strSeatB, 'zh-hant');
     });
 
-    // 動態裁剪星期直欄
+    await exportWeeklySchedule(resultData, activeDays, slotMode, originalFileName);
+}
+
+/**
+ * 💅 核心彙整與導出 Excel 樣式渲染輔助函數
+ */
+async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName) {
     const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
     if (activeDays.has('週六')) targetWeekdays.push('週六');
     if (activeDays.has('週日')) targetWeekdays.push('週日');
 
-    // 建立 Excel 工作簿
     const outWorkbook = new ExcelJS.Workbook();
     const ws = outWorkbook.addWorksheet('學生週課表');
 
-    // 寫入表頭
     const headersOut = ['班級', '座號', '姓名', ...targetWeekdays, '備註'];
     ws.addRow(headersOut);
 
-    // 寫入資料
     resultData.forEach(student => {
         const rowData = [
             student.class,
             student.seat,
             student.name,
             ...targetWeekdays.map(day => student.schedule[day]),
-            student.remarks.join('；')
+            Array.isArray(student.remarks) ? student.remarks.join('；') : (student.remarks || '')
         ];
         ws.addRow(rowData);
     });
 
-    // 💅 延平深藍表頭渲染
+    // 💅 表頭樣式
     const headerRow = ws.getRow(1);
     headerRow.height = 28;
-    
     headerRow.eachCell((cell) => {
         cell.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FF0F3B6D' } // 經典延平藍
+            fgColor: { argb: 'FF0F3B6D' }
         };
         cell.font = {
             name: 'Microsoft JhengHei',
@@ -847,14 +849,12 @@ async function processAndDownload() {
         };
     });
 
-    // 資料行樣式與斑馬紋
+    // 資料列樣式與斑馬紋
     ws.eachRow((row, rowNum) => {
         if (rowNum === 1) return;
-        
         row.height = 22;
-        
         const isEven = rowNum % 2 === 0;
-        const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF'; // 交替色
+        const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
 
         row.eachCell((cell, colNum) => {
             cell.fill = {
@@ -862,17 +862,13 @@ async function processAndDownload() {
                 pattern: 'solid',
                 fgColor: { argb: bgColor }
             };
-            cell.font = {
-                name: 'Microsoft JhengHei',
-                size: 11
-            };
+            cell.font = { name: 'Microsoft JhengHei', size: 11 };
             cell.border = {
                 top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
                 bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
                 left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
                 right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
             };
-
             const colName = headersOut[colNum - 1];
             if (['姓名', '備註'].includes(colName)) {
                 cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
@@ -882,7 +878,7 @@ async function processAndDownload() {
         });
     });
 
-    // 🏎️ 智慧自適應欄寬
+    // 智慧自適應欄寬
     ws.columns.forEach(column => {
         let maxLen = 0;
         column.eachCell({ includeEmpty: true }, (cell) => {
@@ -890,28 +886,23 @@ async function processAndDownload() {
             let len = 0;
             for (let i = 0; i < val.length; i++) {
                 const code = val.charCodeAt(i);
-                if (code >= 0x4e00 && code <= 0x9fff) {
-                    len += 2; // 中文字元
-                } else {
-                    len += 1;
-                }
+                if (code >= 0x4e00 && code <= 0x9fff) len += 2;
+                else len += 1;
             }
             if (len > maxLen) maxLen = len;
         });
         column.width = Math.max(maxLen + 4, 10);
     });
 
-    // 🔍 自動篩選器 (AutoFilter)
     const lastColLetter = getColLetter(headersOut.length);
     ws.autoFilter = `A1:${lastColLetter}${ws.rowCount}`;
 
-    // 5. 檔案下載
     const buffer = await outWorkbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     
     const downloadLink = document.createElement('a');
     const outputSuffix = slotMode === 'semester' ? "_學期社團彙整.xlsx" : "_寒暑假社團彙整.xlsx";
-    const outputName = originalFileName.replace(/\.[^/.]+$/, "") + outputSuffix;
+    const outputName = outputBaseName.replace(/\.[^/.]+$/, "") + outputSuffix;
     downloadLink.href = URL.createObjectURL(blob);
     downloadLink.download = outputName;
     
@@ -919,8 +910,8 @@ async function processAndDownload() {
     downloadLink.click();
     document.body.removeChild(downloadLink);
 
-    // 切換至成功頁面
     switchStep('step-success');
+}
 }
 
 // 綁定彙整模式切換監聽
@@ -1226,112 +1217,11 @@ async function processPastedData() {
     if (activeDays.has('週六')) targetWeekdays.push('週六');
     if (activeDays.has('週日')) targetWeekdays.push('週日');
     
-    const outWorkbook = new ExcelJS.Workbook();
-    const ws = outWorkbook.addWorksheet('學生週課表');
-    
-    const headersOut = ['班級', '座號', '姓名', ...targetWeekdays, '備註'];
-    ws.addRow(headersOut);
-    
-    resultData.forEach(student => {
-        const rowData = [
-            student.class,
-            student.seat,
-            student.name,
-            ...targetWeekdays.map(day => student.schedule[day]),
-            student.remarks.join('；')
-        ];
-        ws.addRow(rowData);
-    });
-    
-    // 表頭樣式
-    const headerRow = ws.getRow(1);
-    headerRow.height = 28;
-    headerRow.eachCell((cell) => {
-        cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF0F3B6D' }
-        };
-        cell.font = {
-            name: 'Microsoft JhengHei',
-            size: 11,
-            bold: true,
-            color: { argb: 'FFFFFFFF' }
-        };
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        cell.border = {
-            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-            bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
-            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-            right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
-        };
-    });
-    
-    // 資料行與斑馬紋
-    ws.eachRow((row, rowNum) => {
-        if (rowNum === 1) return;
-        row.height = 22;
-        const isEven = rowNum % 2 === 0;
-        const bgColor = isEven ? 'FFF8FAFC' : 'FFFFFFFF';
-        
-        row.eachCell((cell, colNum) => {
-            cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: bgColor }
-            };
-            cell.font = { name: 'Microsoft JhengHei', size: 11 };
-            cell.border = {
-                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-            };
-            const colName = headersOut[colNum - 1];
-            if (['姓名', '備註'].includes(colName)) {
-                cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-            } else {
-                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-            }
-        });
-    });
-    
-    // 智慧欄寬
-    ws.columns.forEach(column => {
-        let maxLen = 0;
-        column.eachCell({ includeEmpty: true }, (cell) => {
-            const val = getCellValueAsString(cell);
-            let len = 0;
-            for (let i = 0; i < val.length; i++) {
-                const code = val.charCodeAt(i);
-                if (code >= 0x4e00 && code <= 0x9fff) len += 2;
-                else len += 1;
-            }
-            if (len > maxLen) maxLen = len;
-        });
-        column.width = Math.max(maxLen + 4, 10);
-    });
-    
-    const lastColLetter = getColLetter(headersOut.length);
-    ws.autoFilter = `A1:${lastColLetter}${ws.rowCount}`;
-    
-    const buffer = await outWorkbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    
-    const downloadLink = document.createElement('a');
-    const outputSuffix = slotMode === 'semester' ? "_學期社團彙整.xlsx" : "_寒暑假社團彙整.xlsx";
-    
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = "直接貼上名單彙整" + outputSuffix;
-    
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+    await exportWeeklySchedule(resultData, activeDays, slotMode, "直接貼上名單彙整");
     
     // 重設狀態
     pastedClubs = [];
     renderLoadedClubs();
     document.getElementById('paste-text-area').value = "";
-    
-    switchStep('step-success');
+}
 }
