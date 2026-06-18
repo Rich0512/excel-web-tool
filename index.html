@@ -115,6 +115,7 @@
                             💡 <strong>貼心提示：</strong>複製的內容不一定需要包含「抽籤順序」欄位。系統只需解析出「班級、座號、姓名」即可為您自動進行隨機抽籤並編排籤序！
                         </div>
                         <textarea id="paste-text-area" class="paste-textarea" placeholder="直接在此貼上 (Ctrl + V)...&#10;例：&#10;班級	座號	姓名&#10;101	05	張三&#10;102	12	李四"></textarea>
+                        <div id="paste-parse-preview" style="font-size: 12px; color: #27ae60; margin-top: 8px; font-weight: bold; display: none; background: rgba(46, 204, 113, 0.1); padding: 10px; border-radius: 8px; border: 1px solid rgba(46, 204, 113, 0.2); line-height: 1.4;"></div>
                     </div>
                     
                     <button class="btn btn-primary" onclick="loadPastedClub()" style="margin-top: 15px; width: 100%; justify-content: center;">
@@ -124,8 +125,9 @@
                 
                 <!-- 已載入的社團列表 -->
                 <div id="loaded-clubs-section" style="display: none; margin-top: 20px;">
-                    <div style="font-weight: 700; color: var(--primary); font-size: 15px; margin-bottom: 10px;">
-                        已載入的社團名單列表：
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 700; color: var(--primary); font-size: 15px;">已載入的社團名單列表：</span>
+                        <button class="btn btn-secondary" onclick="clearAllPastedClubs()" style="font-size: 12px; padding: 4px 10px; height: auto; display: inline-flex; align-items: center; justify-content: center;">🗑️ 清空所有社團</button>
                     </div>
                     <div class="loaded-clubs-list" id="loaded-clubs-list">
                         <!-- 動態產生已載入社團 -->

@@ -231,18 +231,56 @@ function switchInputTab(tab) {
     }
 }
 
-// 監聽貼上事件
-document.getElementById('paste-text-area').addEventListener('paste', (e) => {
-    setTimeout(() => {
-        const text = document.getElementById('paste-text-area').value;
-        guessClubAndDayFromPastedText(text);
-    }, 50);
+// 監聽輸入與貼上事件，進行即時解析預覽與特徵猜測
+const pasteArea = document.getElementById('paste-text-area');
+const parsePreview = document.getElementById('paste-parse-preview');
+
+function updatePastePreview() {
+    const text = pasteArea.value;
+    if (!text.trim()) {
+        parsePreview.style.display = 'none';
+        return;
+    }
+    
+    // 進行智慧欄位預估 (社團名稱與星期)
+    guessClubAndDayFromPastedText(text);
+
+    // 嘗試解析名單進行即時預覽
+    const parsed = parsePastedText(text);
+    if (parsed && parsed.length > 0) {
+        const hasClass = parsed.filter(s => s.class && s.class !== "新生").length;
+        const hasSeat = parsed.filter(s => s.seat).length;
+        const hasName = parsed.filter(s => s.name).length;
+        
+        parsePreview.innerHTML = `🟢 <strong>系統已即時識別：</strong>偵測到 <strong>${parsed.length}</strong> 筆學生名冊資料！<br>` +
+                                 `<span style="opacity: 0.95; font-size: 11px;">(包含：${hasClass} 個有效班級、${hasSeat} 個座號、${hasName} 個姓名，名單格式解析正常)</span>`;
+        parsePreview.style.display = 'block';
+    } else {
+        parsePreview.innerHTML = `⚠️ <strong>解析提示：</strong>目前貼上的文字無法識別出學生資料，請確認是否包含「姓名、班級、座號」資料列。`;
+        parsePreview.style.display = 'block';
+    }
+}
+
+// 同時監聽 input 與 paste 事件，確保任何編輯都能觸發預覽
+pasteArea.addEventListener('input', updatePastePreview);
+pasteArea.addEventListener('paste', () => {
+    setTimeout(updatePastePreview, 50);
 });
+
+// 清空所有已載入的社團名單
+function clearAllPastedClubs() {
+    if (confirm("確定要清空所有已載入的社團名單嗎？這將會清除您之前載入的所有社團資料。")) {
+        pastedClubs = [];
+        renderLoadedClubs();
+        pasteArea.value = "";
+        parsePreview.style.display = 'none';
+    }
+}
 
 function loadPastedClub() {
     const day = document.getElementById('paste-day-select').value;
     const clubNameInput = document.getElementById('paste-club-name').value.trim();
-    const pastedText = document.getElementById('paste-text-area').value.trim();
+    const pastedText = pasteArea.value.trim();
     
     const quota = parseInt(document.getElementById('paste-quota').value, 10) || 12;
     const gradeStart = document.getElementById('paste-grade-start').value;
@@ -284,7 +322,8 @@ function loadPastedClub() {
     pastedClubs.push(newClub);
     
     document.getElementById('paste-club-name').value = "";
-    document.getElementById('paste-text-area').value = "";
+    pasteArea.value = "";
+    parsePreview.style.display = 'none'; // 隱藏解析預覽
     
     renderLoadedClubs();
 }
