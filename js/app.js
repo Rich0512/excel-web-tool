@@ -79,16 +79,8 @@ async function handleFileSelect(file) {
 }
 
 // ==========================================
-// ⚙️ 視窗按鍵與步驟切換
+// ⚙️ 步驟切換
 // ==========================================
-
-function handleGlobalKeydown(e) {
-    if (e.key === "Enter") {
-        processAndDownload();
-    } else if (e.key === "Escape") {
-        resetToUpload();
-    }
-}
 
 // 切換步驟顯示
 function switchStep(stepId) {
@@ -96,10 +88,6 @@ function switchStep(stepId) {
         panel.classList.remove('active');
     });
     document.getElementById(stepId).classList.add('active');
-    
-    if (stepId !== 'step-mapping') {
-        window.removeEventListener('keydown', handleGlobalKeydown);
-    }
 }
 
 function resetToUpload() {

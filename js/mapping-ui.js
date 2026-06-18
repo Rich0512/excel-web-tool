@@ -262,10 +262,6 @@ function analyzeAndRenderMapping() {
         });
     }
 
-    // 重新註冊鍵盤監聽
-    window.removeEventListener('keydown', handleGlobalKeydown);
-    window.addEventListener('keydown', handleGlobalKeydown);
-
     // 綁定動態事件監聽以更新衝突 (若 app.js 已載入對應函數)
     if (typeof updateMappingConflicts === 'function') {
         tbody.querySelectorAll('.day-select, .club-input').forEach(el => {
