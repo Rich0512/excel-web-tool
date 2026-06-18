@@ -287,6 +287,13 @@ function loadPastedClub() {
     const gradeEnd = document.getElementById('paste-grade-end').value;
     const priority = document.getElementById('paste-priority').value;
 
+    const minG = gradeStart === "新生" ? 0 : parseInt(gradeStart, 10);
+    const maxG = gradeEnd === "新生" ? 0 : parseInt(gradeEnd, 10);
+    if (minG > maxG) {
+        alert(`年級限制錯誤：起始年級（${gradeStart}）不能大於結束年級（${gradeEnd}）！`);
+        return;
+    }
+
     if (!clubNameInput) {
         alert("請先輸入社團名稱！");
         return;
