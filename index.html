@@ -152,6 +152,11 @@
                     <div class="warning-callout">
                         ⚠️ <strong>重要提醒：</strong>請重複「貼上名單 ➔ 點擊載入此社團名單」的步驟，將<strong>所有要整理的社團</strong>都載入到下方的列表中，最後再點選下方的彙整下載按鈕。若提早點選彙整，系統會直接清除當前載入狀態並匯出，將無法進行多社團衝堂衝突檢查！
                     </div>
+
+                    <div style="margin-top: 15px;">
+                        <label class="paste-label">💾 儲存 Excel 檔名設定 (選填)：</label>
+                        <input type="text" id="paste-excel-filename" class="club-input" placeholder="留空將自動使用「直接貼上名單彙整」命名" style="width: 100%; box-sizing: border-box; padding: 10px;">
+                    </div>
                     
                     <button class="btn btn-primary" onclick="processPastedData()" style="margin-top: 15px; width: 100%; justify-content: center; background: var(--accent);">
                         ⚡ 開始彙整並下載課表 (共 <span id="total-pasted-students">0</span> 筆錄取資料)
@@ -209,6 +214,11 @@
                             <!-- JS 動態產生對照行 -->
                         </tbody>
                     </table>
+                </div>
+
+                <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; margin-bottom: 15px;">
+                    <label class="paste-label">💾 儲存 Excel 檔名設定 (選填)：</label>
+                    <input type="text" id="excel-filename" class="club-input" placeholder="留空將自動使用原始檔案名稱命名" style="width: 100%; box-sizing: border-box; padding: 10px;">
                 </div>
 
                 <div class="btn-group">

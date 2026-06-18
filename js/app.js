@@ -104,6 +104,7 @@ function switchStep(stepId) {
 
 function resetToUpload() {
     fileInput.value = "";
+    document.getElementById('excel-filename').value = "";
     switchStep('step-upload');
 }
 
@@ -206,7 +207,9 @@ async function processAndDownload() {
         return strSeatA.localeCompare(strSeatB, 'zh-hant');
     });
 
-    await exportWeeklySchedule(resultData, activeDays, slotMode, originalFileName);
+    const customFilename = document.getElementById('excel-filename').value.trim();
+    const finalFilename = customFilename || originalFileName;
+    await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename);
 }
 
 // 綁定彙整模式切換監聽
@@ -406,10 +409,13 @@ async function processPastedData() {
         return String(a.seat).localeCompare(b.seat, 'zh-hant');
     });
     
-    await exportWeeklySchedule(resultData, activeDays, slotMode, "直接貼上名單彙整", pastedClubs);
+    const customFilename = document.getElementById('paste-excel-filename').value.trim();
+    const finalFilename = customFilename || "直接貼上名單彙整";
+    await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, pastedClubs);
     
     // 重設狀態
     pastedClubs = [];
     renderLoadedClubs();
     document.getElementById('paste-text-area').value = "";
+    document.getElementById('paste-excel-filename').value = "";
 }
