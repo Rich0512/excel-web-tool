@@ -212,8 +212,10 @@ async function processAndDownload() {
     await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename);
 }
 
-// 綁定彙整模式切換監聽
+// 綁定彙整模式切換監聽與衝突偵測監聽
 document.getElementById('mode-select').addEventListener('change', analyzeAndRenderMapping);
+document.getElementById('include-freshmen').addEventListener('change', analyzeAndRenderMapping);
+document.getElementById('slot-mode-select').addEventListener('change', updateMappingConflicts);
 
 // ==========================================
 // 📋 直接貼上名單模式邏輯
@@ -269,6 +271,10 @@ pasteArea.addEventListener('input', updatePastePreview);
 pasteArea.addEventListener('paste', () => {
     setTimeout(updatePastePreview, 50);
 });
+
+// 監聽貼上模式的設定變更以即時更新衝突狀態
+document.getElementById('paste-slot-mode-select').addEventListener('change', renderLoadedClubs);
+document.getElementById('paste-include-freshmen').addEventListener('change', renderLoadedClubs);
 
 // 清空所有已載入的社團名單
 function clearAllPastedClubs() {
@@ -373,9 +379,16 @@ function renderLoadedClubs() {
     if (pastedClubs.length > 0) {
         section.style.display = "block";
         totalSpan.textContent = totalSelectedStudents;
+        
+        // 即時衝突檢查
+        const slotMode = document.getElementById('paste-slot-mode-select').value;
+        const includeFreshmen = document.getElementById('paste-include-freshmen').checked;
+        const { resultData } = processPastedClubsData(pastedClubs, slotMode, includeFreshmen);
+        showConflictAlert(resultData, "paste-conflict-alert");
     } else {
         section.style.display = "none";
         totalSpan.textContent = "0";
+        showConflictAlert([], "paste-conflict-alert");
     }
 }
 
@@ -418,4 +431,70 @@ async function processPastedData() {
     renderLoadedClubs();
     document.getElementById('paste-text-area').value = "";
     document.getElementById('paste-excel-filename').value = "";
+}
+
+// ==========================================
+// 🚨 衝突與衝堂即時偵測邏輯 (UI/UX 優化)
+// ==========================================
+
+function showConflictAlert(resultData, elementId) {
+    const alertDiv = document.getElementById(elementId);
+    if (!alertDiv) return;
+
+    const conflictingStudents = resultData.filter(s => s.remarks && s.remarks.length > 0);
+    if (conflictingStudents.length > 0) {
+        let html = `<div style="font-weight: bold; margin-bottom: 6px; font-size: 14px;">🚨 偵測到學生上課時段衝突 (共 ${conflictingStudents.length} 人衝堂)：</div>`;
+        html += `<ul style="margin: 0; padding-left: 20px; font-size: 12px; max-height: 150px; overflow-y: auto; text-align: left; line-height: 1.5;">`;
+        conflictingStudents.forEach(s => {
+            const conflictDetails = s.remarks.join('；');
+            html += `<li style="margin-bottom: 4px;"><strong>${s.class} 座號 ${s.seat} ${s.name}</strong> ── ${conflictDetails}</li>`;
+        });
+        html += `</ul>`;
+        alertDiv.innerHTML = html;
+        alertDiv.style.display = 'block';
+    } else {
+        alertDiv.style.display = 'none';
+        alertDiv.innerHTML = '';
+    }
+}
+
+function updateMappingConflicts() {
+    if (!uploadedWorkbook || sheetData.length === 0) return;
+
+    const mode = document.getElementById('mode-select').value;
+    const includeFreshmen = document.getElementById('include-freshmen').checked;
+    const slotMode = document.getElementById('slot-mode-select').value;
+    const rows = document.getElementById('mapping-table-body').querySelectorAll('tr');
+    
+    const finalMapping = {};
+    rows.forEach(tr => {
+        const input = tr.querySelector('.club-input');
+        const select = tr.querySelector('.day-select');
+        if (!input || !select) return;
+        
+        const origKey = input.dataset.original;
+        const editedClub = input.value.trim();
+        const selectedDay = select.value;
+
+        finalMapping[origKey] = {
+            editedName: editedClub,
+            day: selectedDay,
+            slot: tr.dataset.detectedSlot || ""
+        };
+    });
+
+    const { resultData } = processExcelData(
+        mode,
+        includeFreshmen,
+        slotMode,
+        finalMapping,
+        sheetData,
+        detectedHeaders,
+        colClassIdx,
+        colSeatIdx,
+        colNameIdx,
+        slotCols
+    );
+
+    showConflictAlert(resultData, 'mapping-conflict-alert');
 }

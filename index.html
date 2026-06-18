@@ -157,6 +157,8 @@
                         <label class="paste-label">💾 儲存 Excel 檔名設定 (選填)：</label>
                         <input type="text" id="paste-excel-filename" class="club-input" placeholder="留空將自動使用「直接貼上名單彙整」命名" style="width: 100%; box-sizing: border-box; padding: 10px;">
                     </div>
+
+                    <div id="paste-conflict-alert" class="warning-callout" style="display: none; background: #fff5f5; border-left: 4px solid #f56565; color: #c53030; margin-top: 15px;"></div>
                     
                     <button class="btn btn-primary" onclick="processPastedData()" style="margin-top: 15px; width: 100%; justify-content: center; background: var(--accent);">
                         ⚡ 開始彙整並下載課表 (共 <span id="total-pasted-students">0</span> 筆錄取資料)
@@ -220,6 +222,8 @@
                     <label class="paste-label">💾 儲存 Excel 檔名設定 (選填)：</label>
                     <input type="text" id="excel-filename" class="club-input" placeholder="留空將自動使用原始檔案名稱命名" style="width: 100%; box-sizing: border-box; padding: 10px;">
                 </div>
+
+                <div id="mapping-conflict-alert" class="warning-callout" style="display: none; background: #fff5f5; border-left: 4px solid #f56565; color: #c53030; margin-top: 15px;"></div>
 
                 <div class="btn-group">
                     <button class="btn btn-secondary" onclick="resetToUpload()">⬅️ 重新選取檔案</button>
