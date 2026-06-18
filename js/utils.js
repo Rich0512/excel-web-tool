@@ -69,12 +69,74 @@ function getNumericSortKey(val) {
     if (val === null || val === undefined) return Infinity;
     const strVal = String(val).trim();
     if (strVal === "新生" || strVal === "") return Infinity;
-    // 僅保留數字與小數點
+
+    // 1. 如果是純阿拉伯數字，如 "404"、"102" 或座號 "5"，直接轉數值返回
+    const pureDigits = strVal.replace(/[^\d]/g, '');
+    if (pureDigits && pureDigits === strVal) {
+        return parseInt(pureDigits, 10);
+    }
+
+    // 中文數字對照表，支援至二十幾班
+    const chMap = {
+        '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
+        '七': 7, '八': 8, '九': 9, '十': 10,
+        '十一': 11, '十二': 12, '十三': 13, '十四': 14, '十五': 15,
+        '十六': 16, '十七': 17, '十八': 18, '十九': 19, '二十': 20
+    };
+
+    // 輔助解析單個中文或阿拉伯數字
+    function parseNum(part) {
+        if (!part) return 0;
+        part = part.trim();
+        if (/^\d+$/.test(part)) {
+            return parseInt(part, 10);
+        }
+        if (chMap[part] !== undefined) {
+            return chMap[part];
+        }
+        // 處理如 "十五"、"二十三" 的複合中文數值
+        let num = 0;
+        if (part.includes('十')) {
+            const parts = part.split('十');
+            const tenPrev = parts[0];
+            const tenVal = tenPrev ? (chMap[tenPrev] || 1) : 1;
+            num += tenVal * 10;
+            const tenNext = parts[1];
+            if (tenNext) {
+                num += chMap[tenNext] || 0;
+            }
+        } else {
+            num = chMap[part[0]] || 0;
+        }
+        return num || parseInt(part, 10) || 0;
+    }
+
+    // 2. 嘗試匹配 "X年Y班" 格式 (如 "四年四班" -> 404, "4年2班" -> 402)
+    const matchYearClass = strVal.match(/([^年]+)年([^班]+)班?/);
+    if (matchYearClass) {
+        const yearPart = matchYearClass[1];
+        const classPart = matchYearClass[2];
+        const yearNum = parseNum(yearPart);
+        const classNum = parseNum(classPart);
+        if (yearNum && classNum) {
+            return yearNum * 100 + classNum; // 四年四班 -> 404
+        }
+    }
+
+    // 3. 嘗試匹配 "X班" 格式
+    const matchClassOnly = strVal.match(/([^班]+)班/);
+    if (matchClassOnly) {
+        const classPart = matchClassOnly[1];
+        return parseNum(classPart);
+    }
+
+    // 4. 退回基本正則過濾，抽取所有數字
     const cleanVal = strVal.replace(/[^\d.]/g, '');
     if (cleanVal) {
         const num = parseFloat(cleanVal);
         return isNaN(num) ? Infinity : num;
     }
+
     return Infinity;
 }
 
