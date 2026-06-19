@@ -111,6 +111,51 @@ function resetToUpload() {
     switchStep('step-upload');
 }
 
+// 🛡️ 一鍵安全清除所有暫存個資
+function manualHardResetAll() {
+    if (confirm("確定要安全清除本網頁載入的所有 Excel 檔案、對照表與貼上之社團暫存資料嗎？這將會清除您目前在畫面上的所有操作與預覽。")) {
+        // 清除檔案模式狀態
+        fileInput.value = "";
+        uploadedWorkbook = null;
+        sheetData = [];
+        detectedHeaders = [];
+        colClassIdx = -1;
+        colSeatIdx = -1;
+        colNameIdx = -1;
+        slotCols = [];
+        document.getElementById('excel-filename').value = "";
+        
+        // 清除貼上模式狀態
+        pastedClubs = [];
+        document.getElementById('paste-text-area').value = "";
+        document.getElementById('paste-club-name').value = "";
+        document.getElementById('paste-excel-filename').value = "";
+        
+        // 重設 UI
+        const mappingTableBody = document.getElementById('mapping-table-body');
+        if (mappingTableBody) mappingTableBody.innerHTML = "";
+        
+        const pastePreview = document.getElementById('paste-parse-preview');
+        if (pastePreview) pastePreview.style.display = 'none';
+        
+        const mappingConflictAlert = document.getElementById('mapping-conflict-alert');
+        if (mappingConflictAlert) {
+            mappingConflictAlert.style.display = 'none';
+            mappingConflictAlert.innerHTML = '';
+        }
+        
+        const pasteConflictAlert = document.getElementById('paste-conflict-alert');
+        if (pasteConflictAlert) {
+            pasteConflictAlert.style.display = 'none';
+            pasteConflictAlert.innerHTML = '';
+        }
+        
+        renderLoadedClubs();
+        switchStep('step-upload');
+        alert("🔒 所有記憶體暫存與個資已安全清空，網頁已完成重設！");
+    }
+}
+
 // ==========================================
 // ⚡ 資料轉換與下載邏輯 (檔案上傳模式)
 // ==========================================
@@ -250,6 +295,11 @@ const parsePreview = document.getElementById('paste-parse-preview');
 
 function updatePastePreview() {
     const text = pasteArea.value;
+    if (text.length > 200000) {
+        parsePreview.innerHTML = `⚠️ <strong style="color: #c53030;">貼上失敗：</strong>資料量過大（超過 200,000 字元），為防範網頁無回應已拒絕解析。`;
+        parsePreview.style.display = 'block';
+        return;
+    }
     if (!text.trim()) {
         parsePreview.style.display = 'none';
         return;
@@ -313,6 +363,11 @@ function loadPastedClub() {
 
     if (!clubNameInput) {
         alert("請先輸入社團名稱！");
+        return;
+    }
+    
+    if (pastedText.length > 200000) {
+        alert("⚠️ 貼上的資料量過大（超過 200,000 字元），為防範網頁當機已拒絕處理！");
         return;
     }
     
