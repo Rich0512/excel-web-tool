@@ -221,6 +221,11 @@ function switchInputTab(tab) {
     } else {
         document.getElementById('tab-btn-paste').classList.add('active');
         document.getElementById('tab-paste-content').classList.add('active');
+        // 自動聚焦於貼上文字區
+        setTimeout(() => {
+            const pasteArea = document.getElementById('paste-text-area');
+            if (pasteArea) pasteArea.focus();
+        }, 50);
     }
 }
 
@@ -330,6 +335,12 @@ function loadPastedClub() {
     parsePreview.style.display = 'none'; // 隱藏解析預覽
     
     renderLoadedClubs();
+    
+    // 自動聚焦回社團名稱輸入框，方便打字下一個社團
+    setTimeout(() => {
+        const clubNameInput = document.getElementById('paste-club-name');
+        if (clubNameInput) clubNameInput.focus();
+    }, 50);
 }
 
 function renderLoadedClubs() {
@@ -377,6 +388,16 @@ function renderLoadedClubs() {
         section.style.display = "none";
         totalSpan.textContent = "0";
         showConflictAlert([], "paste-conflict-alert");
+    }
+
+    // 動態更新 Tab 按鈕上的社團計數器
+    const pasteTabBtn = document.getElementById('tab-btn-paste');
+    if (pasteTabBtn) {
+        if (pastedClubs.length > 0) {
+            pasteTabBtn.innerHTML = `📋 貼上網頁複製名單 <span style="background: var(--accent); color: white; border-radius: 10px; padding: 2px 6px; font-size: 11px; margin-left: 4px; font-weight: bold;">${pastedClubs.length}</span>`;
+        } else {
+            pasteTabBtn.innerHTML = `📋 貼上網頁複製名單`;
+        }
     }
 }
 
@@ -486,3 +507,16 @@ function updateMappingConflicts() {
 
     showConflictAlert(resultData, 'mapping-conflict-alert');
 }
+
+// ==========================================
+// 🛡️ 網頁防誤關閉與重新整理機制
+// ==========================================
+window.addEventListener('beforeunload', (e) => {
+    // 只要有讀取 Excel 檔案或貼上載入了社團，即進行警告
+    if (uploadedWorkbook !== null || (pastedClubs && pastedClubs.length > 0)) {
+        const message = '您填寫的對照設定或載入的社團名單尚未儲存/下載，確定要離開嗎？';
+        e.preventDefault();
+        e.returnValue = message;
+        return message;
+    }
+});
