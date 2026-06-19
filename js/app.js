@@ -92,7 +92,22 @@ function switchStep(stepId) {
 
 function resetToUpload() {
     fileInput.value = "";
+    uploadedWorkbook = null;
+    sheetData = [];
+    detectedHeaders = [];
+    colClassIdx = -1;
+    colSeatIdx = -1;
+    colNameIdx = -1;
+    slotCols = [];
     document.getElementById('excel-filename').value = "";
+    
+    // 清空衝突警告
+    const alertDiv = document.getElementById('mapping-conflict-alert');
+    if (alertDiv) {
+        alertDiv.style.display = 'none';
+        alertDiv.innerHTML = '';
+    }
+    
     switchStep('step-upload');
 }
 
