@@ -266,7 +266,6 @@ function analyzeAndRenderMapping() {
     if (typeof updateMappingConflicts === 'function') {
         tbody.querySelectorAll('.day-select, .club-input').forEach(el => {
             el.addEventListener('change', updateMappingConflicts);
-            el.addEventListener('input', updateMappingConflicts);
         });
         updateMappingConflicts();
     }
