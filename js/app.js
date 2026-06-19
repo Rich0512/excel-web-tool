@@ -355,19 +355,55 @@ function renderLoadedClubs() {
         const item = document.createElement('div');
         item.className = "loaded-club-item";
         
-        const info = document.createElement('span');
-        info.className = "loaded-club-info";
-        info.textContent = `📅 ${club.day} ── 🏫 ${club.clubName} (正取 ${club.selectedCount}/${club.quota} 人，報名 ${club.students.length} 人，限制 ${club.gradeStart}-${club.gradeEnd}年級)`;
+        // 包裝資訊區以容納可折疊的學生清單
+        const infoContainer = document.createElement('div');
+        infoContainer.style.flex = "1";
+        infoContainer.style.marginRight = "15px";
+        
+        const infoHeader = document.createElement('div');
+        infoHeader.className = "loaded-club-info";
+        infoHeader.style.cursor = "pointer";
+        infoHeader.style.display = "flex";
+        infoHeader.style.alignItems = "center";
+        infoHeader.style.gap = "6px";
+        infoHeader.innerHTML = `<span>📅 ${club.day} ── 🏫 ${club.clubName} (正取 ${club.selectedCount}/${club.quota} 人，報名 ${club.students.length} 人，限制 ${club.gradeStart}-${club.gradeEnd}年級)</span> ` + 
+                               `<span class="badge" style="background: var(--primary); color: white; border-radius: 4px; padding: 2px 6px; font-size: 11px; font-weight: normal; white-space: nowrap;">🔍 點擊查看名單</span>`;
+        
+        const infoDetails = document.createElement('div');
+        infoDetails.style.display = "none";
+        infoDetails.style.fontSize = "13px";
+        infoDetails.style.marginTop = "8px";
+        infoDetails.style.padding = "10px";
+        infoDetails.style.background = "#fff";
+        infoDetails.style.border = "1px solid var(--border)";
+        infoDetails.style.borderRadius = "6px";
+        infoDetails.style.lineHeight = "1.6";
+        
+        const selectedList = club.students.filter(s => s.selected).map(s => `${s.class || '新生'}${s.seat ? `座號${s.seat}` : ''} ${s.name}`).join('、');
+        const backupList = club.students.filter(s => !s.selected).map(s => `${s.name}(${s.drawSequence})`).join('、');
+        
+        infoDetails.innerHTML = `<div style="color: var(--accent-hover);"><strong>🟢 正取：</strong>${selectedList || '無'}</div>` + 
+                                 `<div style="margin-top: 6px; color: #b45309;"><strong>🟡 備取/不符：</strong>${backupList || '無'}</div>`;
+        
+        infoHeader.onclick = () => {
+            const isHidden = infoDetails.style.display === "none";
+            infoDetails.style.display = isHidden ? "block" : "none";
+            infoHeader.querySelector('.badge').textContent = isHidden ? "▲ 收合名單" : "🔍 點擊查看名單";
+        };
+        
+        infoContainer.appendChild(infoHeader);
+        infoContainer.appendChild(infoDetails);
         
         const delBtn = document.createElement('button');
         delBtn.className = "loaded-club-delete";
         delBtn.innerHTML = "🗑️ 刪除";
-        delBtn.onclick = () => {
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
             pastedClubs.splice(index, 1);
             renderLoadedClubs();
         };
         
-        item.appendChild(info);
+        item.appendChild(infoContainer);
         item.appendChild(delBtn);
         listDiv.appendChild(item);
     });
