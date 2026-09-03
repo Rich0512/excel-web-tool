@@ -44,6 +44,7 @@ function mergeAndStyleCountCell(ws, startRow, endRow, count, grade) {
 
 async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName, pastedClubsList = null) {
     const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
+    if (activeDays.has('晨間社團')) targetWeekdays.push('晨間社團');
     if (activeDays.has('週六')) targetWeekdays.push('週六');
     if (activeDays.has('週日')) targetWeekdays.push('週日');
 

@@ -37,7 +37,7 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
                     class: studentClass,
                     seat: studentSeat,
                     name: nameVal,
-                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
+                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '晨間社團': '', '週六': '', '週日': '' },
                     remarks: []
                 };
                 studentMap[studentKey] = student;
@@ -79,8 +79,8 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
         // 統一生產衝突備註 (避免重複堆疊)
         Object.values(studentMap).forEach(student => {
             student.remarks = [];
-            ['週一', '週二', '週三', '週四', '週五', '週六', '週日'].forEach(day => {
-                if (day === '週六' && student.schedule['週六'] && student.schedule['週六'].includes('晨間')) return;
+            ['週一', '週二', '週三', '週四', '週五', '晨間社團', '週六', '週日'].forEach(day => {
+                if (day === '晨間社團') return;
                 if (student.schedule[day] && student.schedule[day].includes(',')) {
                     student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
                 }
@@ -174,7 +174,7 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
                         class: studentClass,
                         seat: studentSeat,
                         name: nameClean,
-                        schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
+                        schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '晨間社團': '', '週六': '', '週日': '' },
                         remarks: []
                     };
                     studentMap[studentKey] = student;
@@ -203,8 +203,8 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
         // 統一生產衝突備註
         Object.values(studentMap).forEach(student => {
             student.remarks = [];
-            ['週一', '週二', '週三', '週四', '週五', '週六', '週日'].forEach(day => {
-                if (day === '週六' && student.schedule['週六'] && student.schedule['週六'].includes('晨間')) return;
+            ['週一', '週二', '週三', '週四', '週五', '晨間社團', '週六', '週日'].forEach(day => {
+                if (day === '晨間社團') return;
                 if (student.schedule[day] && student.schedule[day].includes(',')) {
                     student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
                 }
@@ -374,7 +374,7 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
                     class: sClass,
                     seat: sSeat,
                     name: sName,
-                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
+                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '晨間社團': '', '週六': '', '週日': '' },
                     remarks: []
                 };
             }
@@ -400,7 +400,8 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
 
     Object.values(studentMap).forEach(student => {
         student.remarks = [];
-        ['週一', '週二', '週三', '週四', '週五', '週六', '週日'].forEach(day => {
+        ['週一', '週二', '週三', '週四', '週五', '晨間社團', '週六', '週日'].forEach(day => {
+            if (day === '晨間社團') return;
             if (student.schedule[day] && student.schedule[day].includes(',')) {
                 student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
             }

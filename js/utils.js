@@ -17,6 +17,7 @@ const weekdaysList = [
     "週三",
     "週四",
     "週五",
+    "晨間社團",
     "週六",
     "週日",
     "週一、四",
@@ -43,6 +44,7 @@ function escapeHtml(str) {
  */
 function parseDays(dayStr) {
     if (!dayStr) return [];
+    if (String(dayStr).trim() === '晨間社團') return ['晨間社團'];
     const dayMap = {
         '一': '週一', '1': '週一',
         '二': '週二', '2': '週二',

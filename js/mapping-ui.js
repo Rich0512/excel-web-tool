@@ -156,9 +156,9 @@ function analyzeAndRenderMapping() {
                 
                 const cleanName = cleanClubDisplayName(club);
                 let day = null;
-                // 1. 若為晨間社團，直接指派至「週六」，移出週一至週五平日課表
+                // 1. 若為晨間社團，直接指派至「晨間社團」，移出週一至週五平日課表
                 if (club.includes('晨間') || cleanName.includes('晨間')) {
-                    day = '週六';
+                    day = '晨間社團';
                 } else {
                     // 2. 優先從社團自身完整名稱中擷取星期 (例如「周一桌遊社 (一 10,11)」必為週一)
                     day = extractWeekdayFromName(club);
@@ -229,10 +229,10 @@ function analyzeAndRenderMapping() {
             const name = ws.name.trim();
             const parsed = parseSheetName(name);
 
-            // 讀取歷史星期設定 (若為晨間社團，直接指派為週六)
+            // 讀取歷史星期設定 (若為晨間社團，直接指派為晨間社團)
             let day = null;
             if (name.includes('晨間') || (parsed.clubName && parsed.clubName.includes('晨間'))) {
-                day = '週六';
+                day = '晨間社團';
             } else {
                 day = savedConfig[name] || parsed.day;
             }
