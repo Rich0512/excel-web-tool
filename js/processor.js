@@ -53,22 +53,24 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
                         const day = mapData.day;
                         const displayName = mapData.editedName;
                         
-                        activeDays.add(day);
-                        
                         let label = "";
                         if (slotMode === 'vacation') {
                             label = slot.name.replace("時段", "").replace("Slot", "").replace("slot", "").replace("社團", "").replace("課程", "").trim();
                         }
                         const entryText = label ? `${displayName}(${label})` : displayName;
                         
-                        if (student.schedule[day]) {
-                            const existing = student.schedule[day].split(',').map(s => s.trim());
-                            if (!existing.includes(entryText)) {
-                                student.schedule[day] += `, ${entryText}`;
+                        const targetDays = parseDays(day);
+                        targetDays.forEach(d => {
+                            activeDays.add(d);
+                            if (student.schedule[d]) {
+                                const existing = student.schedule[d].split(',').map(s => s.trim());
+                                if (!existing.includes(entryText)) {
+                                    student.schedule[d] += `, ${entryText}`;
+                                }
+                            } else {
+                                student.schedule[d] = entryText;
                             }
-                        } else {
-                            student.schedule[day] = entryText;
-                        }
+                        });
                     }
                 }
             });
@@ -182,14 +184,18 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
                 const label = (slotMode === 'vacation') ? slot : "";
                 const entryText = label ? `${displayName}(${label})` : displayName;
 
-                if (student.schedule[day]) {
-                    const existing = student.schedule[day].split(',').map(s => s.trim());
-                    if (!existing.includes(entryText)) {
-                        student.schedule[day] += `, ${entryText}`;
+                const targetDays = parseDays(day);
+                targetDays.forEach(d => {
+                    activeDays.add(d);
+                    if (student.schedule[d]) {
+                        const existing = student.schedule[d].split(',').map(s => s.trim());
+                        if (!existing.includes(entryText)) {
+                            student.schedule[d] += `, ${entryText}`;
+                        }
+                    } else {
+                        student.schedule[d] = entryText;
                     }
-                } else {
-                    student.schedule[day] = entryText;
-                }
+                });
             });
         });
 
@@ -375,14 +381,18 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
                 studentMap[studentKey].seat = sSeat;
             }
             
-            if (studentMap[studentKey].schedule[day]) {
-                const existing = studentMap[studentKey].schedule[day].split(',').map(s => s.trim());
-                if (!existing.includes(entryText)) {
-                    studentMap[studentKey].schedule[day] += `, ${entryText}`;
+            const targetDays = parseDays(day);
+            targetDays.forEach(d => {
+                activeDays.add(d);
+                if (studentMap[studentKey].schedule[d]) {
+                    const existing = studentMap[studentKey].schedule[d].split(',').map(s => s.trim());
+                    if (!existing.includes(entryText)) {
+                        studentMap[studentKey].schedule[d] += `, ${entryText}`;
+                    }
+                } else {
+                    studentMap[studentKey].schedule[d] = entryText;
                 }
-            } else {
-                studentMap[studentKey].schedule[day] = entryText;
-            }
+            });
         });
     });
 

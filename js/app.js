@@ -562,8 +562,11 @@ function showConflictAlert(resultData, elementId) {
         let html = `<div style="font-weight: bold; margin-bottom: 6px; font-size: 14px;">🚨 偵測到學生上課時段衝突 (共 ${conflictingStudents.length} 人衝堂)：</div>`;
         html += `<ul style="margin: 0; padding-left: 20px; font-size: 12px; max-height: 150px; overflow-y: auto; text-align: left; line-height: 1.5;">`;
         conflictingStudents.forEach(s => {
-            const conflictDetails = s.remarks.join('；');
-            html += `<li style="margin-bottom: 4px;"><strong>${s.class} 座號 ${s.seat} ${s.name}</strong> ── ${conflictDetails}</li>`;
+            const conflictDetails = escapeHtml(s.remarks.join('；'));
+            const safeClass = escapeHtml(s.class);
+            const safeSeat = escapeHtml(s.seat);
+            const safeName = escapeHtml(s.name);
+            html += `<li style="margin-bottom: 4px;"><strong>${safeClass} 座號 ${safeSeat} ${safeName}</strong> ── ${conflictDetails}</li>`;
         });
         html += `</ul>`;
         alertDiv.innerHTML = html;

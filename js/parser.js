@@ -48,30 +48,73 @@ function findColumnByKeywords(headers, keywords, isSeat = false, isName = false)
     return -1;
 }
 
-// 讀取檔案內的內置對照工作表
+// 讀取檔案內的內置對照工作表或課程總表 (支援 1152、對照表、個別社團 Sheet)
 function loadScheduleFromExcel(workbook) {
-    let scheduleSheet = null;
-    workbook.eachSheet((ws) => {
-        const name = ws.name.trim();
-        if (name === '社團上課時間對照表' || name === '對照表' || name === '對照') {
-            scheduleSheet = ws;
-        }
-    });
-    if (!scheduleSheet) return null;
-
     const mapping = {};
-    scheduleSheet.eachRow((row, rowNum) => {
-        if (rowNum === 1) return; // 跳過表頭
-        const club = getCellValueAsString(row.getCell(1));
-        const day = getCellValueAsString(row.getCell(2));
-        if (club && day) {
-            const normDay = normalizeWeekdayName(day);
-            if (normDay) {
-                mapping[club] = normDay;
+    let foundAny = false;
+
+    workbook.eachSheet((ws) => {
+        const sheetName = ws.name.trim();
+
+        // 1. 檢查前 5 列看是否有「課程名稱」與「上課時間」標頭 (如 1152 工作表)
+        let courseColIdx = -1;
+        let dayColIdx = -1;
+        let headerRow = -1;
+
+        for (let r = 1; r <= Math.min(5, ws.rowCount); r++) {
+            const row = ws.getRow(r);
+            const vals = [];
+            row.eachCell({ includeEmpty: true }, (c) => {
+                vals.push(getCellValueAsString(c));
+            });
+
+            const cIdx = vals.findIndex(v => v.includes('課程名稱') || v === '社團');
+            const dIdx = vals.findIndex(v => v.includes('上課時間') || v === '時間' || v.includes('星期'));
+
+            if (cIdx !== -1 && dIdx !== -1) {
+                courseColIdx = cIdx + 1;
+                dayColIdx = dIdx + 1;
+                headerRow = r;
+                break;
+            }
+        }
+
+        if (headerRow !== -1 && courseColIdx !== -1 && dayColIdx !== -1) {
+            ws.eachRow((row, rowNum) => {
+                if (rowNum <= headerRow) return;
+                const club = getCellValueAsString(row.getCell(courseColIdx));
+                const day = getCellValueAsString(row.getCell(dayColIdx));
+                if (club && day) {
+                    const cleanDay = day.replace(/\s+/g, '');
+                    mapping[club] = cleanDay;
+                    const cName = cleanClubDisplayName(club);
+                    if (cName) mapping[cName] = cleanDay;
+                    foundAny = true;
+                }
+            });
+        }
+
+        // 2. 檢查個別社團工作表 (如 社團-晨間棒球A班)
+        if (sheetName.startsWith('社團-') || sheetName.startsWith('社團')) {
+            const clubFromSheet = sheetName.replace(/^社團-?/, '').trim();
+            for (let r = 1; r <= Math.min(5, ws.rowCount); r++) {
+                const row = ws.getRow(r);
+                for (let c = 1; c <= Math.min(15, row.cellCount); c++) {
+                    const val = getCellValueAsString(row.getCell(c));
+                    if (val === '上課時間') {
+                        const dayVal = getCellValueAsString(row.getCell(c + 2)) || getCellValueAsString(row.getCell(c + 1));
+                        if (dayVal) {
+                            const cleanDay = dayVal.replace(/\s+/g, '');
+                            mapping[clubFromSheet] = cleanDay;
+                            foundAny = true;
+                        }
+                    }
+                }
             }
         }
     });
-    return mapping;
+
+    return foundAny ? mapping : null;
 }
 
 // 智慧解析直接貼上之文字/表格 (Tab 分隔)

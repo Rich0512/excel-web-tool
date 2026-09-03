@@ -1,5 +1,70 @@
+// 全域狀態宣告 (確保在所有後續模組載入前就緒)
+window.uploadedWorkbook = window.uploadedWorkbook || null;
+window.originalFileName = window.originalFileName || "";
+window.sheetData = window.sheetData || [];
+window.detectedHeaders = window.detectedHeaders || [];
+window.headerRowIndex = window.headerRowIndex || 1;
+window.colClassIdx = window.colClassIdx || -1;
+window.colSeatIdx = window.colSeatIdx || -1;
+window.colNameIdx = window.colNameIdx || -1;
+window.slotCols = window.slotCols || [];
+
 const WEEKDAY_REGEX = /(星期|週|周)([一二三四五六日1-7])/;
-const weekdaysList = ["請選擇", "週一", "週二", "週三", "週四", "週五", "週六", "週日"];
+const weekdaysList = [
+    "請選擇",
+    "週一",
+    "週二",
+    "週三",
+    "週四",
+    "週五",
+    "週六",
+    "週日",
+    "週一、四",
+    "週二、五",
+    "週一、二、四、五"
+];
+
+/**
+ * XSS HTML 特殊字元安全跳脫防護
+ */
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * 解析星期字串，支援單日或多日（如 "週一"、"一、四"、"週一、四"、"一、二、四、五"）
+ * 回傳標準星期陣列，例如 ['週一', '週四']
+ */
+function parseDays(dayStr) {
+    if (!dayStr) return [];
+    const dayMap = {
+        '一': '週一', '1': '週一',
+        '二': '週二', '2': '週二',
+        '三': '週三', '3': '週三',
+        '四': '週四', '4': '週四',
+        '五': '週五', '5': '週五',
+        '六': '週六', '6': '週六',
+        '日': '週日', '7': '週日'
+    };
+    const found = [];
+    const matches = String(dayStr).match(/(?:星期|週|周)?([一二三四五六日1-7])/g);
+    if (matches) {
+        matches.forEach(m => {
+            const char = m.replace(/星期|週|周/, '');
+            const d = dayMap[char];
+            if (d && !found.includes(d)) {
+                found.push(d);
+            }
+        });
+    }
+    return found;
+}
 
 // 解析年級數值 (新生為 0, 1-6 年級為 1-6)
 function parseGrade(classStr) {
