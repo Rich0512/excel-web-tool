@@ -156,9 +156,24 @@ function analyzeAndRenderMapping() {
                 
                 const cleanName = cleanClubDisplayName(club);
                 let day = null;
-                // 1. 若為晨間社團，直接指派至「晨間社團」，移出週一至週五平日課表
+                // 1. 若為晨間社團，直接細分至具體上課日之專屬直欄 (晨間(週一、週四)等)
                 if (club.includes('晨間') || cleanName.includes('晨間')) {
-                    day = '晨間社團';
+                    if (club.includes('晨間棒球A班') || club.includes('晨間足球社') || (excelSchedule && (excelSchedule[club] === '一、四' || excelSchedule[club] === '週一、四'))) {
+                        day = '晨間(週一、週四)';
+                    } else if (club.includes('晨間棒球B班') || (excelSchedule && (excelSchedule[club] === '二、五' || excelSchedule[club] === '週二、五'))) {
+                        day = '晨間(週二、週五)';
+                    } else if (club.includes('晨間游泳社') || (excelSchedule && (excelSchedule[club] === '一、二、四、五' || excelSchedule[club] === '週一、二、四、五'))) {
+                        day = '晨間(週一、週二、週四、週五)';
+                    } else {
+                        const sched = (excelSchedule && excelSchedule[club]) || '';
+                        if (sched.includes('二') && sched.includes('五')) {
+                            day = '晨間(週二、週五)';
+                        } else if (sched.includes('一') && sched.includes('四')) {
+                            day = '晨間(週一、週四)';
+                        } else {
+                            day = '晨間(週一、週四)';
+                        }
+                    }
                 } else {
                     // 2. 優先從社團自身完整名稱中擷取星期 (例如「周一桌遊社 (一 10,11)」必為週一)
                     day = extractWeekdayFromName(club);
@@ -229,10 +244,19 @@ function analyzeAndRenderMapping() {
             const name = ws.name.trim();
             const parsed = parseSheetName(name);
 
-            // 讀取歷史星期設定 (若為晨間社團，直接指派為晨間社團)
+            // 讀取歷史星期設定 (若為晨間社團，細分至具體上課日專屬直欄)
             let day = null;
             if (name.includes('晨間') || (parsed.clubName && parsed.clubName.includes('晨間'))) {
-                day = '晨間社團';
+                const cTarget = name + ' ' + (parsed.clubName || '');
+                if (cTarget.includes('棒球A') || cTarget.includes('足球') || parsed.day === '週一、四') {
+                    day = '晨間(週一、週四)';
+                } else if (cTarget.includes('棒球B') || parsed.day === '週二、五') {
+                    day = '晨間(週二、週五)';
+                } else if (cTarget.includes('游泳') || parsed.day === '週一、二、四、五') {
+                    day = '晨間(週一、週二、週四、週五)';
+                } else {
+                    day = '晨間(週一、週四)';
+                }
             } else {
                 day = savedConfig[name] || parsed.day;
             }

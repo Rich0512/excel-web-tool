@@ -44,7 +44,16 @@ function mergeAndStyleCountCell(ws, startRow, endRow, count, grade) {
 
 async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName, pastedClubsList = null) {
     const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
-    if (activeDays.has('晨間社團')) targetWeekdays.push('晨間社團');
+    // 晨間專屬欄位（依序排在週五之後）
+    const morningOrder = ['晨間(週一、週四)', '晨間(週二、週五)', '晨間(週一、週二、週四、週五)'];
+    morningOrder.forEach(m => {
+        if (activeDays.has(m)) targetWeekdays.push(m);
+    });
+    Array.from(activeDays).forEach(d => {
+        if (d.startsWith('晨間') && !targetWeekdays.includes(d)) {
+            targetWeekdays.push(d);
+        }
+    });
     if (activeDays.has('週六')) targetWeekdays.push('週六');
     if (activeDays.has('週日')) targetWeekdays.push('週日');
 
