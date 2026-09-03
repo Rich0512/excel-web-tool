@@ -87,8 +87,6 @@ function loadScheduleFromExcel(workbook) {
                 if (club && day) {
                     const cleanDay = day.replace(/\s+/g, '');
                     mapping[club] = cleanDay;
-                    const cName = cleanClubDisplayName(club);
-                    if (cName) mapping[cName] = cleanDay;
                     foundAny = true;
                 }
             });

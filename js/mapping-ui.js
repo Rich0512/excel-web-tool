@@ -154,32 +154,13 @@ function analyzeAndRenderMapping() {
                 tr.className = "mapping-row-single";
                 tr.dataset.slot = slotCol;
                 
-                let day = null;
-                const cleanName = cleanClubDisplayName(club);
-                if (excelSchedule) {
-                    day = excelSchedule[club] || excelSchedule[cleanName];
+                // 1. 優先從社團自身完整名稱中擷取星期 (例如「周一桌遊社 (一 10,11)」必為週一)
+                let day = extractWeekdayFromName(club);
+                if (!day && excelSchedule) {
+                    day = excelSchedule[club];
                 }
-                if (!day) {
-                    if (club.includes('晨間棒球A班') || club.includes('晨間足球社')) {
-                        day = '週一、四';
-                    } else if (club.includes('晨間棒球B班')) {
-                        day = '週二、五';
-                    } else if (club.includes('晨間游泳社')) {
-                        day = '週一、二、四、五';
-                    }
-                }
-                if (!day) day = extractWeekdayFromName(club);
-                if (!day) day = savedConfig[club] || savedConfig[cleanName];
-                if (!day) day = savedSlotMap[club] || savedSlotMap[cleanName];
-
-                if (day) {
-                    const parsed = parseDays(day);
-                    if (parsed.length > 1) {
-                        day = '週' + parsed.map(d => d.replace('週', '')).join('、');
-                    } else if (parsed.length === 1) {
-                        day = parsed[0];
-                    }
-                }
+                if (!day) day = savedConfig[club];
+                if (!day) day = savedSlotMap[club];
 
                 const finalDay = weekdaysList.includes(day) ? day : "請選擇";
 
