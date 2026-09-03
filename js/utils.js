@@ -178,11 +178,14 @@ function normalizeWeekdayName(dayStr) {
 }
 
 /**
- * 清理社團名稱後綴的時間標註，如「周一兒童繪畫社 (一 10,11)」->「周一兒童繪畫社」
+ * 清理社團名稱，移除後綴的時間標註以及前綴的星期標註，只保留純社團名稱
+ * 例如：「周一兒童繪畫社 (一 10,11)」->「兒童繪畫社」、「周四足球社」->「足球社」
  */
 function cleanClubDisplayName(name) {
     if (!name) return "";
-    return String(name).replace(/[\s_]*[(（][^()（）]+[)）]$/, '').trim();
+    let cleaned = String(name).replace(/[\s_]*[(（][^()（）]+[)）]$/, '').trim();
+    cleaned = cleaned.replace(/^(星期|週|周)[一二三四五六日1-7][\s_-]*/, '').trim();
+    return cleaned || String(name).trim();
 }
 
 /**
