@@ -134,8 +134,8 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
             }
 
             const lClassIdx = findColumnByKeywords(localHeaders, ['班級', '班', 'Class', 'class']);
-            const lSeatIdx = findColumnByKeywords(localHeaders, ['座號', '座', '號', 'Seat', 'seat']);
-            const lNameIdx = findColumnByKeywords(localHeaders, ['姓名', '名', 'Name', 'name']);
+            const lSeatIdx = findColumnByKeywords(localHeaders, ['座號', '座', 'Seat', 'seat'], true, false);
+            const lNameIdx = findColumnByKeywords(localHeaders, ['學生姓名', '姓名', 'Name', 'name', '名'], false, true);
 
             if (lClassIdx === -1 || lSeatIdx === -1 || lNameIdx === -1) {
                 console.warn(`工作表「${sheetName}」缺少必要欄位，已跳過。`);

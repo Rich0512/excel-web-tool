@@ -23,14 +23,24 @@ const FIELD_DETECTION_RULES = {
     }
 };
 
-// 模糊匹配欄位索引 (有標頭時使用)
-function findColumnByKeywords(headers, keywords, isSeat = false) {
+// 欄位索引匹配 (優先完全吻合，其次模糊包含；排除衝突欄位)
+function findColumnByKeywords(headers, keywords, isSeat = false, isName = false) {
+    // 1. 先尋找完全吻合欄位
     for (let idx = 0; idx < headers.length; idx++) {
-        const val = headers[idx];
+        const val = String(headers[idx] || "").trim();
         if (!val) continue;
-        if (isSeat && (val.includes('學號') || val.includes('學生編號'))) {
-            continue;
+        if (isSeat && (val.includes('學號') || val.includes('學生編號'))) continue;
+        if (isName && (val.includes('課程') || val.includes('社團') || val.includes('項目') || val.includes('學校'))) continue;
+        if (keywords.includes(val)) {
+            return idx;
         }
+    }
+    // 2. 其次尋找模糊包含欄位
+    for (let idx = 0; idx < headers.length; idx++) {
+        const val = String(headers[idx] || "").trim();
+        if (!val) continue;
+        if (isSeat && (val.includes('學號') || val.includes('學生編號'))) continue;
+        if (isName && (val.includes('課程') || val.includes('社團') || val.includes('項目') || val.includes('學校'))) continue;
         if (keywords.some(kw => val.includes(kw))) {
             return idx;
         }

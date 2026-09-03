@@ -78,8 +78,8 @@ function analyzeAndRenderMapping() {
         detectedHeaders = headers;
 
         colClassIdx = findColumnByKeywords(headers, ['班級', '班', 'Class', 'class']);
-        colSeatIdx = findColumnByKeywords(headers, ['座號', '座', 'Seat', 'seat'], true);
-        colNameIdx = findColumnByKeywords(headers, ['學生姓名', '姓名', '名', 'Name', 'name']);
+        colSeatIdx = findColumnByKeywords(headers, ['座號', '座', 'Seat', 'seat'], true, false);
+        colNameIdx = findColumnByKeywords(headers, ['學生姓名', '姓名', 'Name', 'name', '名'], false, true);
 
         if (colClassIdx === -1 || colSeatIdx === -1 || colNameIdx === -1) {
             alert(`工作表「${sheet.name}」中缺少必要欄位（班級、座號、學生姓名/姓名），無法進行整理。`);
