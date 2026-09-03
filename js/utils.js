@@ -141,11 +141,12 @@ function getNumericSortKey(val) {
 }
 
 /**
- * 正規化星期名稱為 "週一" ~ "週日"
+ * 正規化星期名稱為 "週一" ~ "週日"，支援括號如 (一 10,11)
  */
 function normalizeWeekdayName(dayStr) {
     if (!dayStr) return null;
-    const match = dayStr.match(WEEKDAY_REGEX);
+    const str = String(dayStr).trim();
+    const match = str.match(WEEKDAY_REGEX);
     if (match) {
         const dayChar = match[2];
         const dayMap = {
@@ -159,7 +160,29 @@ function normalizeWeekdayName(dayStr) {
         };
         return dayMap[dayChar] || null;
     }
+    const matchParen = str.match(/[(（]([一二三四五六日1-7])/);
+    if (matchParen) {
+        const c = matchParen[1];
+        const dayMap = {
+            '一': '週一', '1': '週一',
+            '二': '週二', '2': '週二',
+            '三': '週三', '3': '週三',
+            '四': '週四', '4': '週四',
+            '五': '週五', '5': '週五',
+            '六': '週六', '6': '週六',
+            '日': '週日', '7': '週日'
+        };
+        return dayMap[c] || null;
+    }
     return null;
+}
+
+/**
+ * 清理社團名稱後綴的時間標註，如「周一兒童繪畫社 (一 10,11)」->「周一兒童繪畫社」
+ */
+function cleanClubDisplayName(name) {
+    if (!name) return "";
+    return String(name).replace(/[\s_]*[(（][^()（）]+[)）]$/, '').trim();
 }
 
 /**

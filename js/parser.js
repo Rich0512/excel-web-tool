@@ -24,15 +24,14 @@ const FIELD_DETECTION_RULES = {
 };
 
 // 模糊匹配欄位索引 (有標頭時使用)
-function findColumnByKeywords(headers, keywords) {
+function findColumnByKeywords(headers, keywords, isSeat = false) {
     for (let idx = 0; idx < headers.length; idx++) {
         const val = headers[idx];
         if (!val) continue;
+        if (isSeat && (val.includes('學號') || val.includes('學生編號'))) {
+            continue;
+        }
         if (keywords.some(kw => val.includes(kw))) {
-            // 安全防範：避免將「學號」誤判為「座號」
-            if (val.includes('學') && !val.includes('座')) {
-                continue;
-            }
             return idx;
         }
     }

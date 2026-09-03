@@ -49,8 +49,8 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
 
     const outWorkbook = new ExcelJS.Workbook();
     
-    // 1. 建立週課表總表
-    const ws = outWorkbook.addWorksheet('學生週課表');
+    // 1. 建立週課表總表（標籤名稱設定為「課程與學生清單」）
+    const ws = outWorkbook.addWorksheet('課程與學生清單');
 
     const headersOut = ['班級', '座號', '姓名', ...targetWeekdays, '備註'];
     ws.addRow(headersOut);

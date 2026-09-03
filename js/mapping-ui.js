@@ -11,16 +11,19 @@ function analyzeAndRenderMapping() {
     const savedConfig = loadLocalStorageConfig();
 
     if (mode === 'single') {
-        // --- 單一總表分欄模式 ---
+        // --- 單一總表/清單分欄模式 ---
         let sheet = null;
         uploadedWorkbook.eachSheet((ws) => {
-            if (ws.name.trim() === '總表') {
+            const n = ws.name.trim();
+            if (n === '課程與學生清單' || n.includes('課程與學生清單')) {
+                sheet = ws;
+            } else if (!sheet && (n === '總表' || n.includes('總表'))) {
                 sheet = ws;
             }
         });
 
         if (!sheet) {
-            alert("在 Excel 中找不到「總表」工作表！請改用「多工作表模式」。");
+            alert("在 Excel 中找不到「課程與學生清單」或「總表」工作表！請改用「多工作表模式」。");
             document.getElementById('mode-select').value = 'multi';
             analyzeAndRenderMapping();
             return;
@@ -75,26 +78,28 @@ function analyzeAndRenderMapping() {
         detectedHeaders = headers;
 
         colClassIdx = findColumnByKeywords(headers, ['班級', '班', 'Class', 'class']);
-        colSeatIdx = findColumnByKeywords(headers, ['座號', '座', '號', 'Seat', 'seat']);
-        colNameIdx = findColumnByKeywords(headers, ['姓名', '名', 'Name', 'name']);
+        colSeatIdx = findColumnByKeywords(headers, ['座號', '座', 'Seat', 'seat'], true);
+        colNameIdx = findColumnByKeywords(headers, ['學生姓名', '姓名', '名', 'Name', 'name']);
 
         if (colClassIdx === -1 || colSeatIdx === -1 || colNameIdx === -1) {
-            alert("「總表」中缺少必要欄位（班級、座號、姓名），無法進行整理。");
+            alert(`工作表「${sheet.name}」中缺少必要欄位（班級、座號、學生姓名/姓名），無法進行整理。`);
             return;
         }
 
-        // 尋找時段欄位
+        // 尋找時段/課程欄位 (排除類型、狀態、金額等中繼欄位)
         slotCols = [];
-        const slotKeywords = ['時段', 'Slot', 'slot', '課程', '項目', '節', '社團'];
+        const slotKeywords = ['時段', 'Slot', 'slot', '社團', '課程名稱', '課程', '項目', '節'];
+        const excludeKeywords = ['類型', '類別', '狀態', '金額', '繳費', '費用', '學校', '學號', '單號', '日期'];
         headers.forEach((col, idx) => {
             if (idx === colClassIdx || idx === colSeatIdx || idx === colNameIdx) return;
+            if (excludeKeywords.some(ek => col.includes(ek))) return;
             if (slotKeywords.some(kw => col.includes(kw))) {
                 slotCols.push({ name: col, index: idx });
             }
         });
 
         if (slotCols.length === 0) {
-            alert("找不到任何包含「時段」、「課程」或「節」的社團時段欄位。");
+            alert(`工作表「${sheet.name}」中找不到任何包含「課程名稱」、「社團」或「時段」的欄位。`);
             return;
         }
 
@@ -166,7 +171,7 @@ function analyzeAndRenderMapping() {
                 const input = document.createElement('input');
                 input.type = "text";
                 input.className = "club-input";
-                input.value = club;
+                input.value = cleanClubDisplayName(club) || club;
                 input.dataset.slot = slotCol;
                 input.dataset.original = club;
                 tdName.appendChild(input);
@@ -195,7 +200,7 @@ function analyzeAndRenderMapping() {
     } else {
         // --- 多工作表分社團模式 ---
         const sheetsToProcess = [];
-        const ignoreKeywords = ['對照', '說明', 'README', '總表', '統計', '人數', '小計'];
+        const ignoreKeywords = ['對照', '說明', 'README', '總表', '統計', '人數', '小計', '1152', '清單', '報表'];
 
         uploadedWorkbook.eachSheet((ws) => {
             const name = ws.name.trim();

@@ -194,8 +194,8 @@
                     <div class="config-row">
                         <label class="config-label">📁 彙整模式：</label>
                         <select id="mode-select" class="config-select">
-                            <option value="single">單一總表分欄模式 (有「總表」工作表)</option>
-                            <option value="multi">多工作表分社團模式 (無總表，分不同 Sheet)</option>
+                            <option value="single">單一清單模式 (有「課程與學生清單」或「總表」工作表)</option>
+                            <option value="multi">多工作表分社團模式 (無總表/清單，分不同 Sheet)</option>
                         </select>
                     </div>
                     <div class="config-row">
@@ -248,7 +248,7 @@
                 <div class="success-icon">🎉</div>
                 <div class="success-title">轉換成功！</div>
                 <div class="success-desc">
-                    您的「學生週課表」已整理完畢，並開始自動下載！<br>
+                    您的「課程與學生清單」課表已整理完畢，並開始自動下載！<br>
                     若下載未開始，請確認瀏覽器下載提示或手動檢查下載資料夾。
                 </div>
                 <button class="btn btn-primary" onclick="resetToUpload()" style="margin: 0 auto;">🔄 繼續轉換新檔案</button>
@@ -265,11 +265,11 @@
     </div>
 
      <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼) -->
-     <script src="js/utils.js?v=2.1" defer></script>
-     <script src="js/exporter.js?v=2.1" defer></script>
-     <script src="js/parser.js?v=2.1" defer></script>
-     <script src="js/processor.js?v=2.1" defer></script>
-     <script src="js/mapping-ui.js?v=2.1" defer></script>
-     <script src="js/app.js?v=2.1" defer></script>
+     <script src="js/utils.js?v=2.3" defer></script>
+     <script src="js/exporter.js?v=2.3" defer></script>
+     <script src="js/parser.js?v=2.3" defer></script>
+     <script src="js/processor.js?v=2.3" defer></script>
+     <script src="js/mapping-ui.js?v=2.3" defer></script>
+     <script src="js/app.js?v=2.3" defer></script>
 </body>
 </html>

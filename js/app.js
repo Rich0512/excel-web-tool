@@ -55,16 +55,17 @@ async function handleFileSelect(file) {
             await workbook.xlsx.load(arrayBuffer);
             uploadedWorkbook = workbook;
             
-            // 偵測是否存在「總表」工作表
-            let hasTotalSheet = false;
+            // 偵測是否存在「課程與學生清單」或「總表」工作表
+            let hasSingleSheet = false;
             workbook.eachSheet((ws) => {
-                if (ws.name.trim() === '總表') {
-                    hasTotalSheet = true;
+                const n = ws.name.trim();
+                if (n === '課程與學生清單' || n.includes('課程與學生清單') || n === '總表' || n.includes('總表')) {
+                    hasSingleSheet = true;
                 }
             });
             
-            // 依有無「總表」自動切換預設模式
-            document.getElementById('mode-select').value = hasTotalSheet ? 'single' : 'multi';
+            // 依有無清單/總表自動切換預設模式
+            document.getElementById('mode-select').value = hasSingleSheet ? 'single' : 'multi';
             
             // 分析並渲染對照設定
             analyzeAndRenderMapping();

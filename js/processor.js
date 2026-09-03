@@ -11,26 +11,42 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
 
     if (mode === 'single') {
         // ==========================================
-        // 🔹 模式 A：單一總表分欄彙整
+        // 🔹 模式 A：單一總表分欄彙整 (依學生合併，同一位學生排好一到五課表，僅佔一列)
         // ==========================================
+        const studentMap = {};
+
         sheetData.forEach(row => {
-            const classVal = row[detectedHeaders[colClassIdx]];
-            const seatVal = row[detectedHeaders[colSeatIdx]];
-            const nameVal = row[detectedHeaders[colNameIdx]];
+            const rawClass = row[detectedHeaders[colClassIdx]];
+            const rawSeat = row[detectedHeaders[colSeatIdx]];
+            const rawName = row[detectedHeaders[colNameIdx]];
             
-            const studentClass = classVal || "新生";
-            const studentSeat = seatVal || "";
+            const nameVal = (rawName || "").trim();
+            if (!nameVal) return;
             
-            const student = {
-                class: studentClass,
-                seat: studentSeat,
-                name: nameVal,
-                schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
-                remarks: []
-            };
+            const studentClass = (rawClass || "").trim() || "新生";
+            const studentSeat = (rawSeat || "").trim();
+            
+            let studentKey = `${studentClass}_${nameVal}`;
+            if (studentSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== studentSeat) {
+                studentKey = `${studentClass}_${studentSeat}_${nameVal}`;
+            }
+
+            let student = studentMap[studentKey];
+            if (!student) {
+                student = {
+                    class: studentClass,
+                    seat: studentSeat,
+                    name: nameVal,
+                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
+                    remarks: []
+                };
+                studentMap[studentKey] = student;
+            } else if (!student.seat && studentSeat) {
+                student.seat = studentSeat;
+            }
 
             slotCols.forEach(slot => {
-                const origClub = row[slot.name];
+                const origClub = (row[slot.name] || "").trim();
                 if (origClub && origClub !== "無") {
                     const mapData = finalMapping[origClub];
                     if (mapData) {
@@ -46,15 +62,26 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
                         const entryText = label ? `${displayName}(${label})` : displayName;
                         
                         if (student.schedule[day]) {
-                            student.schedule[day] += `, ${entryText}`;
-                            student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
+                            const existing = student.schedule[day].split(',').map(s => s.trim());
+                            if (!existing.includes(entryText)) {
+                                student.schedule[day] += `, ${entryText}`;
+                            }
                         } else {
                             student.schedule[day] = entryText;
                         }
                     }
                 }
             });
-            
+        });
+
+        // 統一生產衝突備註 (避免重複堆疊)
+        Object.values(studentMap).forEach(student => {
+            student.remarks = [];
+            ['週一', '週二', '週三', '週四', '週五', '週六', '週日'].forEach(day => {
+                if (student.schedule[day] && student.schedule[day].includes(',')) {
+                    student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
+                }
+            });
             resultData.push(student);
         });
 
@@ -129,36 +156,53 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
                     return;
                 }
 
-                const studentClass = classVal || "新生";
-                const studentSeat = seatVal || "";
+                const nameClean = nameVal.trim();
+                const studentClass = classVal ? classVal.trim() : "新生";
+                const studentSeat = seatVal ? seatVal.trim() : "";
 
-                const studentKey = `${studentClass}_${nameVal}`;
+                let studentKey = `${studentClass}_${nameClean}`;
+                if (studentSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== studentSeat) {
+                    studentKey = `${studentClass}_${studentSeat}_${nameClean}`;
+                }
 
                 let student = studentMap[studentKey];
                 if (!student) {
                     student = {
                         class: studentClass,
                         seat: studentSeat,
-                        name: nameVal,
+                        name: nameClean,
                         schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '週六': '', '週日': '' },
                         remarks: []
                     };
                     studentMap[studentKey] = student;
+                } else if (!student.seat && studentSeat) {
+                    student.seat = studentSeat;
                 }
 
                 const label = (slotMode === 'vacation') ? slot : "";
                 const entryText = label ? `${displayName}(${label})` : displayName;
 
                 if (student.schedule[day]) {
-                    student.schedule[day] += `, ${entryText}`;
-                    student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
+                    const existing = student.schedule[day].split(',').map(s => s.trim());
+                    if (!existing.includes(entryText)) {
+                        student.schedule[day] += `, ${entryText}`;
+                    }
                 } else {
                     student.schedule[day] = entryText;
                 }
             });
         });
 
-        Object.values(studentMap).forEach(s => resultData.push(s));
+        // 統一生產衝突備註
+        Object.values(studentMap).forEach(student => {
+            student.remarks = [];
+            ['週一', '週二', '週三', '週四', '週五', '週六', '週日'].forEach(day => {
+                if (student.schedule[day] && student.schedule[day].includes(',')) {
+                    student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
+                }
+            });
+            resultData.push(student);
+        });
     }
 
     return { resultData, activeDays };
@@ -332,10 +376,21 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
             }
             
             if (studentMap[studentKey].schedule[day]) {
-                studentMap[studentKey].schedule[day] += `, ${entryText}`;
-                studentMap[studentKey].remarks.push(`「${day}」時段衝突：同時錄取「${studentMap[studentKey].schedule[day]}」`);
+                const existing = studentMap[studentKey].schedule[day].split(',').map(s => s.trim());
+                if (!existing.includes(entryText)) {
+                    studentMap[studentKey].schedule[day] += `, ${entryText}`;
+                }
             } else {
                 studentMap[studentKey].schedule[day] = entryText;
+            }
+        });
+    });
+
+    Object.values(studentMap).forEach(student => {
+        student.remarks = [];
+        ['週一', '週二', '週三', '週四', '週五', '週六', '週日'].forEach(day => {
+            if (student.schedule[day] && student.schedule[day].includes(',')) {
+                student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
             }
         });
     });
