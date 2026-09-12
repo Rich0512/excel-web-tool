@@ -3,7 +3,7 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.1';
+const CACHE_VERSION = 'v3.3';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
 // 需要快取的核心靜態資源清單
@@ -12,8 +12,16 @@ const STATIC_ASSETS = [
     './index.html',
     './style.css',
     './logo.png',
+    './og-image.jpg',
     './manifest.json',
     './fonts/fonts.css',
+    './fonts/NotoSansTC-Light.woff2',
+    './fonts/NotoSansTC-Regular.woff2',
+    './fonts/NotoSansTC-Bold.woff2',
+    './fonts/Outfit-Light.woff2',
+    './fonts/Outfit-Regular.woff2',
+    './fonts/Outfit-SemiBold.woff2',
+    './fonts/Outfit-ExtraBold.woff2',
     './fonts/NotoSansTC-Light.ttf',
     './fonts/NotoSansTC-Regular.ttf',
     './fonts/NotoSansTC-Bold.ttf',
@@ -72,7 +80,9 @@ self.addEventListener('activate', (event) => {
 });
 
 // ==========================================
-// 🌐 攔截請求：Cache-First 策略
+// 🌐 攔截請求策略：
+// 1. HTML 導航頁面：Network-First (確保獲得最新版本，離線時 fallback 快取)
+// 2. 靜態資源 (JS/CSS/字型/圖片)：Cache-First (急速載入，節省頻寬)
 // ==========================================
 self.addEventListener('fetch', (event) => {
     const request = event.request;
@@ -83,6 +93,28 @@ self.addEventListener('fetch', (event) => {
     // 忽略 chrome-extension 等非 http(s) 請求
     if (!request.url.startsWith('http')) return;
 
+    // 策略 1：HTML 導航請求採用 Network-First
+    if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+        event.respondWith(
+            fetch(request)
+                .then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(request, responseClone);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(() => {
+                    // 斷網或離線時，從快取提供頁面
+                    return caches.match('./index.html');
+                })
+        );
+        return;
+    }
+
+    // 策略 2：靜態資源採用 Cache-First
     event.respondWith(
         caches.match(request)
             .then((cachedResponse) => {
@@ -93,12 +125,10 @@ self.addEventListener('fetch', (event) => {
                 // 快取未命中，嘗試從網路取得
                 return fetch(request)
                     .then((networkResponse) => {
-                        // 不快取非成功回應或不透明回應
                         if (!networkResponse || networkResponse.status !== 200) {
                             return networkResponse;
                         }
 
-                        // 動態快取成功的網路回應（例如未來新增的資源）
                         const responseClone = networkResponse.clone();
                         caches.open(CACHE_NAME).then((cache) => {
                             cache.put(request, responseClone);
@@ -107,11 +137,6 @@ self.addEventListener('fetch', (event) => {
                         return networkResponse;
                     })
                     .catch(() => {
-                        // 網路也失敗時，如果是導航請求，回傳離線首頁
-                        if (request.mode === 'navigate') {
-                            return caches.match('./index.html');
-                        }
-                        // 其他資源無法取得時不做特殊處理
                         return new Response('', { status: 503, statusText: 'Offline' });
                     });
             })

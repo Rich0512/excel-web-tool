@@ -1,9 +1,10 @@
 /* ============================================
  * 本地化 Google Fonts (@font-face 宣告)
- * 已從 Google Fonts CDN 下載至本機，確保：
+ * 已從 Google Fonts 下載至本機，確保：
  * 1. 100% 離線可用
  * 2. 不向 Google 伺服器發送任何請求
  * 3. 保障使用者隱私
+ * 4. 優先使用 WOFF2 高壓縮格式提升載入效能
  * ============================================ */
 
 /* --- Noto Sans TC (繁體中文字型) --- */
@@ -12,7 +13,8 @@
     font-style: normal;
     font-weight: 300;
     font-display: swap;
-    src: url('NotoSansTC-Light.ttf') format('truetype');
+    src: url('NotoSansTC-Light.woff2') format('woff2'),
+         url('NotoSansTC-Light.ttf') format('truetype');
 }
 
 @font-face {
@@ -20,7 +22,8 @@
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url('NotoSansTC-Regular.ttf') format('truetype');
+    src: url('NotoSansTC-Regular.woff2') format('woff2'),
+         url('NotoSansTC-Regular.ttf') format('truetype');
 }
 
 @font-face {
@@ -28,7 +31,8 @@
     font-style: normal;
     font-weight: 700;
     font-display: swap;
-    src: url('NotoSansTC-Bold.ttf') format('truetype');
+    src: url('NotoSansTC-Bold.woff2') format('woff2'),
+         url('NotoSansTC-Bold.ttf') format('truetype');
 }
 
 /* --- Outfit (英文標題字型) --- */
@@ -37,7 +41,8 @@
     font-style: normal;
     font-weight: 300;
     font-display: swap;
-    src: url('Outfit-Light.ttf') format('truetype');
+    src: url('Outfit-Light.woff2') format('woff2'),
+         url('Outfit-Light.ttf') format('truetype');
 }
 
 @font-face {
@@ -45,7 +50,8 @@
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url('Outfit-Regular.ttf') format('truetype');
+    src: url('Outfit-Regular.woff2') format('woff2'),
+         url('Outfit-Regular.ttf') format('truetype');
 }
 
 @font-face {
@@ -53,7 +59,8 @@
     font-style: normal;
     font-weight: 600;
     font-display: swap;
-    src: url('Outfit-SemiBold.ttf') format('truetype');
+    src: url('Outfit-SemiBold.woff2') format('woff2'),
+         url('Outfit-SemiBold.ttf') format('truetype');
 }
 
 @font-face {
@@ -61,5 +68,6 @@
     font-style: normal;
     font-weight: 800;
     font-display: swap;
-    src: url('Outfit-ExtraBold.ttf') format('truetype');
+    src: url('Outfit-ExtraBold.woff2') format('woff2'),
+         url('Outfit-ExtraBold.ttf') format('truetype');
 }
