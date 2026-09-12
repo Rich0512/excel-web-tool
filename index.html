@@ -16,7 +16,7 @@
     <meta property="og:title" content="延平國小社團課表整理工具 - 網頁版">
     <meta property="og:description" content="免安裝、純前端。一鍵上傳錄取名冊 Excel 或貼上選課名單，自動整理個人週課表並支援隨機抽籤。100% 本機處理，保障學生個資安全。">
     <meta property="og:url" content="https://rich0512.github.io/excel-web-tool/">
-    <meta property="og:image" content="https://rich0512.github.io/excel-web-tool/og-image.jpg">
+    <meta property="og:image" content="https://rich0512.github.io/excel-web-tool/images/og-image.jpg">
     <meta property="og:image:width" content="1456">
     <meta property="og:image:height" content="816">
     <meta property="og:locale" content="zh_TW">
@@ -26,13 +26,13 @@
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="延平國小社團課表整理工具">
     <meta name="twitter:description" content="免安裝、100% 本機處理。上傳 Excel 或貼上名單，一鍵產出個人週課表。">
-    <meta name="twitter:image" content="https://rich0512.github.io/excel-web-tool/og-image.jpg">
+    <meta name="twitter:image" content="https://rich0512.github.io/excel-web-tool/images/og-image.jpg">
 
     <!-- 🛡️ 安全性：Content Security Policy (已加強防護，並允許 ExcelJS 內部計算所需的 unsafe-eval) -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'">
 
     <!-- 設置網站圖示，防止瀏覽器請求根目錄 favicon 產生 404 錯誤 -->
-    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="icon" href="images/logo.png" type="image/png">
 
     <!-- 📱 PWA 設定 -->
     <link rel="manifest" href="manifest.json">
@@ -40,7 +40,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="社團課表工具">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="apple-touch-icon" href="images/logo.png">
 
     <!-- 預載入首頁核心字型 (提升首屏載入速度與渲染效能) -->
     <link rel="preload" href="fonts/NotoSansTC-Regular.woff2" as="font" type="font/woff2" crossorigin>
@@ -51,7 +51,7 @@
     <!-- 引入 ExcelJS (前端處理 Excel 格式與樣式的核心庫 - 已本地化以維護個資安全與支援離線使用) -->
     <script src="js/libs/exceljs.min.js" defer></script>
     <!-- 引入外部樣式表 -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -59,7 +59,7 @@
         <!-- 標題區 -->
         <header class="header" role="banner">
             <h1 class="logo-text">
-                <img src="logo.png" class="logo-img" alt="延平國小校徽">
+                <img src="images/logo.png" class="logo-img" alt="延平國小校徽">
                 台北市延平國小社團課表整理工具
             </h1>
             <div class="subtitle">網頁發佈版 ── 免安裝、純瀏覽器本地處理，100% 保障學生個資安全</div>
@@ -87,7 +87,7 @@
             <div id="tab-file-content" class="tab-content active">
                 <div class="tab-intro" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div>💡 <strong>適用情境：</strong>已有錄取名單 Excel。一鍵上傳多個社團，快速轉化為以學生為單位的個人週課表總表。</div>
-                    <a href="115學期名冊_範本.xlsx" download class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px; font-weight: normal; margin: 0; text-decoration: none;">📥 下載測試範本 Excel</a>
+                    <a href="templates/115學期名冊_範本.xlsx" download class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px; font-weight: normal; margin: 0; text-decoration: none;">📥 下載測試範本 Excel</a>
                 </div>
                 <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
                     <span class="upload-icon">📂</span>

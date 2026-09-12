@@ -3,16 +3,16 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.3';
+const CACHE_VERSION = 'v3.4';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
 // 需要快取的核心靜態資源清單
 const STATIC_ASSETS = [
     './',
     './index.html',
-    './style.css',
-    './logo.png',
-    './og-image.jpg',
+    './css/style.css',
+    './images/logo.png',
+    './images/og-image.jpg',
     './manifest.json',
     './fonts/fonts.css',
     './fonts/NotoSansTC-Light.woff2',
@@ -36,7 +36,7 @@ const STATIC_ASSETS = [
     './js/processor.js',
     './js/mapping-ui.js',
     './js/app.js',
-    './115學期名冊_範本.xlsx'
+    './templates/115學期名冊_範本.xlsx'
 ];
 
 // ==========================================
