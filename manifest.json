@@ -1,0 +1,20 @@
+{
+    "name": "延平國小社團課表整理工具",
+    "short_name": "社團課表工具",
+    "description": "免安裝純前端網頁版，一鍵將錄取名冊轉換為個人週課表，支援線上隨機抽籤。100% 本機處理，保障學生個資安全。",
+    "start_url": ".",
+    "scope": ".",
+    "display": "standalone",
+    "background_color": "#f1f5f9",
+    "theme_color": "#0f3b6d",
+    "orientation": "any",
+    "lang": "zh-TW",
+    "icons": [
+        {
+            "src": "logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

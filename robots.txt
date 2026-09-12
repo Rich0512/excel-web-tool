@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://rich0512.github.io/excel-web-tool/sitemap.xml

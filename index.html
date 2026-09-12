@@ -4,12 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>延平國小社團課表整理工具 - 網頁版</title>
+
+    <!-- 📌 SEO 基礎 -->
+    <meta name="description" content="延平國小社團課表整理工具 - 免安裝純前端網頁版，一鍵將錄取名冊轉換為個人週課表，支援線上隨機抽籤。100% 本機處理，保障學生個資安全。">
+    <meta name="keywords" content="延平國小,社團課表,Excel轉換,抽籤工具,行政工具,課表整理">
+    <meta name="author" content="延平國小社團課務行政">
+    <link rel="canonical" href="https://rich0512.github.io/excel-web-tool/">
+
+    <!-- 📱 Open Graph (Facebook / LINE 分享卡片) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="延平國小社團課表整理工具 - 網頁版">
+    <meta property="og:description" content="免安裝、純前端。一鍵上傳錄取名冊 Excel 或貼上選課名單，自動整理個人週課表並支援隨機抽籤。100% 本機處理，保障學生個資安全。">
+    <meta property="og:url" content="https://rich0512.github.io/excel-web-tool/">
+    <meta property="og:image" content="https://rich0512.github.io/excel-web-tool/logo.png">
+    <meta property="og:locale" content="zh_TW">
+    <meta property="og:site_name" content="延平國小社團課表整理工具">
+
+    <!-- 🐦 Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="延平國小社團課表整理工具">
+    <meta name="twitter:description" content="免安裝、100% 本機處理。上傳 Excel 或貼上名單，一鍵產出個人週課表。">
+    <meta name="twitter:image" content="https://rich0512.github.io/excel-web-tool/logo.png">
+
+    <!-- 🛡️ 安全性：Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'">
+
     <!-- 設置網站圖示，防止瀏覽器請求根目錄 favicon 產生 404 錯誤 -->
     <link rel="icon" href="logo.png" type="image/png">
-    <!-- 引入美化字型 -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <!-- 📱 PWA 設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f3b6d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="社團課表工具">
+    <link rel="apple-touch-icon" href="logo.png">
+
+    <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
+    <link rel="stylesheet" href="fonts/fonts.css">
     <!-- 引入 ExcelJS (前端處理 Excel 格式與樣式的核心庫 - 已本地化以維護個資安全與支援離線使用) -->
-    <script src="js/libs/exceljs.min.js"></script>
+    <script src="js/libs/exceljs.min.js" defer></script>
     <!-- 引入外部樣式表 -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -17,13 +51,15 @@
 
     <div class="container">
         <!-- 標題區 -->
-        <div class="header">
-            <div class="logo-text">
+        <header class="header" role="banner">
+            <h1 class="logo-text">
                 <img src="logo.png" class="logo-img" alt="延平國小校徽">
                 台北市延平國小社團課表整理工具
-            </div>
+            </h1>
             <div class="subtitle">網頁發佈版 ── 免安裝、純瀏覽器本地處理，100% 保障學生個資安全</div>
-        </div>
+        </header>
+
+        <main role="main">
         
         <!-- 🛡️ 安全防護與個資重設警示區 -->
         <div class="security-banner" style="background: rgba(15, 59, 109, 0.05); border-left: 4px solid var(--primary); padding: 12px 18px; border-radius: 8px; font-size: 13.5px; color: var(--text-main); line-height: 1.6; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; margin-bottom: 5px;">
@@ -255,21 +291,34 @@
             </div>
         </div>
 
+        </main>
+
         <!-- 頁尾宣告 -->
-        <div class="footer-note">
+        <footer class="footer-note" role="contentinfo">
             🛡️ 安全宣告：本工具完全在您的本機瀏覽器中處理資料，資料不會上傳至任何網路伺服器，請安心使用。<br>
             <span style="font-size: 11px; opacity: 0.8; margin-top: 5px; display: inline-block;">
                 * 聲明：本網頁為個人開發之公益行政輔助工具，專供台北市延平國小內部社團業務整理使用，非學校官方系統。網頁不收集任何學生個資。 *
             </span>
-        </div>
+        </footer>
     </div>
 
      <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼) -->
-     <script src="js/utils.js?v=3.0" defer></script>
-     <script src="js/exporter.js?v=3.0" defer></script>
-     <script src="js/parser.js?v=3.0" defer></script>
-     <script src="js/processor.js?v=3.0" defer></script>
-     <script src="js/mapping-ui.js?v=3.0" defer></script>
-     <script src="js/app.js?v=3.0" defer></script>
+     <script src="js/utils.js?v=3.1" defer></script>
+     <script src="js/exporter.js?v=3.1" defer></script>
+     <script src="js/parser.js?v=3.1" defer></script>
+     <script src="js/processor.js?v=3.1" defer></script>
+     <script src="js/mapping-ui.js?v=3.1" defer></script>
+     <script src="js/app.js?v=3.1" defer></script>
+
+     <!-- 📱 註冊 Service Worker (離線快取) -->
+     <script>
+         if ('serviceWorker' in navigator) {
+             window.addEventListener('load', () => {
+                 navigator.serviceWorker.register('./service-worker.js')
+                     .then(reg => console.log('[SW] 註冊成功:', reg.scope))
+                     .catch(err => console.warn('[SW] 註冊失敗:', err));
+             });
+         }
+     </script>
 </body>
 </html>

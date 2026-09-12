@@ -16,6 +16,11 @@
     padding: 0;
 }
 
+/* 語義 HTML 標籤相容性 (確保舊瀏覽器正確渲染) */
+header, main, footer, section {
+    display: block;
+}
+
 body {
     font-family: 'Outfit', 'Noto Sans TC', sans-serif;
     background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
