@@ -124,7 +124,7 @@
                     <div class="paste-inputs" style="margin-top: 12px;">
                         <div class="paste-input-col">
                             <label class="paste-label">👥 招收正取人數：</label>
-                            <input type="number" id="paste-quota" class="club-input" value="12" min="1" style="width: 120px;">
+                            <input type="number" id="paste-quota" class="club-input" value="12" min="1" inputmode="numeric" style="width: 120px;">
                         </div>
                         <div class="paste-input-col">
                             <label class="paste-label">🎓 招收年級限制：</label>
@@ -185,8 +185,8 @@
                         <!-- 動態產生已載入社團 -->
                     </div>
                     
-                    <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
-                        <div style="flex: 1;">
+                    <div class="paste-options-row" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
                             <label class="paste-label">📅 時段模式：</label>
                             <select id="paste-slot-mode-select" class="config-select" style="width: 100%;">
                                 <option value="semester">一般學期模式 (無 AB 時段，課表名稱無括號)</option>
@@ -222,7 +222,7 @@
         <!-- 步驟二：對照設定表 -->
         <div class="step-panel" id="step-mapping">
             <div class="mapping-container">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="mapping-header-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div style="font-weight: 700; color: var(--primary); font-size: 16px;">
                         請確認本學期社團上課星期 (可直接點擊名稱欄位修改名稱)：
                     </div>
@@ -230,6 +230,7 @@
                         <span>⚙️</span> 已自動載入瀏覽器記憶設定
                     </div>
                 </div>
+                <div class="mobile-table-hint">👉 表格可向左滑動查看完整欄位</div>
 
                 <!-- ⚙️ 智慧彙整與時段參數設定 -->
                 <div class="config-section">

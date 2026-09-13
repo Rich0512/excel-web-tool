@@ -557,3 +557,253 @@ tr:last-child td {
 .warning-callout strong {
     color: #92400e;
 }
+
+/* ===================================================
+ * 📱 RWD 響應式設計 (符合 W3C WCAG 2.2 與 Google web.dev 規範)
+ * =================================================== */
+
+/* 提示滑動指示標籤 */
+.mobile-table-hint {
+    display: none;
+    font-size: 12px;
+    color: var(--primary);
+    background: rgba(15, 59, 109, 0.08);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* 💻/📱 平板與小型筆電適配 (max-width: 768px) */
+@media (max-width: 768px) {
+    .container {
+        padding: 24px 20px;
+        border-radius: 16px;
+    }
+
+    .logo-text {
+        font-size: 22px;
+    }
+
+    .logo-text img.logo-img {
+        width: 42px;
+        height: 42px;
+    }
+}
+
+/* 📱 行動裝置與手機適配 (max-width: 640px) */
+@media (max-width: 640px) {
+    /* 1. 全域容器與 iPhone 安全區域 (Safe Area Inset) */
+    body {
+        padding: 10px 8px calc(12px + env(safe-area-inset-bottom, 0px)) 8px;
+    }
+
+    .container {
+        padding: 16px 12px;
+        border-radius: 14px;
+        gap: 16px;
+    }
+
+    /* 2. 標題與校徽尺寸 */
+    .header {
+        padding-bottom: 14px;
+    }
+
+    .logo-text {
+        font-size: 18px;
+        gap: 8px;
+        flex-wrap: wrap;
+        line-height: 1.3;
+    }
+
+    .logo-text img.logo-img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .subtitle {
+        font-size: 12px;
+        margin-top: 4px;
+    }
+
+    /* 3. 安全防護與重設橫幅 */
+    .security-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 12px 14px !important;
+    }
+
+    .security-banner button {
+        width: 100% !important;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* 4. 頁籤切換按鈕 (50%/50% 等寬與 44px 觸控熱區) */
+    .tab-container {
+        gap: 6px;
+        margin-bottom: 14px;
+        padding-bottom: 8px;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 10px 6px;
+        font-size: 13px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    /* 5. 檔案上傳區塊 */
+    .upload-zone {
+        padding: 35px 12px;
+        border-width: 2px;
+    }
+
+    .upload-icon {
+        font-size: 40px;
+        margin-bottom: 8px;
+    }
+
+    .upload-text {
+        font-size: 14.5px;
+    }
+
+    .upload-hint {
+        font-size: 12px;
+    }
+
+    .tab-intro {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        padding: 10px 12px;
+        font-size: 12.5px;
+    }
+
+    .tab-intro a.btn {
+        width: 100% !important;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* 6. 文字貼上名單區塊 (垂直單欄化流體排版) */
+    .paste-zone {
+        padding: 14px 12px;
+    }
+
+    .paste-inputs {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .paste-inputs + .paste-inputs {
+        margin-top: 12px !important;
+    }
+
+    .paste-input-col {
+        width: 100% !important;
+    }
+
+    .paste-input-col input,
+    .paste-input-col select {
+        width: 100% !important;
+    }
+
+    .paste-input-col div[style*="display: flex"] select {
+        flex: 1 !important;
+        min-width: 0 !important;
+    }
+
+    .paste-textarea {
+        height: 150px;
+    }
+
+    /* 7. iOS Safari 防縮放保護 (Input Focus >= 16px) */
+    input.club-input,
+    select.day-select,
+    select.config-select,
+    textarea.paste-textarea {
+        font-size: 16px !important;
+    }
+
+    /* 8. 社團對照表格 (慣性滑動與緊湊排版) */
+    .mobile-table-hint {
+        display: block;
+        margin: 4px 0 8px 0;
+    }
+
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+        max-height: 320px;
+        border-radius: 8px;
+    }
+
+    table {
+        font-size: 13.5px;
+        min-width: 520px; /* 確保表格內各欄不被擠壓，透過橫向滾動瀏覽 */
+    }
+
+    th, td {
+        padding: 8px 10px;
+    }
+
+    .day-select, .club-input {
+        padding: 8px 10px;
+        min-height: 40px;
+    }
+
+    .slot-badge {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
+
+    /* 9. 底部按鈕群 (大拇指友善滿版排列) */
+    .btn-group {
+        flex-direction: column-reverse;
+        gap: 10px;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .btn-group .btn {
+        width: 100%;
+        min-height: 46px;
+        justify-content: center;
+        font-size: 15px;
+    }
+
+    .memory-hint {
+        justify-content: center;
+        margin-top: 4px;
+        font-size: 12px;
+    }
+
+    /* 10. 成功轉檔面板 */
+    .success-panel {
+        padding: 25px 10px;
+    }
+
+    .success-icon {
+        font-size: 48px;
+        margin-bottom: 14px;
+    }
+
+    .success-title {
+        font-size: 19px;
+    }
+
+    .success-desc {
+        font-size: 13.5px;
+        margin-bottom: 20px;
+    }
+}
+
