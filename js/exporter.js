@@ -150,10 +150,22 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
 
     // 2. 建立個別社團抽籤結果工作表 (若有貼上資料)
     if (pastedClubsList && pastedClubsList.length > 0) {
+        const usedSheetNames = new Set(['課程與學生清單']);
+
         pastedClubsList.forEach(club => {
-            // 清理工作表名稱長度及特殊字元
-            let wsName = club.clubName.replace(/[:\\/?*\[\]]/g, "_").substring(0, 30);
-            const wsClub = outWorkbook.addWorksheet(wsName);
+            // 🛡️ 工作表名稱消毒與唯一性保護（防止特殊字元與重複命名導致 ExcelJS 拋錯）
+            const sanitizeFn = typeof sanitizeSheetName === 'function' ? sanitizeSheetName : (n) => String(n || "社團").replace(/[\\/?*\[\]:]/g, '_').substring(0, 31);
+            let baseWsName = sanitizeFn(club.clubName, '社團名冊');
+            let finalWsName = baseWsName;
+            let counter = 2;
+            while (usedSheetNames.has(finalWsName)) {
+                const suffix = ` (${counter})`;
+                finalWsName = baseWsName.substring(0, 31 - suffix.length) + suffix;
+                counter++;
+            }
+            usedSheetNames.add(finalWsName);
+
+            const wsClub = outWorkbook.addWorksheet(finalWsName);
 
             // 欄位標題
             const headers = ['班級', '座號', '姓名', '籤序', '錄取人數'];
@@ -283,15 +295,21 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
     const buffer = await outWorkbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     
-    const downloadLink = document.createElement('a');
     const outputSuffix = slotMode === 'semester' ? "_學期社團彙整.xlsx" : "_寒暑假社團彙整.xlsx";
     const outputName = outputBaseName.replace(/\.[^/.]+$/, "") + outputSuffix;
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = outputName;
-    
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+
+    if (typeof triggerFileDownload === 'function') {
+        triggerFileDownload(blob, outputName);
+    } else {
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = outputName;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        setTimeout(() => {
+            document.body.removeChild(downloadLink);
+        }, 1000);
+    }
 
     switchStep('step-success');
 }

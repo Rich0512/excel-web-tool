@@ -20,11 +20,13 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
             const rawSeat = row[detectedHeaders[colSeatIdx]];
             const rawName = row[detectedHeaders[colNameIdx]];
             
-            const nameVal = (rawName || "").trim();
+            const cleanFn = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars : (s) => String(s || "").trim();
+            const nameVal = cleanFn(rawName);
             if (!nameVal) return;
             
-            const studentClass = (rawClass || "").trim() || "新生";
-            const studentSeat = (rawSeat || "").trim();
+            const rawClassClean = cleanFn(rawClass);
+            const studentClass = rawClassClean || "新生";
+            const studentSeat = cleanFn(rawSeat);
             
             let studentKey = `${studentClass}_${nameVal}`;
             if (studentSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== studentSeat) {
@@ -159,9 +161,13 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
                     return;
                 }
 
-                const nameClean = nameVal.trim();
-                const studentClass = classVal ? classVal.trim() : "新生";
-                const studentSeat = seatVal ? seatVal.trim() : "";
+                const cleanFn = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars : (s) => String(s || "").trim();
+                const nameClean = cleanFn(nameVal);
+                if (!nameClean) return;
+
+                const rawClassClean = cleanFn(classVal);
+                const studentClass = rawClassClean || "新生";
+                const studentSeat = cleanFn(seatVal);
 
                 let studentKey = `${studentClass}_${nameClean}`;
                 if (studentSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== studentSeat) {
@@ -359,40 +365,45 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
             // 🚨 僅彙整正式被抽中錄取的學生！
             if (student.selected === false) return;
             
-            let sClass = student.class ? student.class.trim() : "";
-            let sSeat = student.seat ? student.seat.trim() : "";
-            let sName = student.name ? student.name.trim() : "";
+            const cleanFn = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars : (s) => String(s || "").trim();
+            let sClass = cleanFn(student.class);
+            let sSeat = cleanFn(student.seat);
+            let sName = cleanFn(student.name);
             
             if (!sName) return;
             if (!includeFreshmen && !sClass) return;
             
             if (!sClass) sClass = "新生";
             
-            const studentKey = `${sClass}_${sName}`;
-            if (!studentMap[studentKey]) {
-                studentMap[studentKey] = {
+            let studentKey = `${sClass}_${sName}`;
+            if (sSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== sSeat) {
+                studentKey = `${sClass}_${sSeat}_${sName}`;
+            }
+
+            let studentObj = studentMap[studentKey];
+            if (!studentObj) {
+                studentObj = {
                     class: sClass,
                     seat: sSeat,
                     name: sName,
                     schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '晨間社團': '', '週六': '', '週日': '' },
                     remarks: []
                 };
-            }
-            
-            if (!studentMap[studentKey].seat && sSeat) {
-                studentMap[studentKey].seat = sSeat;
+                studentMap[studentKey] = studentObj;
+            } else if (!studentObj.seat && sSeat) {
+                studentObj.seat = sSeat;
             }
             
             const targetDays = parseDays(day);
             targetDays.forEach(d => {
                 activeDays.add(d);
-                if (studentMap[studentKey].schedule[d]) {
-                    const existing = studentMap[studentKey].schedule[d].split(',').map(s => s.trim());
+                if (studentObj.schedule[d]) {
+                    const existing = studentObj.schedule[d].split(',').map(s => s.trim());
                     if (!existing.includes(entryText)) {
-                        studentMap[studentKey].schedule[d] += `, ${entryText}`;
+                        studentObj.schedule[d] += `, ${entryText}`;
                     }
                 } else {
-                    studentMap[studentKey].schedule[d] = entryText;
+                    studentObj.schedule[d] = entryText;
                 }
             });
         });

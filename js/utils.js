@@ -305,3 +305,111 @@ function loadLocalStorageConfig() {
 function saveLocalStorageConfig(config) {
     localStorage.setItem('yenping_club_config', JSON.stringify(config));
 }
+
+/**
+ * 🛡️ 檔案格式檢查：透過二進制檔頭 (Magic Bytes) 精準識別檔案真實結構
+ * 避免舊版 .xls (BIFF8) 或 CSV 偽裝副檔名造成 ExcelJS 崩潰
+ */
+async function checkExcelFileFormat(file) {
+    if (!file) return { valid: false, reason: 'no_file' };
+    
+    try {
+        const buffer = await file.slice(0, 8).arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        
+        // 1. 檢查 PK\x03\x04 (50 4B 03 04) - 標準 OpenXML (.xlsx / Zip)
+        if (bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04) {
+            return { valid: true, type: 'xlsx' };
+        }
+        
+        // 2. 檢查 D0 CF 11 E0 (OLE2 Compound Document) - 舊版 Excel 97-2003 (.xls)
+        if (bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0) {
+            return { 
+                valid: false, 
+                type: 'xls_legacy',
+                reason: '偵測到此檔案為舊版 Excel 97-2003 (.xls) 二進制格式。\n請在 Microsoft Excel 中開啟此檔，選擇「另存新檔」並存為「.xlsx」格式後再重新上傳。'
+            };
+        }
+
+        // 3. 檢查副檔名是否被強制改名
+        const fileName = file.name.toLowerCase();
+        if (fileName.endsWith('.xls') && !fileName.endsWith('.xlsx')) {
+            return {
+                valid: false,
+                type: 'xls_legacy',
+                reason: '目前系統僅支援現代「.xlsx」格式。\n若為舊版「.xls」檔案，請先在 Excel 中另存為「.xlsx」格式。'
+            };
+        }
+
+        // 4. 其他未知格式
+        return {
+            valid: false,
+            type: 'unknown',
+            reason: '檔案格式無效或檔案已損毀，無法以 Excel 工作表讀取。請確認是否為正常的 .xlsx 活頁簿。'
+        };
+    } catch (err) {
+        console.warn('檢查檔案格式時發生錯誤:', err);
+        // 若無法讀取 slice，退回副檔名檢查
+        if (file.name.toLowerCase().endsWith('.xlsx')) {
+            return { valid: true, type: 'xlsx' };
+        }
+        return { valid: false, type: 'unknown', reason: '無法讀取檔案內容，請確認檔案未被其他程式鎖定。' };
+    }
+}
+
+/**
+ * 🛡️ Excel 工作表名稱消毒器 (Worksheet Name Sanitizer)
+ * Excel 規範：禁止出現 \ / ? * [ ] : ，不可前後帶單引號，最長不可超過 31 個字元
+ */
+function sanitizeSheetName(name, fallback = '工作表') {
+    if (!name) return fallback;
+    let clean = cleanInvisibleChars(name);
+    // 移除非法字元
+    clean = clean.replace(/[\\/?*\[\]:]/g, '_').trim();
+    // 移除開頭或結尾的單引號
+    clean = clean.replace(/^'+|'+$/g, '').trim();
+    if (!clean) clean = fallback;
+    // 截斷至 31 字元上限
+    if (clean.length > 31) {
+        clean = clean.substring(0, 31).trim();
+    }
+    return clean || fallback;
+}
+
+/**
+ * 🛡️ 不可見字元淨化器
+ * 清理剪貼簿常夾帶的零寬空格 (\u200B-\u200D, \uFEFF)、全形空白 (\u3000) 與 &nbsp; (\u00A0)
+ */
+function cleanInvisibleChars(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\u3000/g, ' ')
+        .trim();
+}
+
+/**
+ * 🛡️ 跨平台安全的檔案下載觸發器 (強化 iOS Safari / Mobile WebKit)
+ */
+function triggerFileDownload(blob, filename) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    
+    // 安全掛載至 DOM 觸發點擊
+    document.body.appendChild(a);
+    a.click();
+    
+    // 延遲回收 URL，確保行動端非同步完成下載請求
+    setTimeout(() => {
+        try {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            // 忽略回收異常
+        }
+    }, 2000);
+}

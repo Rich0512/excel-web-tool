@@ -5,23 +5,51 @@ const PARSER_WEEKDAY_REGEX = /^(星期|週|周)([一二三四五六日]|[1-7])/;
 const FIELD_DETECTION_RULES = {
     // 1. 姓名規則：2~4個純中文，且不含有班級或年級的特定詞彙
     name: (val) => {
-        return /^[\u4e00-\u9fa5]{2,4}$/.test(val) && 
-               !['班', '年', '組', '級'].some(kw => val.includes(kw));
+        const clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(val) : String(val).trim();
+        return /^[\u4e00-\u9fa5]{2,4}$/.test(clean) && 
+               !['班', '年', '組', '級', '社', '校'].some(kw => clean.includes(kw));
     },
-    // 2. 班級規則：字串包含「班」、「年」或符合3位數代碼 (如 102)
+    // 2. 班級規則：字串包含「班」、「年」或符合3位數代碼 (如 102) 或特殊專班
     class: (val) => {
-        return val.includes('班') || val.includes('年') || /^\d{3}$/.test(val);
+        const clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(val) : String(val).trim();
+        return clean.includes('班') || clean.includes('年') || /^\d{2,3}$/.test(clean) || 
+               /^(幼|附幼|特教|資優|潛能|新生)/.test(clean);
     },
     // 3. 座號規則：限制在 1~60 之間的短數值字串 (避免誤判長位數的學號)
     seat: (val, idx, guessedClass) => {
-        const num = parseInt(val, 10);
+        const clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(val) : String(val).trim();
+        const num = parseInt(clean, 10);
         const isValidNumber = !isNaN(num) && num > 0 && num <= 60;
-        const isShortString = val.length <= 2;
+        const isShortString = clean.length <= 2;
         // 優先考慮在班級欄位後面的數值欄位為座號
         const isAfterClass = guessedClass === -1 || idx > guessedClass;
         return isValidNumber && isShortString && isAfterClass;
     }
 };
+
+/**
+ * 🛡️ 貼上文字預處理：清除不可見字元，並將被雙引號包覆的儲存格內換行 (\r\n / \n) 轉換為空格
+ * 防止 Excel/Google Sheets 儲存格內換行 (Alt+Enter) 破壞列結構導致欄位錯位
+ */
+function normalizePastedText(text) {
+    if (!text) return "";
+    let clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(text) : String(text);
+    
+    let inQuotes = false;
+    let result = '';
+    for (let i = 0; i < clean.length; i++) {
+        const char = clean[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+            result += char;
+        } else if ((char === '\n' || char === '\r') && inQuotes) {
+            result += ' '; // 替換儲存格內部的換行為空格
+        } else {
+            result += char;
+        }
+    }
+    return result;
+}
 
 // 欄位索引匹配 (優先完全吻合，其次模糊包含；排除衝突欄位)
 function findColumnByKeywords(headers, keywords, isSeat = false, isName = false) {
@@ -117,18 +145,28 @@ function loadScheduleFromExcel(workbook) {
 
 // 智慧解析直接貼上之文字/表格 (Tab 分隔)
 function parsePastedText(text) {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (!text) return [];
+    const normalized = normalizePastedText(text);
+    const lines = normalized.split(/\r?\n/)
+        .map(l => (typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(l) : l.trim()))
+        .filter(l => l.length > 0);
     if (lines.length === 0) return [];
     
+    // 輔助清洗儲存格兩側引號與空白
+    const cleanCell = (c) => {
+        const str = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(c) : String(c).trim();
+        return str.replace(/^["']+|["']+$/g, '').trim();
+    };
+
     // 預設以 Tab 分割（網頁表格複製之標準格式）
-    let rows = lines.map(line => line.split('\t').map(c => c.trim()));
+    let rows = lines.map(line => line.split('\t').map(cleanCell));
     
     // 若無 Tab，嘗試多空格或逗號分割
     if (rows[0].length <= 1) {
-        rows = lines.map(line => line.split(/\s{2,}|\t/).map(c => c.trim()));
+        rows = lines.map(line => line.split(/\s{2,}|\t/).map(cleanCell));
     }
     if (rows[0].length <= 1) {
-        rows = lines.map(line => line.split(/[,\s]+/).map(c => c.trim()));
+        rows = lines.map(line => line.split(/[,\s]+/).map(cleanCell));
     }
     
     let headerIdx = -1;
@@ -198,15 +236,17 @@ function parsePastedText(text) {
     
     for (let i = startRow; i < rows.length; i++) {
         const row = rows[i];
-        const nameVal = row[colName];
+        const rawName = row[colName];
+        if (!rawName) continue;
+        const nameVal = cleanCell(rawName);
         if (!nameVal) continue;
         
         if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k))) {
             continue;
         }
         
-        const classVal = (colClass !== -1 && colClass < row.length) ? row[colClass] : "";
-        const seatVal = (colSeat !== -1 && colSeat < row.length) ? row[colSeat] : "";
+        const classVal = (colClass !== -1 && colClass < row.length) ? cleanCell(row[colClass]) : "";
+        const seatVal = (colSeat !== -1 && colSeat < row.length) ? cleanCell(row[colSeat]) : "";
         
         students.push({
             class: classVal,
@@ -241,7 +281,8 @@ function guessClubAndDayFromPastedText(text) {
             };
             const matchedDay = dayMap[day_char];
             if (matchedDay) {
-                document.getElementById('paste-day-select').value = matchedDay;
+                const dayEl = document.getElementById('paste-day-select');
+                if (dayEl) dayEl.value = matchedDay;
             }
         }
         
@@ -255,7 +296,8 @@ function guessClubAndDayFromPastedText(text) {
         cleaned = cleaned.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '').trim();
         if (cleaned.length >= 2 && cleaned.length <= 15) {
             if (!cleaned.includes("班") && !cleaned.includes("座") && !cleaned.includes("名")) {
-                document.getElementById('paste-club-name').value = cleaned;
+                const clubEl = document.getElementById('paste-club-name');
+                if (clubEl) clubEl.value = cleaned;
                 break;
             }
         }

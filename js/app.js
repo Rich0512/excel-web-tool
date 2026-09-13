@@ -44,6 +44,18 @@ fileInput.addEventListener('change', (e) => {
 
 // 讀取 Excel 檔案
 async function handleFileSelect(file) {
+    if (!file) return;
+
+    // 🛡️ 檔頭簽章檢查：精準攔截舊版 .xls (BIFF8) 或偽裝格式
+    if (typeof checkExcelFileFormat === 'function') {
+        const formatCheck = await checkExcelFileFormat(file);
+        if (!formatCheck.valid) {
+            alert(formatCheck.reason || "無效的 Excel 檔案格式。");
+            if (fileInput) fileInput.value = "";
+            return;
+        }
+    }
+
     originalFileName = file.name;
     const reader = new FileReader();
     
@@ -65,15 +77,23 @@ async function handleFileSelect(file) {
             });
             
             // 依有無清單/總表自動切換預設模式
-            document.getElementById('mode-select').value = hasSingleSheet ? 'single' : 'multi';
+            const modeSelect = document.getElementById('mode-select');
+            if (modeSelect) modeSelect.value = hasSingleSheet ? 'single' : 'multi';
             
             // 分析並渲染對照設定
             analyzeAndRenderMapping();
             switchStep('step-mapping');
 
         } catch (err) {
-            alert("載入 Excel 失敗，可能檔案格式毀損：" + err.message);
+            console.error("載入 Excel 失敗:", err);
+            alert("載入 Excel 活頁簿失敗，可能檔案損毀或受密碼保護：\n" + (err.message || err));
+            if (fileInput) fileInput.value = "";
         }
+    };
+
+    reader.onerror = function() {
+        alert("讀取本機檔案時發生錯誤，請確認檔案未被其他應用程式獨佔鎖定。");
+        if (fileInput) fileInput.value = "";
     };
     
     reader.readAsArrayBuffer(file);
@@ -162,103 +182,122 @@ function manualHardResetAll() {
 // ==========================================
 
 async function processAndDownload() {
-    const mode = document.getElementById('mode-select').value;
-    const includeFreshmen = document.getElementById('include-freshmen').checked;
-    const slotMode = document.getElementById('slot-mode-select').value;
-
-    const rows = document.getElementById('mapping-table-body').querySelectorAll('tr');
+    const actionBtn = document.querySelector('#step-mapping .btn-primary');
+    const origBtnHtml = actionBtn ? actionBtn.innerHTML : "";
     
-    const finalMapping = {};
-    const unselectedClubs = [];
+    try {
+        if (actionBtn) {
+            actionBtn.disabled = true;
+            actionBtn.innerHTML = '⏳ 正在彙整並匯出課表...';
+        }
 
-    rows.forEach(tr => {
-        const input = tr.querySelector('.club-input');
-        const select = tr.querySelector('.day-select');
+        const mode = document.getElementById('mode-select').value;
+        const includeFreshmen = document.getElementById('include-freshmen').checked;
+        const slotMode = document.getElementById('slot-mode-select').value;
+
+        const rows = document.getElementById('mapping-table-body').querySelectorAll('tr');
         
-        const origKey = input.dataset.original;
-        const editedClub = input.value.trim();
-        const selectedDay = select.value;
+        const finalMapping = {};
+        const unselectedClubs = [];
 
-        if (!editedClub) {
-            alert("社團名稱不能為空！");
+        for (const tr of rows) {
+            const input = tr.querySelector('.club-input');
+            const select = tr.querySelector('.day-select');
+            
+            const origKey = input.dataset.original;
+            const editedClub = input.value.trim();
+            const selectedDay = select.value;
+
+            if (!editedClub) {
+                alert("社團名稱不能為空！");
+                return;
+            }
+
+            if (selectedDay === "請選擇") {
+                if (mode === 'single') {
+                    const slotCol = input.dataset.slot;
+                    unselectedClubs.push(`${slotCol} 的「${origKey}」`);
+                } else {
+                    unselectedClubs.push(`工作表「${origKey}」`);
+                }
+            }
+
+            finalMapping[origKey] = {
+                editedName: editedClub,
+                day: selectedDay,
+                slot: tr.dataset.detectedSlot || ""
+            };
+        }
+
+        if (unselectedClubs.length > 0) {
+            alert(`請為以下社團選擇上課星期後再行轉換：\n\n${unselectedClubs.join('\n')}`);
             return;
         }
 
-        if (selectedDay === "請選擇") {
-            if (mode === 'single') {
-                const slotCol = input.dataset.slot;
-                unselectedClubs.push(`${slotCol} 的「${origKey}」`);
-            } else {
-                unselectedClubs.push(`工作表「${origKey}」`);
+        // 自動更新並儲存 LocalStorage 設定
+        const savedConfig = loadLocalStorageConfig();
+        Object.entries(finalMapping).forEach(([origKey, data]) => {
+            savedConfig[origKey] = data.day;
+        });
+        saveLocalStorageConfig(savedConfig);
+
+        // 呼叫 Core 彙整處理器
+        const { resultData, activeDays } = processExcelData(
+            mode,
+            includeFreshmen,
+            slotMode,
+            finalMapping,
+            sheetData,
+            detectedHeaders,
+            colClassIdx,
+            colSeatIdx,
+            colNameIdx,
+            slotCols
+        );
+
+        if (resultData.length === 0) {
+            alert("無任何有效學生資料可供匯出，請確認上傳檔案。");
+            return;
+        }
+
+        // 排序
+        resultData.sort((a, b) => {
+            const numClassA = getNumericSortKey(a.class);
+            const numClassB = getNumericSortKey(b.class);
+            if (numClassA !== numClassB) {
+                return numClassA - numClassB;
             }
+            
+            const numSeatA = getNumericSortKey(a.seat);
+            const numSeatB = getNumericSortKey(b.seat);
+            if (numSeatA !== numSeatB) {
+                return numSeatA - numSeatB;
+            }
+
+            const strClassA = String(a.class);
+            const strClassB = String(b.class);
+            if (strClassA !== strClassB) {
+                return strClassA.localeCompare(strClassB, 'zh-hant');
+            }
+
+            const strSeatA = String(a.seat);
+            const strSeatB = String(b.seat);
+            return strSeatA.localeCompare(strSeatB, 'zh-hant');
+        });
+
+        const customFilename = document.getElementById('excel-filename').value.trim();
+        const finalFilename = customFilename || originalFileName;
+        await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename);
+
+    } catch (err) {
+        console.error("處理或匯出失敗:", err);
+        alert("匯出課表時發生錯誤：\n" + (err.message || err));
+    } finally {
+        if (actionBtn) {
+            actionBtn.disabled = false;
+            actionBtn.innerHTML = origBtnHtml;
         }
-
-        finalMapping[origKey] = {
-            editedName: editedClub,
-            day: selectedDay,
-            slot: tr.dataset.detectedSlot || ""
-        };
-    });
-
-    if (unselectedClubs.length > 0) {
-        alert(`請為以下社團選擇上課星期後再行轉換：\n\n${unselectedClubs.join('\n')}`);
-        return;
     }
-
-    // 自動更新並儲存 LocalStorage 設定
-    const savedConfig = loadLocalStorageConfig();
-    Object.entries(finalMapping).forEach(([origKey, data]) => {
-        savedConfig[origKey] = data.day;
-    });
-    saveLocalStorageConfig(savedConfig);
-
-    // 呼叫 Core 彙整處理器
-    const { resultData, activeDays } = processExcelData(
-        mode,
-        includeFreshmen,
-        slotMode,
-        finalMapping,
-        sheetData,
-        detectedHeaders,
-        colClassIdx,
-        colSeatIdx,
-        colNameIdx,
-        slotCols
-    );
-
-    if (resultData.length === 0) {
-        alert("無任何有效學生資料可供匯出，請確認上傳檔案。");
-        return;
-    }
-
-    // 排序
-    resultData.sort((a, b) => {
-        const numClassA = getNumericSortKey(a.class);
-        const numClassB = getNumericSortKey(b.class);
-        if (numClassA !== numClassB) {
-            return numClassA - numClassB;
-        }
-        
-        const numSeatA = getNumericSortKey(a.seat);
-        const numSeatB = getNumericSortKey(b.seat);
-        if (numSeatA !== numSeatB) {
-            return numSeatA - numSeatB;
-        }
-
-        const strClassA = String(a.class);
-        const strClassB = String(b.class);
-        if (strClassA !== strClassB) {
-            return strClassA.localeCompare(strClassB, 'zh-hant');
-        }
-
-        const strSeatA = String(a.seat);
-        const strSeatB = String(b.seat);
-        return strSeatA.localeCompare(strSeatB, 'zh-hant');
-    });
-
-    const customFilename = document.getElementById('excel-filename').value.trim();
-    const finalFilename = customFilename || originalFileName;
-    await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename);
 }
 
 // 綁定彙整模式切換監聽與衝突偵測監聽
@@ -509,44 +548,63 @@ function renderLoadedClubs() {
 }
 
 async function processPastedData() {
-    if (pastedClubs.length === 0) {
-        alert("請先載入至少一個社團名單！");
-        return;
-    }
-    
-    const slotMode = document.getElementById('paste-slot-mode-select').value;
-    const includeFreshmen = document.getElementById('paste-include-freshmen').checked;
-    
-    // 呼叫 Core 彙整處理器
-    const { resultData, activeDays } = processPastedClubsData(pastedClubs, slotMode, includeFreshmen);
-    
-    if (resultData.length === 0) {
-        alert("無任何有效學生名單資料可供彙整！");
-        return;
-    }
-    
-    resultData.sort((a, b) => {
-        const classA = getNumericSortKey(a.class);
-        const classB = getNumericSortKey(b.class);
-        if (classA !== classB) return classA - classB;
+    const actionBtn = document.querySelector('#loaded-clubs-section .btn-primary');
+    const origBtnHtml = actionBtn ? actionBtn.innerHTML : "";
+
+    try {
+        if (pastedClubs.length === 0) {
+            alert("請先載入至少一個社團名單！");
+            return;
+        }
         
-        const seatA = getNumericSortKey(a.seat);
-        const seatB = getNumericSortKey(b.seat);
-        if (seatA !== seatB) return seatA - seatB;
+        if (actionBtn) {
+            actionBtn.disabled = true;
+            actionBtn.innerHTML = '⏳ 正在彙整並下載課表...';
+        }
+
+        const slotMode = document.getElementById('paste-slot-mode-select').value;
+        const includeFreshmen = document.getElementById('paste-include-freshmen').checked;
         
-        if (a.class !== b.class) return String(a.class).localeCompare(b.class, 'zh-hant');
-        return String(a.seat).localeCompare(b.seat, 'zh-hant');
-    });
-    
-    const customFilename = document.getElementById('paste-excel-filename').value.trim();
-    const finalFilename = customFilename || "直接貼上名單彙整";
-    await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, pastedClubs);
-    
-    // 重設狀態
-    pastedClubs = [];
-    renderLoadedClubs();
-    document.getElementById('paste-text-area').value = "";
-    document.getElementById('paste-excel-filename').value = "";
+        // 呼叫 Core 彙整處理器
+        const { resultData, activeDays } = processPastedClubsData(pastedClubs, slotMode, includeFreshmen);
+        
+        if (resultData.length === 0) {
+            alert("無任何有效學生名單資料可供彙整！");
+            return;
+        }
+        
+        resultData.sort((a, b) => {
+            const classA = getNumericSortKey(a.class);
+            const classB = getNumericSortKey(b.class);
+            if (classA !== classB) return classA - classB;
+            
+            const seatA = getNumericSortKey(a.seat);
+            const seatB = getNumericSortKey(b.seat);
+            if (seatA !== seatB) return seatA - seatB;
+            
+            if (a.class !== b.class) return String(a.class).localeCompare(b.class, 'zh-hant');
+            return String(a.seat).localeCompare(b.seat, 'zh-hant');
+        });
+        
+        const customFilename = document.getElementById('paste-excel-filename').value.trim();
+        const finalFilename = customFilename || "直接貼上名單彙整";
+        await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, pastedClubs);
+        
+        // 重設狀態
+        pastedClubs = [];
+        renderLoadedClubs();
+        document.getElementById('paste-text-area').value = "";
+        document.getElementById('paste-excel-filename').value = "";
+
+    } catch (err) {
+        console.error("貼上名單彙整失敗:", err);
+        alert("彙整名冊時發生錯誤：\n" + (err.message || err));
+    } finally {
+        if (actionBtn) {
+            actionBtn.disabled = false;
+            actionBtn.innerHTML = origBtnHtml;
+        }
+    }
 }
 
 // ==========================================
@@ -630,3 +688,20 @@ window.addEventListener('beforeunload', (e) => {
         return message;
     }
 });
+
+// ==========================================
+// 🛡️ 全域未捕獲異常 (Unhandled Errors) 兜底防護
+// ==========================================
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('全域非同步例外未捕獲:', event.reason);
+    const msg = event.reason?.message || event.reason || '系統發生未預期的非同步異常';
+    // 若為非取消操作則跳出提示
+    if (!String(msg).includes('abort')) {
+        alert('⚠️ 系統運行發生非預期錯誤：\n' + msg);
+    }
+});
+
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('全域例外捕捉:', { message, source, lineno, colno, error });
+    return false;
+};
