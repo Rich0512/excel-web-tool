@@ -104,7 +104,7 @@
                 <div class="paste-zone">
                     <div class="paste-inputs">
                         <div class="paste-input-col">
-                            <label class="paste-label">📅 上課星期：</label>
+                            <label class="paste-label" for="paste-day-select">📅 上課星期：</label>
                             <select id="paste-day-select" class="config-select">
                                 <option value="週一">週一</option>
                                 <option value="週二">週二</option>
@@ -116,18 +116,18 @@
                             </select>
                         </div>
                         <div class="paste-input-col" style="flex: 1;">
-                            <label class="paste-label">🏫 社團名稱：</label>
+                            <label class="paste-label" for="paste-club-name">🏫 社團名稱：</label>
                             <input type="text" id="paste-club-name" class="club-input" placeholder="例：舞蹈社、籃球社 (系統會自動嘗試從貼上內容中預測，也可手動修改)">
                         </div>
                     </div>
                     
                     <div class="paste-inputs" style="margin-top: 12px;">
                         <div class="paste-input-col">
-                            <label class="paste-label">👥 招收正取人數：</label>
+                            <label class="paste-label" for="paste-quota">👥 招收正取人數：</label>
                             <input type="number" id="paste-quota" class="club-input" value="12" min="1" inputmode="numeric" style="width: 120px;">
                         </div>
                         <div class="paste-input-col">
-                            <label class="paste-label">🎓 招收年級限制：</label>
+                            <label class="paste-label" for="paste-grade-start">🎓 招收年級限制：</label>
                             <div style="display: flex; align-items: center; gap: 5px;">
                                 <select id="paste-grade-start" class="config-select" style="min-width: 85px;">
                                     <option value="1" selected>1年級</option>
@@ -151,7 +151,7 @@
                             </div>
                         </div>
                         <div class="paste-input-col" style="flex: 1;">
-                            <label class="paste-label">⚖️ 抽籤優先順序：</label>
+                            <label class="paste-label" for="paste-priority">⚖️ 抽籤優先順序：</label>
                             <select id="paste-priority" class="config-select" style="width: 100%;">
                                 <option value="desc" selected>高年級優先 (6 > 5 > 4 > 3 > 2 > 1 > 新生)</option>
                                 <option value="asc">低年級優先 (1 > 2 > 3 > 4 > 5 > 6 > 新生)</option>
@@ -160,7 +160,7 @@
                     </div>
                     
                     <div class="textarea-container" style="margin-top: 15px;">
-                        <label class="paste-label">
+                        <label class="paste-label" for="paste-text-area">
                             📋 請將網頁上的選課名冊<strong>「完整拖曳反黑選擇 (包含欄位標題)」</strong>並複製貼上到下方：
                         </label>
                         <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
@@ -187,7 +187,7 @@
                     
                     <div class="paste-options-row" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 200px;">
-                            <label class="paste-label">📅 時段模式：</label>
+                            <label class="paste-label" for="paste-slot-mode-select">📅 時段模式：</label>
                             <select id="paste-slot-mode-select" class="config-select" style="width: 100%;">
                                 <option value="semester">一般學期模式 (無 AB 時段，課表名稱無括號)</option>
                                 <option value="vacation">寒暑假模式 (有 AB 時段，課表名稱加後綴)</option>
@@ -206,7 +206,7 @@
                     </div>
 
                     <div style="margin-top: 15px;">
-                        <label class="paste-label">💾 儲存 Excel 檔名設定 (選填)：</label>
+                        <label class="paste-label" for="paste-excel-filename">💾 儲存 Excel 檔名設定 (選填)：</label>
                         <input type="text" id="paste-excel-filename" class="club-input" placeholder="留空將自動使用「直接貼上名單彙整」命名" style="width: 100%; box-sizing: border-box; padding: 10px;">
                     </div>
 
@@ -235,14 +235,14 @@
                 <!-- ⚙️ 智慧彙整與時段參數設定 -->
                 <div class="config-section">
                     <div class="config-row">
-                        <label class="config-label">📁 彙整模式：</label>
+                        <label class="config-label" for="mode-select">📁 彙整模式：</label>
                         <select id="mode-select" class="config-select">
                             <option value="single">單一清單模式 (有「課程與學生清單」或「總表」工作表)</option>
                             <option value="multi">多工作表分社團模式 (無總表/清單，分不同 Sheet)</option>
                         </select>
                     </div>
                     <div class="config-row">
-                        <label class="config-label">📅 時段模式：</label>
+                        <label class="config-label" for="slot-mode-select">📅 時段模式：</label>
                         <select id="slot-mode-select" class="config-select">
                             <option value="semester">一般學期模式 (無 AB 時段，課表名稱無括號)</option>
                             <option value="vacation">寒暑假模式 (有 AB 時段，課表名稱加後綴)</option>
@@ -272,7 +272,7 @@
                 </div>
 
                 <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; margin-bottom: 15px;">
-                    <label class="paste-label">💾 儲存 Excel 檔名設定 (選填)：</label>
+                    <label class="paste-label" for="excel-filename">💾 儲存 Excel 檔名設定 (選填)：</label>
                     <input type="text" id="excel-filename" class="club-input" placeholder="留空將自動使用原始檔案名稱命名" style="width: 100%; box-sizing: border-box; padding: 10px;">
                 </div>
 
@@ -310,12 +310,12 @@
     </div>
 
      <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼) -->
-     <script src="js/utils.js?v=3.6" defer></script>
-     <script src="js/exporter.js?v=3.6" defer></script>
-     <script src="js/parser.js?v=3.6" defer></script>
-     <script src="js/processor.js?v=3.6" defer></script>
-     <script src="js/mapping-ui.js?v=3.6" defer></script>
-     <script src="js/app.js?v=3.6" defer></script>
+     <script src="js/utils.js?v=3.7" defer></script>
+     <script src="js/exporter.js?v=3.7" defer></script>
+     <script src="js/parser.js?v=3.7" defer></script>
+     <script src="js/processor.js?v=3.7" defer></script>
+     <script src="js/mapping-ui.js?v=3.7" defer></script>
+     <script src="js/app.js?v=3.7" defer></script>
 
      <!-- 📱 註冊 Service Worker (離線快取) -->
      <script>
