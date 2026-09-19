@@ -3,7 +3,7 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.6';
+const CACHE_VERSION = 'v3.7';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
 // 需要快取的核心靜態資源清單
@@ -12,6 +12,8 @@ const STATIC_ASSETS = [
     './index.html',
     './css/style.css',
     './images/logo.png',
+    './images/logo-192.png',
+    './images/logo-512.png',
     './images/og-image.jpg',
     './manifest.json',
     './fonts/fonts.css',
