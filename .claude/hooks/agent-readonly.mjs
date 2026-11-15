@@ -13,8 +13,17 @@ import { readHookInput, block } from '../../tools/site-config.mjs';
 
 const HOOK = 'agent-readonly';
 const GIT_READONLY = new Set(['status', 'diff', 'log', 'show', 'ls-files', 'rev-parse', 'cat-file', 'blame']);
-// 會讓 git 執行外部程式或寫檔的選項：-c core.pager=…、--ext-diff、--textconv、--output 等
-const GIT_UNSAFE_ARG = /^(-c|--config-env|--exec-path|--ext-diff|--textconv|--filters|--output|--open-files-in-pager|-O)/;
+// git 選項用白名單而非黑名單：git 接受長選項縮寫（--outp=x 等同 --output=x），黑名單擋不完
+// 只比對完整名稱，所以任何縮寫都不會被放行；-- 之後是路徑，不再檢查
+const GIT_FLAGS = new Set([
+    '--short', '-s', '--porcelain', '--branch', '-b', '--untracked-files=no',
+    '--stat', '--shortstat', '--numstat', '--name-only', '--name-status', '--cached', '--staged',
+    '-p', '--patch', '-w', '--ignore-all-space', '--no-color', '--word-diff', '--no-ext-diff', '--no-textconv',
+    '--oneline', '--graph', '--all', '--reverse', '--follow', '--decorate', '--abbrev-commit', '--no-merges', '--first-parent',
+    '--others', '--exclude-standard', '--show-toplevel', '--abbrev-ref', '--verify', '-t', '-e', '-L', '-n',
+]);
+const GIT_VALUE_OPTS = new Set(['--format', '--pretty', '--date', '--since', '--until', '--author', '--grep', '--diff-filter', '--max-count', '--unified', '--abbrev']);
+const gitOptionAllowed = (a) => GIT_FLAGS.has(a) || /^-(\d+|n\d+|U\d+)$/.test(a) || GIT_VALUE_OPTS.has(a.split('=')[0]) && a.includes('=');
 // 這些工具沒有寫檔的選項（sort -o、uniq 第二個參數、file -C 會寫檔，所以不列入）
 const TEXT_TOOLS = new Set(['ls', 'cat', 'head', 'tail', 'wc', 'grep', 'cut', 'tr', 'stat', 'echo', 'true']);
 
@@ -64,11 +73,17 @@ function allowed(w) {
     if (w.length === 0) return true;
     const [cmd, ...args] = w;
     if (cmd === 'git') {
-        if (args.some(a => GIT_UNSAFE_ARG.test(a))) return false;
-        // 跳過 -C <dir>、--no-pager 等全域選項，找出子指令
+        // 子指令前只允許 -C <dir> 與 --no-pager（-c、--exec-path 等全域選項都不允許）
         let i = 0;
-        while (i < args.length && args[i].startsWith('-')) i += args[i] === '-C' ? 2 : 1;
-        return GIT_READONLY.has(args[i]);
+        while (i < args.length && args[i].startsWith('-')) {
+            if (args[i] === '-C') i += 2;
+            else if (args[i] === '--no-pager') i += 1;
+            else return false;
+        }
+        if (!GIT_READONLY.has(args[i])) return false;
+        const rest = args.slice(i + 1);
+        const end = rest.indexOf('--');
+        return (end === -1 ? rest : rest.slice(0, end)).every(a => !a.startsWith('-') || gitOptionAllowed(a));
     }
     if (cmd === 'node') return args[0] === 'tools/check-site.mjs' || args[0] === './tools/check-site.mjs';
     // 只允許 unzip -p（輸出到 stdout）與 unzip -l（列出內容），且不帶其他選項

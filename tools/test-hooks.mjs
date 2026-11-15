@@ -91,6 +91,12 @@ run('agent-readonly', shell('unzip -p -d out docs/templates/fake.xlsx'), 'unzip 
 run('agent-readonly', shell(`echo "'" $(rm x) "'"`), 'interleaved quotes hide $()', 2);
 run('agent-readonly', shell(`echo "'" ; rm x ; "'"`), 'interleaved quotes hide ;', 2);
 run('agent-readonly', shell(`grep "a" 'b`), 'unterminated quote', 2);
+run('agent-readonly', shell('git diff --outp=x.txt'), 'abbreviated --output', 2);
+run('agent-readonly', shell('git log --ext'), 'abbreviated --ext-diff', 2);
+run('agent-readonly', shell('git --exec-path=. status'), 'global --exec-path', 2);
+run('agent-readonly', shell('git log --form=%H'), 'abbreviated --format (not exact)', 2);
+run('agent-readonly', shell('git log --oneline -5 --format=%h --stat -- docs/-x'), 'allowlisted git options (allowed)', 0);
+run('agent-readonly', shell('git --no-pager diff --name-only HEAD~1 -- docs'), '--no-pager diff (allowed)', 0);
 run('agent-readonly', shell('ls >&1file'), '>&1file writes file', 2);
 run('agent-readonly', shell('ls >/dev/nullX'), '>/dev/nullX writes file', 2);
 run('agent-readonly', shell('ls 2>&10'), '2>&10 not a safe fd', 2);
