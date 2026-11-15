@@ -123,7 +123,8 @@
 
 **開發工具（`tools/`，需要 Node.js）**
 * `serve.mjs`：本機預覽，模擬 GitHub Pages 的子路徑與 404（`node tools/serve.mjs` → http://localhost:8000/excel-web-tool/）。
-* `check-site.mjs`：部署前檢查（版本號一致、預快取檔案、外部資源、inline 程式碼、404 路徑、試算表外洩、字型缺字）。
+* `check-site.mjs`：部署前檢查（版本號一致、預快取檔案、外部資源、inline 程式碼、404 路徑、試算表外洩、範本只含「測試生」假姓名、manifest 圖示尺寸、字型缺字）。
+* `template-check.mjs`：讀取範本 xlsx 的姓名欄（由 `check-site.mjs` 呼叫）。
 * `bump-version.mjs`：同步調升快取版本。
 * `test-hooks.mjs`：Claude Code hooks 的回歸測試。
 * `site-config.mjs`：以上腳本與 hooks 共用的路徑與常數。

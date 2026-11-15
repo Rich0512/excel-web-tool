@@ -5,7 +5,7 @@
 ## 真實名冊在哪裡
 
 - 上層資料夾 `../`（Excel_Integration）的 `*.xlsx` 是**真實學生名冊**。不要讀取、複製、解析，也不要在任何輸出中顯示其中的姓名。`guard-roster` hook 會擋下 Read 試算表、在 repo 外用 Grep 掃描試算表，以及指令中出現 repo 外的試算表路徑；被擋時不要嘗試繞過，hook 只是最後一道防線，不是可以試探的邊界。
-- 需要測試資料時，只用 `docs/templates/` 內的假資料範本。新範本必須是明顯虛構的姓名。
+- 需要測試資料時，只用 `docs/templates/` 內的假資料範本。範本一律存成 `.xlsx`，「姓名」欄的值必須是 `測試生<班級>_<座號>`（例如 `測試生201_23`）；`check-site.mjs` 會檢查，push 前也會再檢查一次。
 - 試算表只能放在 `docs/templates/`。`.gitignore` 排除其他所有試算表，`guard-git` hook 會擋下 `git add -f` 與提交名冊。
 
 ## 程式碼裡的個資

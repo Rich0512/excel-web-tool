@@ -8,7 +8,8 @@
 
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, SITE, BASE_PATH, TEMPLATE_DIR, gitList, versionOf, versionAt, isForbiddenSpreadsheet } from './site-config.mjs';
+import { ROOT, SITE, BASE_PATH, TEMPLATE_DIR, SPREADSHEET_RE, gitList, versionOf, versionAt, isForbiddenSpreadsheet } from './site-config.mjs';
+import { inspectTemplate } from './template-check.mjs';
 
 const PRECACHE_WARN_BYTES = 5 * 1024 * 1024;
 const CJK_RE = /[　-〿㐀-鿿＀-￯]/;
@@ -145,7 +146,48 @@ if (existsSync(join(ROOT, charsFile))) {
 }
 
 // ==========================================
-// 8. （選用）docs/ 有變更時，快取版本必須調升
+// 8. 範本只含虛構姓名（「姓名」欄下方都要符合 測試生<班級>_<座號>）
+//    錯誤訊息只列儲存格位置，不列內容，以免真實姓名出現在輸出中
+// ==========================================
+for (const file of readdirSync(join(ROOT, TEMPLATE_DIR)).filter(f => SPREADSHEET_RE.test(f))) {
+    const rel = `${TEMPLATE_DIR}${file}`;
+    if (!/\.xlsx$/i.test(file)) {
+        errors.push(`${rel} 不是 xlsx，無法確認是否為假資料；範本請存成 .xlsx`);
+        continue;
+    }
+    try {
+        const { checked, bad } = inspectTemplate(join(ROOT, rel));
+        if (!checked) errors.push(`${rel} 找不到任何「姓名」欄的資料，無法確認是否為假資料`);
+        if (bad.length) {
+            errors.push(`${rel} 有 ${bad.length} 個姓名不是「測試生<班級>_<座號>」格式，可能是真實名冊：${bad.slice(0, 5).join(', ')}${bad.length > 5 ? '…' : ''}`);
+        }
+    } catch (e) {
+        errors.push(`${rel} 無法解析（${e.message}），無法確認是否為假資料`);
+    }
+}
+
+// ==========================================
+// 9. manifest 圖示存在、是 PNG，且實際像素與宣告的 sizes 一致
+// ==========================================
+for (const icon of JSON.parse(read(site('manifest.json'))).icons || []) {
+    const rel = site(icon.src.replace(/^\.\//, ''));
+    if (!existsSync(join(ROOT, rel))) {
+        errors.push(`manifest.json 的圖示不存在：${icon.src}`);
+        continue;
+    }
+    const png = readFileSync(join(ROOT, rel));
+    if (png.length < 24 || png.readUInt32BE(0) !== 0x89504e47) {
+        errors.push(`manifest.json 的圖示不是 PNG：${icon.src}`);
+        continue;
+    }
+    const actual = `${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`;
+    if (!String(icon.sizes || '').split(/\s+/).includes(actual)) {
+        errors.push(`manifest.json 的圖示 ${icon.src} 宣告 ${icon.sizes}，實際是 ${actual}`);
+    }
+}
+
+// ==========================================
+// 10. （選用）docs/ 有變更時，快取版本必須調升
 // ==========================================
 const bumpArg = process.argv.find(a => a.startsWith('--require-bump'));
 if (bumpArg && swVersion) {

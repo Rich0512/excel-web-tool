@@ -26,8 +26,8 @@ Bash 已在 repo 根目錄執行，而且 `agent-readonly` hook 只放行白名�
    - `docs/js/` 的每個 `innerHTML` 插入值是否經過 `escapeHtml()`。
    - Service Worker 的比對順序（先完整網址，離線才 `ignoreSearch`）與舊快取清除。
    - `index.html`、`404.html` 的 CSP 是否被放寬。
-3. **範本**：`docs/templates/` 的範本必須是假資料。只回報「是否像真實姓名」與筆數，**不在輸出中列出任何姓名**。
-4. **SEO／PWA**：`manifest.json` 的圖示存在且尺寸正確；`sitemap.xml` 的 `lastmod` 不早於最近一次網站變更。
+3. **範本與圖示**：`check-site.mjs` 已檢查範本姓名是否都是 `測試生<班級>_<座號>` 格式，以及 manifest 圖示的實際像素，這兩項以它的結果為準，不需要自己解析二進位檔。回報範本時**不在輸出中列出任何姓名**。
+4. **SEO／PWA**：`sitemap.xml` 的 `lastmod` 不早於最近一次網站變更。
 
 不要讀取 repo 以外的檔案。GitHub Pages 無法設定 HTTP header（例如 `frame-ancestors`），這是已知限制，不用回報。
 
