@@ -1,6 +1,10 @@
 /* ============================================
  * 404 頁面樣式（課表格線，規範見 DESIGN.md）
  * 獨立檔案而非 <style>，CSP 才能維持不使用 'unsafe-inline'
+ * 不載入 style.css：404 頁會在任意深度的網址出現，只需要這一頁的少量樣式。
+ * 因此 token 與 .btn-home 的數值是 style.css 的複本，修改時兩邊要同步：
+ *   :root 的色彩 token 對應 style.css 的 :root
+ *   .btn-home 對應 style.css 的 .btn.btn-primary
  * ============================================ */
 
 :root {
@@ -9,7 +13,12 @@
     --ink: #14253d;
     --ink-muted: #4a5a70;
     --bg: #f6f8fb;
+    --surface: #ffffff;
+    --on-primary: #ffffff;
     --line: #d6e0ec;
+
+    --radius-control: 6px;
+    --radius-panel: 8px;
 }
 
 *,
@@ -38,9 +47,9 @@ body {
 .error-card {
     width: 100%;
     max-width: 480px;
-    background: #ffffff;
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: var(--radius-panel);
     padding: 40px 32px;
     display: flex;
     flex-direction: column;
@@ -53,9 +62,11 @@ body {
     color: var(--primary);
 }
 
+/* 頁面標題：34px，手機 24px（DESIGN.md 字級） */
 .error-title {
-    font-size: 24px;
+    font-size: 34px;
     font-weight: 700;
+    line-height: 1.3;
     color: var(--primary);
 }
 
@@ -64,18 +75,23 @@ body {
     margin-bottom: 12px;
 }
 
+/* 與 style.css 的 .btn.btn-primary 相同 */
 .btn-home {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     min-height: 44px;
-    padding: 0 22px;
-    border-radius: 6px;
+    padding: 0 20px;
+    border-radius: var(--radius-control);
+    border: 1px solid transparent;
     background: var(--primary);
-    color: #ffffff;
+    color: var(--on-primary);
+    font: inherit;
     font-weight: 700;
+    font-size: 16px;
     text-decoration: none;
-    transition: background-color 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .btn-home:hover {
@@ -90,6 +106,17 @@ body {
 .footer-note {
     font-size: 13px;
     color: var(--ink-muted);
+}
+
+@media (max-width: 640px) {
+    .error-title {
+        font-size: 24px;
+    }
+
+    /* 手機上主要按鈕滿版，與 style.css 同步 */
+    .btn-home {
+        width: 100%;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

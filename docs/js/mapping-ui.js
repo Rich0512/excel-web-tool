@@ -1,5 +1,5 @@
 /**
- * 🎨 課表對照設定 UI 渲染器 (View/UI Component)
+ * 課表對照設定 UI 渲染器 (View/UI Component)
  */
 
 function analyzeAndRenderMapping() {
@@ -23,7 +23,7 @@ function analyzeAndRenderMapping() {
         });
 
         if (!sheet) {
-            alert("在 Excel 中找不到「課程與學生清單」或「總表」工作表！請改用「多工作表模式」。");
+            alert("這個 Excel 沒有「課程與學生清單」或「總表」工作表，已自動改用「多工作表」模式。請確認下方每個社團的星期。");
             document.getElementById('mode-select').value = 'multi';
             analyzeAndRenderMapping();
             return;
@@ -82,7 +82,7 @@ function analyzeAndRenderMapping() {
         colNameIdx = findColumnByKeywords(headers, ['學生姓名', '姓名', 'Name', 'name', '名'], false, true);
 
         if (colClassIdx === -1 || colSeatIdx === -1 || colNameIdx === -1) {
-            alert(`工作表「${sheet.name}」中缺少必要欄位（班級、座號、學生姓名/姓名），無法進行整理。`);
+            alert(`工作表「${sheet.name}」缺少必要欄位（班級、座號、學生姓名或姓名），無法整理。請確認選擇的是學校系統匯出的錄取名冊，或把「彙整模式」改成「多工作表」。`);
             return;
         }
 
@@ -99,7 +99,7 @@ function analyzeAndRenderMapping() {
         });
 
         if (slotCols.length === 0) {
-            alert(`工作表「${sheet.name}」中找不到任何包含「課程名稱」、「社團」或「時段」的欄位。`);
+            alert(`工作表「${sheet.name}」找不到「課程名稱」、「社團」或「時段」欄位，無法分出社團。請確認選擇的是學校系統匯出的錄取名冊，或把「彙整模式」改成「多工作表」。`);
             return;
         }
 
@@ -188,7 +188,7 @@ function analyzeAndRenderMapping() {
 
                 // 時段
                 const tdSlot = document.createElement('td');
-                tdSlot.innerHTML = `<span class="${badgeClass}">${escapeHtml(slotCol)}</span>`;
+                tdSlot.innerHTML = `<span class="${escapeHtml(badgeClass)}">${escapeHtml(slotCol)}</span>`;
                 tr.appendChild(tdSlot);
 
                 // 社團名輸入框
@@ -199,6 +199,8 @@ function analyzeAndRenderMapping() {
                 input.value = cleanClubDisplayName(club) || club;
                 input.dataset.slot = slotCol;
                 input.dataset.original = club;
+                // 每列沒有可見的 <label>，用 aria-label 讓螢幕閱讀器唸出是哪個社團（setAttribute 不解析 HTML，不需跳脫）
+                input.setAttribute('aria-label', `社團名稱：${club}`);
                 tdName.appendChild(input);
                 tr.appendChild(tdName);
 
@@ -206,7 +208,8 @@ function analyzeAndRenderMapping() {
                 const tdDay = document.createElement('td');
                 const select = document.createElement('select');
                 select.className = "day-select";
-                
+                select.setAttribute('aria-label', `上課星期：${club}`);
+
                 weekdaysList.forEach(w => {
                     const opt = document.createElement('option');
                     opt.value = w;
@@ -236,7 +239,7 @@ function analyzeAndRenderMapping() {
         });
 
         if (sheetsToProcess.length === 0) {
-            alert("在 Excel 中找不到任何可以彙整的社團名單工作表！");
+            alert("這個 Excel 找不到可以彙整的社團名單工作表。請確認選擇的是錄取名冊，或把「彙整模式」改成「單一清單」。");
             return;
         }
 
@@ -272,7 +275,7 @@ function analyzeAndRenderMapping() {
             const tdSlot = document.createElement('td');
             const displaySlot = parsed.slot ? `時段 ${parsed.slot}` : "多工作表";
             const badgeClass = parsed.slot ? (parsed.slot === 'A' ? "slot-badge slot-a" : "slot-badge slot-other") : "slot-badge slot-other";
-            tdSlot.innerHTML = `<span class="${badgeClass}">${escapeHtml(displaySlot)}</span>`;
+            tdSlot.innerHTML = `<span class="${escapeHtml(badgeClass)}">${escapeHtml(displaySlot)}</span>`;
             tr.appendChild(tdSlot);
 
             // 社團名輸入框
@@ -282,6 +285,7 @@ function analyzeAndRenderMapping() {
             input.className = "club-input";
             input.value = parsed.clubName;
             input.dataset.original = name;
+            input.setAttribute('aria-label', `社團名稱：工作表「${name}」`);
             tdName.appendChild(input);
             tr.appendChild(tdName);
 
@@ -289,7 +293,8 @@ function analyzeAndRenderMapping() {
             const tdDay = document.createElement('td');
             const select = document.createElement('select');
             select.className = "day-select";
-            
+            select.setAttribute('aria-label', `上課星期：工作表「${name}」`);
+
             weekdaysList.forEach(w => {
                 const opt = document.createElement('option');
                 opt.value = w;

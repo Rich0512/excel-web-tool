@@ -328,11 +328,11 @@ function clearLocalStorageConfig() {
 }
 
 /**
- * 🛡️ 檔案格式檢查：透過二進制檔頭 (Magic Bytes) 精準識別檔案真實結構
+ * 檔案格式檢查：透過二進制檔頭 (Magic Bytes) 精準識別檔案真實結構
  * 避免舊版 .xls (BIFF8) 或 CSV 偽裝副檔名造成 ExcelJS 崩潰
  */
 async function checkExcelFileFormat(file) {
-    if (!file) return { valid: false, reason: 'no_file' };
+    if (!file) return { valid: false, reason: '沒有選到檔案。請重新選擇名冊檔案。' };
     
     try {
         const buffer = await file.slice(0, 8).arrayBuffer();
@@ -348,7 +348,7 @@ async function checkExcelFileFormat(file) {
             return { 
                 valid: false, 
                 type: 'xls_legacy',
-                reason: '偵測到此檔案為舊版 Excel 97-2003 (.xls) 二進制格式。\n請在 Microsoft Excel 中開啟此檔，選擇「另存新檔」並存為「.xlsx」格式後再重新上傳。'
+                reason: '這個檔案是舊版 Excel 97-2003（.xls）格式，無法讀取。\n請用 Excel 開啟，選擇「另存新檔」存成「.xlsx」後，再重新選擇。'
             };
         }
 
@@ -358,7 +358,7 @@ async function checkExcelFileFormat(file) {
             return {
                 valid: false,
                 type: 'xls_legacy',
-                reason: '目前系統僅支援現代「.xlsx」格式。\n若為舊版「.xls」檔案，請先在 Excel 中另存為「.xlsx」格式。'
+                reason: '這個工具只能讀取「.xlsx」格式。\n請用 Excel 開啟這個「.xls」檔案，另存成「.xlsx」後，再重新選擇。'
             };
         }
 
@@ -366,7 +366,7 @@ async function checkExcelFileFormat(file) {
         return {
             valid: false,
             type: 'unknown',
-            reason: '檔案格式無效或檔案已損毀，無法以 Excel 工作表讀取。請確認是否為正常的 .xlsx 活頁簿。'
+            reason: '這個檔案無法當成 Excel 讀取，可能不是 Excel 檔或已損毀。請用 Excel 開啟確認內容，另存成 .xlsx 後再重新選擇。'
         };
     } catch (err) {
         console.warn('檢查檔案格式時發生錯誤:', err);
@@ -374,12 +374,12 @@ async function checkExcelFileFormat(file) {
         if (file.name.toLowerCase().endsWith('.xlsx')) {
             return { valid: true, type: 'xlsx' };
         }
-        return { valid: false, type: 'unknown', reason: '無法讀取檔案內容，請確認檔案未被其他程式鎖定。' };
+        return { valid: false, type: 'unknown', reason: '無法讀取這個檔案，可能正被其他程式使用。請關閉正在開啟這個檔案的程式（例如 Excel），再重新選擇。' };
     }
 }
 
 /**
- * 🛡️ Excel 工作表名稱消毒器 (Worksheet Name Sanitizer)
+ * Excel 工作表名稱消毒器 (Worksheet Name Sanitizer)
  * Excel 規範：禁止出現 \ / ? * [ ] : ，不可前後帶單引號，最長不可超過 31 個字元
  */
 function sanitizeSheetName(name, fallback = '工作表') {
@@ -398,7 +398,7 @@ function sanitizeSheetName(name, fallback = '工作表') {
 }
 
 /**
- * 🛡️ 不可見字元淨化器
+ * 不可見字元淨化器
  * 清理剪貼簿常夾帶的零寬空格 (\u200B-\u200D, \uFEFF)、全形空白 (\u3000) 與 &nbsp; (\u00A0)
  */
 function cleanInvisibleChars(str) {
@@ -411,7 +411,7 @@ function cleanInvisibleChars(str) {
 }
 
 /**
- * 🛡️ 跨平台安全的檔案下載觸發器 (強化 iOS Safari / Mobile WebKit)
+ * 跨平台安全的檔案下載觸發器 (強化 iOS Safari / Mobile WebKit)
  */
 function triggerFileDownload(blob, filename) {
     const url = window.URL.createObjectURL(blob);

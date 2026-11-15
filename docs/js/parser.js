@@ -28,7 +28,7 @@ const FIELD_DETECTION_RULES = {
 };
 
 /**
- * 🛡️ 貼上文字預處理：清除不可見字元，並將被雙引號包覆的儲存格內換行 (\r\n / \n) 轉換為空格
+ * 貼上文字預處理：清除不可見字元，並將被雙引號包覆的儲存格內換行 (\r\n / \n) 轉換為空格
  * 防止 Excel/Google Sheets 儲存格內換行 (Alt+Enter) 破壞列結構導致欄位錯位
  */
 function normalizePastedText(text) {

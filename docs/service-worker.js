@@ -3,7 +3,7 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.11';
+const CACHE_VERSION = 'v3.12';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
 // 需要快取的核心靜態資源清單
@@ -36,7 +36,7 @@ const STATIC_ASSETS = [
 ];
 
 // ==========================================
-// 📦 安裝事件：預快取所有靜態資源
+// 安裝事件：預快取所有靜態資源
 // ==========================================
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -55,7 +55,7 @@ self.addEventListener('install', (event) => {
 });
 
 // ==========================================
-// 🧹 啟用事件：清除舊版快取
+// 啟用事件：清除舊版快取
 // ==========================================
 self.addEventListener('activate', (event) => {
     event.waitUntil(
@@ -78,7 +78,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // ==========================================
-// 🌐 攔截請求策略：
+// 攔截請求策略：
 // 1. HTML 導航頁面：Network-First (確保獲得最新版本，離線時 fallback 快取)
 // 2. 靜態資源 (JS/CSS/字型/圖片)：Cache-First (急速載入，節省頻寬)
 // ==========================================

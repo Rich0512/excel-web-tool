@@ -31,7 +31,7 @@ CSP 沒有開放 `'unsafe-inline'`，所以：
 
 完整規範在 repo 根目錄的 `DESIGN.md`（課表格線，2026-11-15 定案），改外觀前先讀。重點：
 
-- 顏色只用 `style.css` `:root` 的 token：`--primary` #0f3b6d 校徽藍（主要按鈕、標題、目前步驟）、`--ink`、`--ink-muted`、`--line`（格線）、`--control`（輸入框邊框）、`--mark` 螢光筆黃（只用在課表範例）。語意狀態色見 `DESIGN.md`。不要新增裝飾色、漸層、毛玻璃或大陰影。
+- 顏色只用 `style.css` `:root` 的 token：`--primary` #0f3b6d 校徽藍（主要按鈕、標題、目前步驟）、`--ink`、`--ink-muted`、`--line`（格線）、`--control`（輸入框邊框）、`--on-primary`（校徽藍底上的白字）、`--mark` 螢光筆黃（只用在課表範例）。不要直接寫色碼。語意狀態色見 `DESIGN.md`。不要新增裝飾色、漸層、毛玻璃或大陰影。
 - 字型只有 Outfit（400/600）與 Noto Sans TC（400/700，已裁切）。不要新增字型或字重，也不要引用 CDN。
 - **不使用 emoji**（HTML、JS 產生的訊息、`alert()` 都是）；圖示用 inline SVG 線條圖示。
 - 內容靠左對齊、最寬 1180px；沿用 `DESIGN.md` 的元件表，不要另造相似元件。
@@ -43,7 +43,7 @@ CSP 沒有開放 `'unsafe-inline'`，所以：
 - 可點擊的非按鈕元素要加 `role="button"`、`tabindex="0"`，並處理 Enter／空白鍵。
 - `role="button"` 或 `<button>` 裡面不可再放連結、按鈕等可互動元素（鍵盤與螢幕閱讀器無法分別操作）。需要在可點擊區塊裡放連結時，區塊本身不當按鈕，改在裡面放真正的 `<button>`（例如拖曳區）。
 - 鍵盤焦點用 `:focus-visible` 顯示，不可只寫 `outline: none`。
-- 斷點：768px（平板）、640px（手機）。手機上的觸控目標至少 44px；輸入框字級至少 16px，避免 iOS 自動縮放。
+- 斷點：768px（平板）、640px（手機）。觸控目標在所有寬度都至少 44px（桌機也可能是觸控螢幕）；輸入框字級至少 16px，避免 iOS 自動縮放。
 
 ## 文字
 

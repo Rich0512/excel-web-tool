@@ -14,7 +14,7 @@ const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 
 // ==========================================
-// 📥 檔案拖曳與讀取邏輯
+// 檔案拖曳與讀取邏輯
 // ==========================================
 
 // 拖曳視覺效果
@@ -55,11 +55,11 @@ fileInput.addEventListener('change', (e) => {
 async function handleFileSelect(file) {
     if (!file) return;
 
-    // 🛡️ 檔頭簽章檢查：精準攔截舊版 .xls (BIFF8) 或偽裝格式
+    // 檔頭簽章檢查：精準攔截舊版 .xls (BIFF8) 或偽裝格式
     if (typeof checkExcelFileFormat === 'function') {
         const formatCheck = await checkExcelFileFormat(file);
         if (!formatCheck.valid) {
-            alert(formatCheck.reason || "無效的 Excel 檔案格式。");
+            alert(formatCheck.reason || "這不是可以讀取的 Excel 檔案。請改選學校系統匯出的 .xlsx 名冊。");
             if (fileInput) fileInput.value = "";
             return;
         }
@@ -95,13 +95,13 @@ async function handleFileSelect(file) {
 
         } catch (err) {
             console.error("載入 Excel 失敗:", err);
-            alert("載入 Excel 活頁簿失敗，可能檔案損毀或受密碼保護：\n" + (err.message || err));
+            alert("無法讀取這個 Excel 檔案，可能已損毀或設有密碼。請用 Excel 開啟後另存成 .xlsx（不設密碼），再重新選擇。\n錯誤內容：" + (err.message || err));
             if (fileInput) fileInput.value = "";
         }
     };
 
     reader.onerror = function() {
-        alert("讀取本機檔案時發生錯誤，請確認檔案未被其他應用程式獨佔鎖定。");
+        alert("無法讀取這個檔案，可能正被其他程式使用。請關閉正在開啟這個檔案的程式（例如 Excel），再重新選擇。");
         if (fileInput) fileInput.value = "";
     };
     
@@ -109,7 +109,7 @@ async function handleFileSelect(file) {
 }
 
 // ==========================================
-// ⚙️ 步驟切換
+// 步驟切換
 // ==========================================
 
 // 切換步驟顯示
@@ -150,9 +150,9 @@ function resetToUpload() {
     switchStep('step-upload');
 }
 
-// 🛡️ 一鍵安全清除所有暫存個資
+// 一鍵安全清除所有暫存個資
 function manualHardResetAll() {
-    if (confirm("確定要安全清除本網頁載入的所有 Excel 檔案、對照表、貼上之社團暫存資料與瀏覽器記憶的社團星期設定嗎？這將會清除您目前在畫面上的所有操作與預覽。")) {
+    if (confirm("確定要清除這次的資料嗎？會清除選擇的 Excel 檔案、星期設定、已加入的社團，以及瀏覽器記住的社團星期，畫面會回到第一步。")) {
         // 清除檔案模式狀態
         fileInput.value = "";
         uploadedWorkbook = null;
@@ -199,7 +199,7 @@ function manualHardResetAll() {
 }
 
 // ==========================================
-// ⚡ 資料轉換與下載邏輯 (檔案上傳模式)
+// 資料轉換與下載邏輯 (檔案上傳模式)
 // ==========================================
 
 async function processAndDownload() {
@@ -230,7 +230,7 @@ async function processAndDownload() {
             const selectedDay = select.value;
 
             if (!editedClub) {
-                alert("社團名稱不能為空！");
+                alert("有社團的名稱是空白的。請在每一列的「社團名稱」填入名稱，再開始轉換。");
                 return;
             }
 
@@ -251,7 +251,7 @@ async function processAndDownload() {
         }
 
         if (unselectedClubs.length > 0) {
-            alert(`請為以下社團選擇上課星期後再行轉換：\n\n${unselectedClubs.join('\n')}`);
+            alert(`以下社團還沒選擇上課星期。請選好星期後，再按「開始轉換並下載課表」：\n\n${unselectedClubs.join('\n')}`);
             return;
         }
 
@@ -277,7 +277,7 @@ async function processAndDownload() {
         );
 
         if (resultData.length === 0) {
-            alert("無任何有效學生資料可供匯出，請確認上傳檔案。");
+            alert("名冊中沒有可以匯出的學生資料。請確認選擇的是錄取名冊，並檢查每個社團都選了上課星期。");
             return;
         }
 
@@ -312,7 +312,7 @@ async function processAndDownload() {
 
     } catch (err) {
         console.error("處理或匯出失敗:", err);
-        alert("匯出課表時發生錯誤：\n" + (err.message || err));
+        alert("匯出課表時發生錯誤，課表沒有下載。請重新整理網頁後再試一次；若仍失敗，請確認名冊是學校系統匯出的原始檔。\n錯誤內容：" + (err.message || err));
     } finally {
         if (actionBtn) {
             actionBtn.disabled = false;
@@ -327,7 +327,7 @@ document.getElementById('include-freshmen').addEventListener('change', analyzeAn
 document.getElementById('slot-mode-select').addEventListener('change', updateMappingConflicts);
 
 // ==========================================
-// 📋 直接貼上名單模式邏輯
+// 直接貼上名單模式邏輯
 // ==========================================
 
 let pastedClubs = [];
@@ -362,8 +362,10 @@ const parsePreview = document.getElementById('paste-parse-preview');
 function updatePastePreview() {
     const text = pasteArea.value;
     if (text.length > 200000) {
-        parsePreview.innerHTML = `<strong class="text-danger">無法讀取：</strong>貼上的內容超過 200,000 字元。請一次只貼上一個社團的名單。`;
-        parsePreview.classList.add('is-warning');
+        // 無法處理是錯誤狀態，用錯誤色系（DESIGN.md「錯誤／刪除」）
+        parsePreview.innerHTML = `<strong>無法讀取：</strong>貼上的內容超過 200,000 字元。請一次只貼上一個社團的名單。`;
+        parsePreview.classList.remove('is-warning');
+        parsePreview.classList.add('is-error');
         parsePreview.style.display = 'block';
         return;
     }
@@ -382,12 +384,15 @@ function updatePastePreview() {
         const hasSeat = parsed.filter(s => s.seat).length;
         const hasName = parsed.filter(s => s.name).length;
         
-        parsePreview.innerHTML = `讀到 <strong>${parsed.length}</strong> 位學生` +
-                                 `<span class="parse-preview-detail">其中 ${hasClass} 位有班級、${hasSeat} 位有座號、${hasName} 位有姓名</span>`;
-        parsePreview.classList.remove('is-warning');
+        // 插入值雖然都是數字，仍依規則一律經過 escapeHtml()
+        parsePreview.innerHTML = `讀到 <strong>${escapeHtml(String(parsed.length))}</strong> 位學生` +
+                                 `<span class="parse-preview-detail">其中 ${escapeHtml(String(hasClass))} 位有班級、${escapeHtml(String(hasSeat))} 位有座號、${escapeHtml(String(hasName))} 位有姓名</span>`;
+        parsePreview.classList.remove('is-warning', 'is-error');
         parsePreview.style.display = 'block';
     } else {
+        // 讀不到資料時使用者可以修正貼上內容，屬於警告而非錯誤
         parsePreview.innerHTML = `<strong>讀不到學生資料。</strong>請確認貼上的內容包含班級、座號、姓名這幾欄。`;
+        parsePreview.classList.remove('is-error');
         parsePreview.classList.add('is-warning');
         parsePreview.style.display = 'block';
     }
@@ -403,9 +408,9 @@ pasteArea.addEventListener('paste', () => {
 document.getElementById('paste-slot-mode-select').addEventListener('change', renderLoadedClubs);
 document.getElementById('paste-include-freshmen').addEventListener('change', renderLoadedClubs);
 
-// 清空所有已載入的社團名單
+// 移除所有已加入的社團
 function clearAllPastedClubs() {
-    if (confirm("確定要清空所有已載入的社團名單嗎？這將會清除您之前載入的所有社團資料。")) {
+    if (confirm("確定要移除所有已加入的社團嗎？移除後要重新貼上名單並加入。")) {
         pastedClubs = [];
         renderLoadedClubs();
         pasteArea.value = "";
@@ -426,12 +431,12 @@ function loadPastedClub() {
     const minG = gradeStart === "新生" ? 0 : parseInt(gradeStart, 10);
     const maxG = gradeEnd === "新生" ? 0 : parseInt(gradeEnd, 10);
     if (minG > maxG) {
-        alert(`年級限制錯誤：起始年級（${gradeStart}）不能大於結束年級（${gradeEnd}）！`);
+        alert(`起始年級（${gradeStart}）大於結束年級（${gradeEnd}）。請重新選擇年級範圍，再按「加入這個社團」。`);
         return;
     }
 
     if (!clubNameInput) {
-        alert("請先輸入社團名稱！");
+        alert("還沒有填社團名稱。請先填入社團名稱，再按「加入這個社團」。");
         return;
     }
     
@@ -441,13 +446,13 @@ function loadPastedClub() {
     }
     
     if (!pastedText) {
-        alert("請貼上網頁複製的名單資料！");
+        alert("還沒有貼上名單。請先把選課網頁上的名單複製並貼到文字框，再按「加入這個社團」。");
         return;
     }
     
     let rawStudents = parsePastedText(pastedText);
     if (rawStudents.length === 0) {
-        alert("無法解析名單資料。請確認資料中包含「姓名」等標題列與學生資料列。");
+        alert("讀不到學生資料。請確認貼上的內容包含標題列（班級、座號、姓名）與學生資料列，再按「加入這個社團」。");
         return;
     }
     
@@ -498,25 +503,26 @@ function renderLoadedClubs() {
         const infoContainer = document.createElement('div');
         infoContainer.className = "loaded-club-body";
 
-        // 🛡️ 社團名稱與學生姓名來自使用者貼上的內容，插入 HTML 前一律跳脫
+        // 社團名稱與學生姓名來自使用者貼上的內容，插入 HTML 前一律跳脫
         const infoHeader = document.createElement('div');
         infoHeader.className = "loaded-club-info";
         infoHeader.setAttribute('role', 'button');
         infoHeader.setAttribute('tabindex', '0');
         infoHeader.setAttribute('aria-expanded', 'false');
         infoHeader.innerHTML = `<span class="loaded-club-name">${escapeHtml(club.clubName)}</span>` +
-                               `<span class="loaded-club-meta">${escapeHtml(club.day)}，正取 ${club.selectedCount}／${club.quota} 人，報名 ${club.students.length} 人，限 ${escapeHtml(club.gradeStart)}–${escapeHtml(club.gradeEnd)} 年級</span>` +
+                               `<span class="loaded-club-meta">${escapeHtml(club.day)}，正取 ${escapeHtml(String(club.selectedCount))}／${escapeHtml(String(club.quota))} 人，報名 ${escapeHtml(String(club.students.length))} 人，限 ${escapeHtml(club.gradeStart)}–${escapeHtml(club.gradeEnd)} 年級</span>` +
                                `<span class="loaded-club-badge">查看名單</span>`;
 
         const infoDetails = document.createElement('div');
         infoDetails.className = "loaded-club-details";
         infoDetails.hidden = true;
 
-        const selectedList = club.students.filter(s => s.selected).map(s => escapeHtml(`${s.class || '新生'}${s.seat ? `座號${s.seat}` : ''} ${s.name}`)).join('、');
-        const backupList = club.students.filter(s => !s.selected).map(s => escapeHtml(`${s.name}(${s.drawSequence})`)).join('、');
+        // 先組成純文字，插入 HTML 時才統一跳脫，審查時一眼就能確認每個插入值都經過 escapeHtml()
+        const selectedText = club.students.filter(s => s.selected).map(s => `${s.class || '新生'}${s.seat ? `座號${s.seat}` : ''} ${s.name}`).join('、');
+        const backupText = club.students.filter(s => !s.selected).map(s => `${s.name}(${s.drawSequence})`).join('、');
 
-        infoDetails.innerHTML = `<div class="roster-selected"><strong>正取：</strong>${selectedList || '無'}</div>` +
-                                 `<div class="roster-backup"><strong>備取或不符資格：</strong>${backupList || '無'}</div>`;
+        infoDetails.innerHTML = `<div class="roster-selected"><strong>正取：</strong>${escapeHtml(selectedText || '無')}</div>` +
+                                 `<div class="roster-backup"><strong>備取或不符資格：</strong>${escapeHtml(backupText || '無')}</div>`;
 
         const toggleDetails = () => {
             const willShow = infoDetails.hidden;
@@ -554,9 +560,10 @@ function renderLoadedClubs() {
     const section = document.getElementById('loaded-clubs-section');
     const totalSpan = document.getElementById('total-pasted-students');
     
+    // 下載處理中按鈕文字會被暫時替換，筆數的 <span> 可能不存在，所以要先判斷
     if (pastedClubs.length > 0) {
         section.style.display = "block";
-        totalSpan.textContent = totalSelectedStudents;
+        if (totalSpan) totalSpan.textContent = String(totalSelectedStudents);
         
         // 即時衝突檢查
         const slotMode = document.getElementById('paste-slot-mode-select').value;
@@ -565,7 +572,7 @@ function renderLoadedClubs() {
         showConflictAlert(resultData, "paste-conflict-alert");
     } else {
         section.style.display = "none";
-        totalSpan.textContent = "0";
+        if (totalSpan) totalSpan.textContent = "0";
         showConflictAlert([], "paste-conflict-alert");
     }
 
@@ -584,7 +591,7 @@ async function processPastedData() {
 
     try {
         if (pastedClubs.length === 0) {
-            alert("請先載入至少一個社團名單！");
+            alert("還沒有加入任何社團。請先貼上名單並按「加入這個社團」，再下載課表。");
             return;
         }
         
@@ -600,7 +607,7 @@ async function processPastedData() {
         const { resultData, activeDays } = processPastedClubsData(pastedClubs, slotMode, includeFreshmen);
         
         if (resultData.length === 0) {
-            alert("無任何有效學生名單資料可供彙整！");
+            alert("已加入的社團中沒有可以彙整的學生。請確認名單有學生，或調整年級範圍與「包含沒有班級座號的新生」設定後重新加入。");
             return;
         }
         
@@ -621,25 +628,29 @@ async function processPastedData() {
         const finalFilename = customFilename || "直接貼上名單彙整";
         await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, pastedClubs);
         
-        // 重設狀態
+        // 重設狀態（畫面在 finally 還原按鈕後才重繪）
         pastedClubs = [];
-        renderLoadedClubs();
         document.getElementById('paste-text-area').value = "";
         document.getElementById('paste-excel-filename').value = "";
+        // 改 value 不會觸發 input 事件，預覽要手動隱藏，否則會留著舊的筆數
+        parsePreview.style.display = 'none';
 
     } catch (err) {
         console.error("貼上名單彙整失敗:", err);
-        alert("彙整名冊時發生錯誤：\n" + (err.message || err));
+        alert("抽籤或匯出課表時發生錯誤，課表沒有下載。請重新整理網頁後再試一次；若仍失敗，請確認貼上的名單包含班級、座號、姓名。\n錯誤內容：" + (err.message || err));
     } finally {
         if (actionBtn) {
             actionBtn.disabled = false;
             actionBtn.innerHTML = origBtnHtml;
         }
+        // 必須在還原按鈕之後重繪：處理中按鈕的文字被替換，裡面的筆數 <span> 暫時不存在，
+        // 之前在 try 裡重繪會丟出例外，下載成功卻跳出「課表沒有下載」
+        renderLoadedClubs();
     }
 }
 
 // ==========================================
-// 🚨 衝突與衝堂即時偵測邏輯 (UI/UX 優化)
+// 衝突與衝堂即時偵測邏輯 (UI/UX 優化)
 // ==========================================
 
 function showConflictAlert(resultData, elementId) {
@@ -648,18 +659,17 @@ function showConflictAlert(resultData, elementId) {
 
     const conflictingStudents = resultData.filter(s => s.remarks && s.remarks.length > 0);
     if (conflictingStudents.length > 0) {
-        let html = `<div class="conflict-title">有 ${conflictingStudents.length} 位學生同一天上兩個社團：</div>`;
+        // 與其他 .warning-callout 相同的結構：左側線條圖示＋內容（DESIGN.md 元件表「提醒」）
+        let html = `<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>`;
+        html += `<div><div class="conflict-title">有 ${escapeHtml(String(conflictingStudents.length))} 位學生同一天上兩個社團：</div>`;
         html += `<ul class="conflict-list">`;
         conflictingStudents.forEach(s => {
-            const conflictDetails = escapeHtml(s.remarks.join('；'));
-            const safeClass = escapeHtml(s.class);
-            const safeSeat = escapeHtml(s.seat);
-            const safeName = escapeHtml(s.name);
-            html += `<li><strong>${safeClass} 班 ${safeSeat} 號 ${safeName}</strong>：${conflictDetails}</li>`;
+            // 姓名、班級、座號、社團都來自名冊，插入點一律 escapeHtml()；座號可能是數字，先轉成字串
+            html += `<li><strong>${escapeHtml(String(s.class ?? ''))} 班 ${escapeHtml(String(s.seat ?? ''))} 號 ${escapeHtml(String(s.name ?? ''))}</strong>：${escapeHtml(s.remarks.join('；'))}</li>`;
         });
-        html += `</ul>`;
+        html += `</ul></div>`;
         alertDiv.innerHTML = html;
-        alertDiv.style.display = 'block';
+        alertDiv.style.display = 'flex';
     } else {
         alertDiv.style.display = 'none';
         alertDiv.innerHTML = '';
@@ -708,7 +718,7 @@ function updateMappingConflicts() {
 }
 
 // ==========================================
-// 🔘 按鈕事件綁定 (CSP 禁止 HTML 內的 onclick，一律在此綁定)
+// 按鈕事件綁定 (CSP 禁止 HTML 內的 onclick，一律在此綁定)
 // ==========================================
 document.getElementById('btn-hard-reset').addEventListener('click', manualHardResetAll);
 document.getElementById('tab-btn-file').addEventListener('click', () => switchInputTab('file'));
@@ -721,12 +731,12 @@ document.getElementById('btn-process-mapping').addEventListener('click', process
 document.getElementById('btn-restart').addEventListener('click', resetToUpload);
 
 // ==========================================
-// 🛡️ 網頁防誤關閉與重新整理機制
+// 網頁防誤關閉與重新整理機制
 // ==========================================
 window.addEventListener('beforeunload', (e) => {
-    // 只要有讀取 Excel 檔案或貼上載入了社團，即進行警告
+    // 只要有讀取 Excel 檔案或加入了社團，即進行警告
     if (uploadedWorkbook !== null || (pastedClubs && pastedClubs.length > 0)) {
-        const message = '您填寫的對照設定或載入的社團名單尚未儲存/下載，確定要離開嗎？';
+        const message = '星期設定或已加入的社團還沒下載成課表，離開後要重新開始。確定要離開嗎？';
         e.preventDefault();
         e.returnValue = message;
         return message;
@@ -734,7 +744,7 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 // ==========================================
-// 🛡️ 全域未捕獲異常 (Unhandled Errors) 兜底防護
+// 全域未捕獲異常 (Unhandled Errors) 兜底防護
 // ==========================================
 window.addEventListener('unhandledrejection', (event) => {
     console.error('全域非同步例外未捕獲:', event.reason);

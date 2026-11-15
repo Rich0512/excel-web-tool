@@ -1,5 +1,5 @@
 /**
- * 💅 核心彙整與導出 Excel 樣式渲染輔助函數
+ * 核心彙整與導出 Excel 樣式渲染輔助函數
  */
 
 const GRADE_COLORS = {
@@ -76,7 +76,7 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
         ws.addRow(rowData);
     });
 
-    // 💅 總表表頭樣式 (經典延平藍)
+    // 總表表頭樣式 (經典延平藍)
     const headerRow = ws.getRow(1);
     headerRow.height = 28;
     headerRow.eachCell((cell) => {
@@ -153,7 +153,7 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
         const usedSheetNames = new Set(['課程與學生清單']);
 
         pastedClubsList.forEach(club => {
-            // 🛡️ 工作表名稱消毒與唯一性保護（防止特殊字元與重複命名導致 ExcelJS 拋錯）
+            // 工作表名稱消毒與唯一性保護（防止特殊字元與重複命名導致 ExcelJS 拋錯）
             const sanitizeFn = typeof sanitizeSheetName === 'function' ? sanitizeSheetName : (n) => String(n || "社團").replace(/[\\/?*\[\]:]/g, '_').substring(0, 31);
             let baseWsName = sanitizeFn(club.clubName, '社團名冊');
             let finalWsName = baseWsName;

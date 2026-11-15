@@ -19,6 +19,7 @@
 | `--ink-muted` | `#4a5a70` | 說明文字（白底對比 6.9:1） |
 | `--bg` | `#f6f8fb` | 頁面底色 |
 | `--surface` | `#ffffff` | 面板、輸入框 |
+| `--on-primary` | `#ffffff` | 校徽藍底上的文字（主要按鈕、目前步驟、數量標籤） |
 | `--line` | `#d6e0ec` | 格線、面板外框（裝飾性分隔） |
 | `--control` | `#7b8ca3` | 輸入框、選單、核取方塊的邊框（需 3:1 以上） |
 | `--mark` | `#ffe58a` | 螢光筆黃。**只用在課表範例中有社團的格子** |
@@ -68,16 +69,18 @@
 
 | 元件 | class | 規則 |
 |---|---|---|
-| 主要按鈕 | `.btn.btn-primary` | 校徽藍實心白字。一個畫面只有一個（送出這一步的動作） |
-| 次要按鈕 | `.btn.btn-secondary` | 白底、`--control` 邊框、深色字。返回、加入、清空 |
+| 主要按鈕 | `.btn.btn-primary` | 校徽藍實心白字。一個畫面只有一個（送出這一步的動作）。404 頁不載入 `style.css`（任意深度的網址都會回傳它，只需少量樣式），用 `404.css` 的 `.btn-home` 複製同一組數值，改按鈕時兩邊要同步 |
+| 次要按鈕 | `.btn.btn-secondary` | 白底、2px 校徽藍邊框、校徽藍字，hover 底色 `--primary-tint`。返回、加入這個社團（和下方的小按鈕要分得出來，所以不用 `--control` 灰框） |
 | 小按鈕 | `.btn.btn-outline` | 頁首「清除這次的資料」等低頻操作 |
 | 步驟列 | `.stepper` | `<ol>`，目前步驟加 `aria-current="step"`，由 `switchStep()` 更新 |
 | 來源切換 | `.tab-btn` | 兩張並排的選項（標題＋一行說明），選中時 2px 校徽藍外框 |
 | 拖曳區 | `.upload-zone` | 2px 虛線框，hover／拖曳時框線變校徽藍、底色變 `--primary-tint`。框本身不是按鈕：點框任何地方開啟選檔是滑鼠的便利操作，鍵盤用框內真正的「選擇檔案」按鈕；範本連結放在按鈕下方（14px 小字） |
 | 說明段落 | `.tab-intro` | 一般段落文字，不加色條或底色 |
-| 提醒 | `.warning-callout` | 警告色系，左側線條圖示，不用 emoji |
+| 提醒 | `.warning-callout` | 警告色系，左側線條圖示，不用 emoji。衝堂提醒（`.conflict-alert`）也是同一個元件，由 JS 產生內容時同樣要放圖示 |
 | 欄位 | `.club-input`、`.config-select`、`.day-select` | 最小高度 44px，字級 16px（避免 iOS 縮放） |
 | 課表範例 | `.sample-table` | 只用在首頁範例；有社團的格子加 `.is-filled` |
+| 數量標籤 | `.tab-count` | 來源切換上「已加入幾個社團」的數字。校徽藍底 `--on-primary` 字、14px、22px 高的正圓（圓角為高度一半，是圓角規則的唯一例外） |
+| 時段標籤 | `.slot-badge` | 步驟二的時段分類，不是狀態，不用語意狀態色：A 時段 `--primary-tint` 底校徽藍字，其他時段 `--bg` 底 `--ink-muted` 字加 `--line` 框；圓角同控制項 |
 
 ## 圖示與文字
 
@@ -105,4 +108,4 @@
 
 - 文字對比 4.5:1 以上；控制項邊框 3:1 以上。
 - 鍵盤焦點用 `:focus-visible` 顯示 3px 校徽藍外框，不可只寫 `outline: none`。
-- 觸控目標至少 44px；每個欄位都有 `<label for>` 或 `aria-label`。
+- 觸控目標在所有寬度都至少 44px（桌機也可能是觸控螢幕）；每個欄位都有 `<label for>` 或 `aria-label`，JS 產生的欄位也一樣。

@@ -1,5 +1,5 @@
 /**
- * ⚙️ 學生社團課表彙整核心處理器 (Business Logic / Model)
+ * 學生社團課表彙整核心處理器 (Business Logic / Model)
  */
 
 /**
@@ -11,7 +11,7 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
 
     if (mode === 'single') {
         // ==========================================
-        // 🔹 模式 A：單一總表分欄彙整 (依學生合併，同一位學生排好一到五課表，僅佔一列)
+        // 模式 A：單一總表分欄彙整 (依學生合併，同一位學生排好一到五課表，僅佔一列)
         // ==========================================
         const studentMap = {};
 
@@ -92,7 +92,7 @@ function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetDa
 
     } else {
         // ==========================================
-        // 🔸 模式 B：多工作表分社團彙整
+        // 模式 B：多工作表分社團彙整
         // ==========================================
         const studentMap = {};
 
@@ -362,7 +362,7 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
         const entryText = label ? `${cleanName}(${label})` : cleanName;
         
         club.students.forEach(student => {
-            // 🚨 僅彙整正式被抽中錄取的學生！
+            // 僅彙整正式被抽中錄取的學生！
             if (student.selected === false) return;
             
             const cleanFn = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars : (s) => String(s || "").trim();
