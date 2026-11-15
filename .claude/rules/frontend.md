@@ -41,6 +41,7 @@ CSP 沒有開放 `'unsafe-inline'`，所以：
 
 - 每個表單元素都要有 `<label for>` 或 `aria-label`。
 - 可點擊的非按鈕元素要加 `role="button"`、`tabindex="0"`，並處理 Enter／空白鍵。
+- `role="button"` 或 `<button>` 裡面不可再放連結、按鈕等可互動元素（鍵盤與螢幕閱讀器無法分別操作）。需要在可點擊區塊裡放連結時，區塊本身不當按鈕，改在裡面放真正的 `<button>`（例如拖曳區）。
 - 鍵盤焦點用 `:focus-visible` 顯示，不可只寫 `outline: none`。
 - 斷點：768px（平板）、640px（手機）。手機上的觸控目標至少 44px；輸入框字級至少 16px，避免 iOS 自動縮放。
 

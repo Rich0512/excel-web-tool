@@ -334,15 +334,16 @@ strong {
 
 .upload-btn {
     margin-top: 6px;
-    pointer-events: none;
 }
 
 #file-input {
     display: none;
 }
 
+/* 拖曳區內「選擇檔案」下方的範本連結：給還沒有名冊的人，比主要動作低調 */
 .template-link {
-    font-size: 15px;
+    margin-top: 8px;
+    font-size: 14px;
 }
 
 .tab-intro {
@@ -978,7 +979,6 @@ strong {
 .tab-btn:focus-visible,
 .loaded-club-info:focus-visible,
 .loaded-club-delete:focus-visible,
-.upload-zone:focus-visible,
 a:focus-visible,
 .config-checkbox-container input:focus-visible {
     outline: 3px solid var(--primary);
@@ -1067,6 +1067,13 @@ a:focus-visible,
 
     .upload-zone {
         padding: 28px 16px;
+    }
+
+    /* 觸控目標至少 44px；旁邊整框都能點，點歪會開啟選檔視窗 */
+    .template-link a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
     }
 
     .paste-zone {

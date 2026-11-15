@@ -18,7 +18,8 @@ allowed-tools: Bash(node tools/serve.mjs *) Bash(curl -s *)
    - `index.html` 引用的每個 JS／CSS 都回傳 200。
 3. **瀏覽器驗證**（有瀏覽器工具時）：開啟首頁並檢查：
    - Console 沒有 CSP 違規（`Refused to execute`、`Refused to apply inline style`）或 JS 錯誤。
-   - 切換兩個頁籤、點「下載測試範本」、用 `docs/templates/` 的範本上傳、貼上一小段假名單並載入。
+   - 切換兩個頁籤、點拖曳區內的「沒有檔案？下載測試用的範本 Excel」（應只下載、不開啟選檔視窗）、用 `docs/templates/` 的範本上傳、貼上一小段假名單並載入。
+   - 只用鍵盤：Tab 依序到「選擇檔案」按鈕（Enter 開啟選檔）與範本連結，焦點框清楚可見。
    - 縮到手機寬度（約 375px）確認版面。
    沒有瀏覽器工具時，請使用者依上述清單手動確認，並告訴他們網址。
 4. **注意快取**：Service Worker 會快取檔案。本機重複測試時，請在 DevTools → Application → Service Workers 勾選「Update on reload」，或用無痕視窗。

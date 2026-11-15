@@ -32,13 +32,13 @@ const fileInput = document.getElementById('file-input');
     }, false);
 });
 
-// 點擊或鍵盤 (Enter / 空白鍵) 開啟檔案選擇
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        fileInput.click();
-    }
+// 點虛線框任何地方都開啟檔案選擇（滑鼠的便利操作）；
+// 鍵盤與螢幕閱讀器使用框內真正的「選擇檔案」按鈕，按鈕的點擊會冒泡到這裡。
+// 點到框內的範本連結時不開啟，讓連結照常下載。
+// fileInput 也在框內，它被 click() 時的事件會冒泡回來，這裡略過以免重入。
+dropZone.addEventListener('click', (e) => {
+    if (e.target === fileInput || e.target.closest('a')) return;
+    fileInput.click();
 });
 
 // 檔案上傳觸發

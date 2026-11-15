@@ -50,11 +50,11 @@
     <link rel="preload" href="fonts/Outfit-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.10">
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.11">
     <!-- 引入 ExcelJS (前端處理 Excel 格式與樣式的核心庫 - 已本地化以維護個資安全與支援離線使用) -->
     <script src="js/libs/exceljs.min.js" defer></script>
     <!-- 引入外部樣式表 (使用版本參數防止瀏覽器快取舊樣式) -->
-    <link rel="stylesheet" href="css/style.css?v=3.10">
+    <link rel="stylesheet" href="css/style.css?v=3.11">
 </head>
 <body>
 
@@ -105,15 +105,15 @@
 
                     <!-- 檔案上傳區 -->
                     <div id="tab-file-content" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-file">
-                        <p class="template-link">
-                            <a href="templates/115學期名冊_範本.xlsx" download>沒有檔案？下載測試用的範本 Excel</a>
-                        </p>
-                        <div class="upload-zone" id="drop-zone" role="button" tabindex="0" aria-label="選擇或拖曳錄取名冊 Excel 檔案">
+                        <div class="upload-zone" id="drop-zone">
                             <svg class="upload-icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h8M12 11v8"/></svg>
                             <div class="upload-text">把名冊 Excel 拖到這裡，或點這裡選擇檔案</div>
                             <div class="upload-hint">支援學校匯出的 .xlsx 檔。檔案不會上傳到任何伺服器。</div>
-                            <span class="btn btn-primary upload-btn" aria-hidden="true">選擇檔案</span>
-                            <input type="file" id="file-input" accept=".xlsx, .xls">
+                            <button type="button" class="btn btn-primary upload-btn" id="btn-pick-file">選擇檔案</button>
+                            <input type="file" id="file-input" accept=".xlsx, .xls" aria-label="選擇錄取名冊 Excel 檔案">
+                            <p class="template-link">
+                                <a href="templates/115學期名冊_範本.xlsx" download>沒有檔案？下載測試用的範本 Excel</a>
+                            </p>
                         </div>
                     </div>
 
@@ -350,13 +350,13 @@
     </footer>
 
     <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼；依相依順序載入) -->
-    <script src="js/utils.js?v=3.10" defer></script>
-    <script src="js/exporter.js?v=3.10" defer></script>
-    <script src="js/parser.js?v=3.10" defer></script>
-    <script src="js/processor.js?v=3.10" defer></script>
-    <script src="js/mapping-ui.js?v=3.10" defer></script>
-    <script src="js/app.js?v=3.10" defer></script>
+    <script src="js/utils.js?v=3.11" defer></script>
+    <script src="js/exporter.js?v=3.11" defer></script>
+    <script src="js/parser.js?v=3.11" defer></script>
+    <script src="js/processor.js?v=3.11" defer></script>
+    <script src="js/mapping-ui.js?v=3.11" defer></script>
+    <script src="js/app.js?v=3.11" defer></script>
     <!-- 📱 註冊 Service Worker (離線快取) -->
-    <script src="js/register-sw.js?v=3.10" defer></script>
+    <script src="js/register-sw.js?v=3.11" defer></script>
 </body>
 </html>
