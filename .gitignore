@@ -1,6 +1,12 @@
-# Prevent uploading any real student Excel data
-*統計報表資訊*.xlsx
-*統計報表資訊*.xls
-*名冊 (2)*.xlsx
-*名冊 (2)*.xls
-115年度第一學期統計報表資訊*.xlsx
+# Prevent uploading any real student data:
+# 所有試算表一律排除，只放行 docs/templates/ 內的假資料範本
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+*.ods
+!docs/templates/*.xlsx
+
+# Claude Code 個人設定（不分享）
+.claude/settings.local.json
+CLAUDE.local.md

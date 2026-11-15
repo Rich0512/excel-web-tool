@@ -78,8 +78,8 @@
    * 受限於瀏覽器沙箱機制，網頁程式**無權讀取**您電腦硬碟中的其他檔案，亦無法修改作業系統設定，確保本機主機的實體安全。
 
  2. **📦 第三方套件完全本地化 (Zero External Connections)**
-    * 本專案已將核心解析庫 `ExcelJS` **完整下載並本地化儲存**在 `js/libs/exceljs.min.js` 中。
-    * 網頁字型 `Noto Sans TC` 與 `Outfit` 亦已從 Google Fonts **下載至本機** `fonts/` 目錄，**完全不連接 Google 伺服器**，杜絕 IP 追蹤與瀏覽行為紀錄。
+    * 本專案已將核心解析庫 `ExcelJS` **完整下載並本地化儲存**在 `docs/js/libs/exceljs.min.js` 中。
+    * 網頁字型 `Noto Sans TC` 與 `Outfit` 亦已從 Google Fonts **下載至本機** `docs/fonts/` 目錄，**完全不連接 Google 伺服器**，杜絕 IP 追蹤與瀏覽行為紀錄。
     * 系統運作時**完全不請求外部 CDN 網路**，有效防範第三方供應鏈被劫持（Supply Chain Attack）的個資外洩風險，並支援**100% 離線（斷網）使用**。
     * 已啟用 `Content-Security-Policy` (CSP) 安全策略，限制所有資源來源為 `'self'`，從瀏覽器層級封鎖任何向外部伺服器的非預期連線。
 
@@ -106,16 +106,35 @@
 ---
 
 ## 👨‍💻 技術與架構說明
-本專案採用**高維護性、模組化架構**進行設計，將功能解耦為以下模組：
+本專案採用**高維護性、模組化架構**進行設計。網站原始檔全部放在 `docs/`（GitHub Pages 的發佈來源），其餘資料夾不會出現在網站上。
+
+**網站（`docs/`）**
 * `js/libs/exceljs.min.js`：本地端 Excel 核心處理庫（已下載本地封裝）。
-* `js/utils.js`：共用字串分析與 LocalStorage 存取工具。
+* `js/utils.js`：共用字串分析、HTML 跳脫與 LocalStorage 存取工具。
 * `js/parser.js`：剪貼簿文字智慧分析與特徵識別引擎。
 * `js/processor.js`：學生課表橫向聯結的核心運算核心與隨機抽籤演算法。
 * `js/mapping-ui.js`：負責處理多樣模式下的設定表格動態 DOM 生成。
 * `js/exporter.js`：Excel 檔案樣式、自動欄寬與斑馬紋樣式包裝。
-* `js/app.js`：主要頁面控制器與生命週期管理（包括 beforeunload 安全保護）。
-* `service-worker.js`：PWA 離線快取管理（Cache-First 策略）。
-* `fonts/`：本地化字型檔（Noto Sans TC + Outfit）。
+* `js/app.js`：主要頁面控制器、按鈕事件綁定與生命週期管理（包括 beforeunload 安全保護）。
+* `js/register-sw.js`：註冊 Service Worker。
+* `service-worker.js`：PWA 離線快取管理（HTML 採 Network-First，靜態資源採 Cache-First）。
+* `fonts/`：本地化字型檔（Noto Sans TC + Outfit，僅 WOFF2）。Noto Sans TC 已裁切為常用字 + 介面用字，罕用字由系統字型補字。
+* `templates/`：測試用的假資料範本。
+
+**開發工具（`tools/`，需要 Node.js）**
+* `serve.mjs`：本機預覽，模擬 GitHub Pages 的子路徑與 404（`node tools/serve.mjs` → http://localhost:8000/excel-web-tool/）。
+* `check-site.mjs`：部署前檢查（版本號一致、預快取檔案、外部資源、inline 程式碼、404 路徑、試算表外洩、字型缺字）。
+* `bump-version.mjs`：同步調升快取版本。
+* `test-hooks.mjs`：Claude Code hooks 的回歸測試。
+* `site-config.mjs`：以上腳本與 hooks 共用的路徑與常數。
+* `subset-fonts.py`：重新裁切中文字型（需要 Python + fonttools）。
+
+**Claude Code 設定**：`CLAUDE.md` 與 `.claude/`（rules、skills、agents、hooks）。
+
+### 🚀 發佈流程
+1. 修改 `docs/` 後執行 `node tools/bump-version.mjs`，同步調升 Service Worker 快取版本、`index.html` 的 `?v=` 與 `sitemap.xml` 日期（Claude Code 中可執行 `/release`）。
+2. 執行 `node tools/check-site.mjs` 確認通過，並用 `node tools/serve.mjs` 在本機實際操作一次。
+3. push 到 `main` 後約 1～2 分鐘即上線。
 
 ---
 
