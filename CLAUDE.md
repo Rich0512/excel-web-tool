@@ -28,7 +28,6 @@ docs/                  對外發佈的網站（只有這裡會出現在網站上
   templates/           唯一允許的試算表：假資料範本
 tools/                 檢查、版本、預覽、字型裁切腳本；共用常數在 site-config.mjs
 DESIGN.md              設計規範（色彩、字型、版面、元件）；改外觀前先讀
-.claude/               rules、skills、agents、hooks
 ```
 
 ## 容易出錯的地方
@@ -43,12 +42,4 @@ DESIGN.md              設計規範（色彩、字型、版面、元件）；改
 
 ## Claude Code 設定
 
-| 類型 | 名稱 | 用途 |
-|---|---|---|
-| rules | `privacy`、`memory`（常駐）；`frontend`、`service-worker`、`tooling`（依檔案載入） | 碰到對應檔案時自動載入 |
-| skills | `/release`、`/preview`、`/subset-fonts` | 發佈、本機驗證、字型裁切 |
-| agents | `pages-auditor`、`frontend-reviewer` | 上線前稽核、前端審查（唯讀） |
-| hooks | `guard-roster`、`guard-git`（PreToolUse）、`stop-check`（Stop） | 擋讀取名冊、擋提交名冊、push 前與回覆結束時檢查 |
-| memory | `~/.claude/projects/excel-web-tool/memory/` | 跨對話記憶（本機，不進 repo） |
-
-這些設定只在**以 `web_demo/` 為工作目錄啟動 Claude Code** 時生效。
+`.claude/` 的 hooks、權限與 skills 只在**以 `web_demo/` 為工作目錄啟動 Claude Code** 時生效。若是從上層資料夾啟動，只有上層 `.claude/settings.json` 掛的 `guard-roster` 會執行（git 檢查、權限、skills 都不會載入），要先提醒使用者改從 `web_demo/` 啟動。設定一覽見 README。

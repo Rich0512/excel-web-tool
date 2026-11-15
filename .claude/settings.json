@@ -3,19 +3,26 @@
   "autoMemoryDirectory": "~/.claude/projects/excel-web-tool/memory",
   "permissions": {
     "allow": [
-      "Bash(node tools/check-site.mjs)",
       "Bash(node tools/check-site.mjs *)",
-      "Bash(node tools/bump-version.mjs)",
       "Bash(node tools/bump-version.mjs *)",
-      "Bash(node tools/test-hooks.mjs)",
+      "Bash(node tools/test-hooks.mjs *)",
       "Bash(git status *)",
       "Bash(git diff *)",
       "Bash(git log *)",
-      "Bash(git show *)"
+      "Bash(git show *)",
+      "PowerShell(node tools/check-site.mjs *)",
+      "PowerShell(node tools/bump-version.mjs *)",
+      "PowerShell(node tools/test-hooks.mjs *)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)",
+      "PowerShell(git show *)"
     ],
     "ask": [
       "Bash(git push *)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "PowerShell(git push *)",
+      "PowerShell(gh api *)"
     ]
   },
   "hooks": {

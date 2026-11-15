@@ -19,6 +19,11 @@ allowed-tools: Bash(git show *) Bash(node tools/check-site.mjs)
    ```
    必須用 `>` 寫入二進位檔；PowerShell 的 `>` 會改變編碼，請在 Git Bash 執行。
 2. **準備 Python 環境**：在 scratchpad 建立 venv，安裝 `fonttools brotli`。不要裝進專案或上層資料夾的 venv。
-3. **裁切**：`<venv python> tools/subset-fonts.py <暫存>`。它會覆寫 `docs/fonts/NotoSansTC-{Regular,Bold}.woff2` 與 `tools/subset-chars.txt`，並印出檔案大小。大小明顯超過 1.2 MB 時，回報給使用者再繼續。
+   ```bash
+   py -V:3.12 -m venv <scratchpad>/venv
+   <scratchpad>/venv/Scripts/python.exe -m pip install fonttools brotli
+   ```
+   一定要用 `py -V:3.12`：這台電腦的 `python`／`python3` 會先指到 Microsoft Store 捷徑或 msys64 的 Python，`py -3.12` 也可能選到 32 位元版本。之後一律用 venv 裡的 `Scripts/python.exe`，不要用 `python`。
+3. **裁切**：`<scratchpad>/venv/Scripts/python.exe tools/subset-fonts.py <暫存>`。它會覆寫 `docs/fonts/NotoSansTC-{Regular,Bold}.woff2` 與 `tools/subset-chars.txt`，並印出檔案大小。大小明顯超過 1.2 MB 時，回報給使用者再繼續。
 4. **檢查**：`node tools/check-site.mjs` 必須通過。
 5. **發佈**：字型屬於網站檔案，接著執行 `/release`。

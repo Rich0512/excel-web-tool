@@ -129,7 +129,15 @@
 * `site-config.mjs`：以上腳本與 hooks 共用的路徑與常數。
 * `subset-fonts.py`：重新裁切中文字型（需要 Python + fonttools）。
 
-**Claude Code 設定**：`CLAUDE.md` 與 `.claude/`（rules、skills、agents、hooks）。
+**Claude Code 設定**：`CLAUDE.md` 與 `.claude/`，只在以 `web_demo/` 為工作目錄啟動 Claude Code 時生效。
+
+| 類型 | 名稱 | 用途 |
+|---|---|---|
+| rules | `privacy`、`memory`（常駐）；`frontend`、`service-worker`、`tooling`（依檔案載入） | 碰到對應檔案時自動載入 |
+| skills | `/release`、`/preview`、`/subset-fonts` | 發佈、本機驗證、字型裁切 |
+| agents | `pages-auditor`、`frontend-reviewer` | 上線前稽核、前端審查（唯讀，由 `agent-readonly` hook 限制 Bash） |
+| hooks | `guard-roster`、`guard-git`（PreToolUse）、`stop-check`（Stop）、`agent-readonly`（子代理專用） | 擋讀取名冊、擋提交名冊、push 前與回覆結束時檢查、子代理只能執行唯讀指令 |
+| memory | `~/.claude/projects/excel-web-tool/memory/` | 跨對話記憶（本機，不進 repo） |
 
 ### 🚀 發佈流程
 1. 修改 `docs/` 後執行 `node tools/bump-version.mjs`，同步調升 Service Worker 快取版本、`index.html` 的 `?v=` 與 `sitemap.xml` 日期（Claude Code 中可執行 `/release`）。

@@ -50,6 +50,17 @@ run('guard-roster', { tool_name: 'Read', cwd, tool_input: { file_path: '../gener
 run('guard-roster', { tool_name: 'Read', cwd, tool_input: { file_path: '../roster.xlsx' } }, 'Read parent roster', 2);
 run('guard-roster', 'not json', 'malformed input -> fail closed', 2);
 
+console.log('--- guard-roster: 從上層資料夾啟動（上層 .claude/settings.json 掛同一支 hook）');
+const parent = join(ROOT, '..');
+const fromParent = (tool_name, tool_input) => ({ tool_name, cwd: parent, tool_input });
+run('guard-roster', fromParent('Read', { file_path: 'roster.xlsx' }), 'Read roster.xlsx', 2);
+run('guard-roster', fromParent('Bash', { command: 'python generate_report.py roster.xlsx' }), 'python with roster.xlsx', 2);
+run('guard-roster', fromParent('PowerShell', { command: 'Get-ChildItem *.csv' }), 'glob *.csv', 2);
+run('guard-roster', fromParent('Grep', { pattern: 'x' }), 'Grep without filter', 2);
+run('guard-roster', fromParent('Read', { file_path: 'generate_report.py' }), 'Read generate_report.py (allowed)', 0);
+run('guard-roster', fromParent('Grep', { pattern: 'x', glob: '*.py' }), 'Grep *.py (allowed)', 0);
+run('guard-roster', fromParent('Read', { file_path: 'web_demo/docs/templates/115學期名冊_範本.xlsx' }), 'Read template via web_demo/ (allowed)', 0);
+
 console.log('--- guard-git');
 run('guard-git', shell('git -C "my repo" add -fA'), 'combined -fA with quoted -C', 2);
 run('guard-git', shell('git add ../docs/templates/x.xlsx'), '../docs/templates path (was loose)', 2);
@@ -59,6 +70,44 @@ run('guard-git', shell('git add -A'), 'git add -A (allowed, .gitignore covers)',
 run('guard-git', shell('git status | head'), 'git status (allowed)', 0);
 run('guard-git', shell('git push origin main'), 'push with checks passing', 0);
 run('guard-git', 'not json', 'malformed input -> fail closed', 2);
+
+console.log('--- agent-readonly: 應阻擋');
+run('agent-readonly', shell('echo x > docs/index.html'), 'redirect write', 2);
+run('agent-readonly', shell('git status && rm -rf docs'), 'chained rm', 2);
+run('agent-readonly', shell('git checkout -- docs'), 'git checkout', 2);
+run('agent-readonly', shell('git diff --output=x.txt'), 'git diff --output', 2);
+run('agent-readonly', shell('node -e "require(\'fs\').writeFileSync(\'x\',\'\')"'), 'node -e', 2);
+run('agent-readonly', shell('cat $(ls)'), 'command substitution', 2);
+run('agent-readonly', shell('unzip docs/templates/fake.xlsx'), 'unzip extract', 2);
+run('agent-readonly', shell('git -c core.pager=touch log'), 'git -c core.pager', 2);
+run('agent-readonly', shell('git diff --ext-diff'), 'git diff --ext-diff', 2);
+run('agent-readonly', shell('sort -o out.txt docs/js/app.js'), 'sort -o (not allowed)', 2);
+run('agent-readonly', shell('echo \\"a; rm -rf x; \\"'), 'backslash-escaped quotes', 2);
+run('agent-readonly', shell('ls & rm x'), 'lone & background', 2);
+run('agent-readonly', shell('cat <> out.txt'), '<> read-write redirect', 2);
+run('agent-readonly', shell('cat <(ls)'), 'process substitution', 2);
+run('agent-readonly', shell('echo "${HOME}"'), '$ inside double quotes', 2);
+run('agent-readonly', shell('unzip -p -d out docs/templates/fake.xlsx'), 'unzip -p with extra flag', 2);
+run('agent-readonly', shell(`echo "'" $(rm x) "'"`), 'interleaved quotes hide $()', 2);
+run('agent-readonly', shell(`echo "'" ; rm x ; "'"`), 'interleaved quotes hide ;', 2);
+run('agent-readonly', shell(`grep "a" 'b`), 'unterminated quote', 2);
+run('agent-readonly', shell('ls >&1file'), '>&1file writes file', 2);
+run('agent-readonly', shell('ls >/dev/nullX'), '>/dev/nullX writes file', 2);
+run('agent-readonly', shell('ls 2>&10'), '2>&10 not a safe fd', 2);
+run('agent-readonly', shell('git status 2>&1 | head -3'), '2>&1 | head (allowed)', 0);
+run('agent-readonly', shell('git log >/dev/null; git status'), '>/dev/null; (allowed)', 0);
+run('agent-readonly', 'not json', 'malformed input -> fail closed', 2);
+
+console.log('--- agent-readonly: 應放行');
+run('agent-readonly', shell("grep -n 'a$|b\\\\' docs/js/app.js"), '$ and \\ inside single quotes', 0);
+run('agent-readonly', shell('grep -c "escapeHtml(" docs/js/app.js'), '( inside double quotes', 0);
+run('agent-readonly', shell('node tools/check-site.mjs --require-bump=origin/main'), 'check-site', 0);
+run('agent-readonly', shell('git status --short -- docs'), 'git status', 0);
+run('agent-readonly', shell('git -C "my repo" diff HEAD -- docs 2>/dev/null'), 'git -C diff + 2>/dev/null', 0);
+run('agent-readonly', shell('git log --oneline -5 | head -3'), 'git log | head', 0);
+run('agent-readonly', shell('unzip -p docs/templates/fake.xlsx xl/sharedStrings.xml | wc -c'), 'unzip -p | wc', 0);
+run('agent-readonly', shell('grep -n "=> |a;b" docs/js/app.js'), '> | ; inside quotes', 0);
+run('agent-readonly', shell('grep -n "x" docs/js/app.js > out.txt'), 'redirect after quoted arg', 2);
 
 console.log('--- stop-check');
 run('stop-check', '{"stop_hook_active":false}', 'current state passes', 0);

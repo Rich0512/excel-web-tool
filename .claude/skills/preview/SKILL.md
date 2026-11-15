@@ -2,16 +2,18 @@
 name: preview
 description: 在本機啟動與 GitHub Pages 行為相同的預覽伺服器（子路徑 /excel-web-tool/、自訂 404），並實際驗證頁面。修改 docs/ 底下的 HTML、CSS、JS 後、push 上線前，或使用者說「預覽」「本機看看」「測試網頁」「跑起來看」時使用。
 argument-hint: "[port，預設 8000]"
-allowed-tools: Bash(node tools/serve.mjs *) Bash(curl -s *)
+allowed-tools: Bash(node tools/serve.mjs *) Bash(curl -s * http://localhost:*)
 ---
 
 # 本機預覽與驗證
 
 部署檢查只能看靜態檔案，看不到「頁面實際能不能用」。在本機用相同的子路徑跑一次，才抓得到 CSP 擋掉的腳本、路徑錯誤和 404 頁面的問題。
 
+**以下指令一律用 Bash 工具（Git Bash）執行**，不要用 PowerShell：Windows PowerShell 5.1 的 `curl` 是 `Invoke-WebRequest` 的別名，`-s -o -w` 等參數都無法使用。curl 只連 `http://localhost`，不要連外部網址。
+
 ## 步驟
 
-1. **啟動伺服器**（背景執行）：`node tools/serve.mjs $ARGUMENTS`，網址是 `http://localhost:8000/excel-web-tool/`。
+1. **啟動伺服器**：用 Bash 工具的背景執行（`run_in_background`）跑 `node tools/serve.mjs $ARGUMENTS`。網址是 `http://localhost:<port>/excel-web-tool/`，port 預設 8000（以下以 8000 為例）。
 2. **基本驗證**（用 curl）：
    - 首頁回傳 200：`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/excel-web-tool/`
    - 多層的不存在路徑回傳 404 與 404 頁內容：`curl -s -w "%{http_code}" http://localhost:8000/excel-web-tool/a/b/c | tail -c 300`

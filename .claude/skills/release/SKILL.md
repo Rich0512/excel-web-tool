@@ -1,6 +1,7 @@
 ---
 name: release
-description: 準備發佈網站新版本：同步調升 Service Worker 快取版本、index.html 的 ?v= 與 sitemap 日期，跑部署檢查，並引導 commit 與 push 上線。只要 docs/ 底下有任何變更（HTML、CSS、JS、字型、圖片、範本、manifest），或使用者提到發佈、上線、部署、push、更新網站、改版本號，或 Stop hook 提示「請執行 /release」時都要使用，即使使用者沒有明說「release」。
+description: 準備發佈網站新版本：同步調升 Service Worker 快取版本、index.html 的 ?v= 與 sitemap 日期，跑部署檢查，並引導 commit 與 push 上線。
+when_to_use: 只要 docs/ 底下有任何變更（HTML、CSS、JS、字型、圖片、範本、manifest），或使用者提到發佈、上線、部署、push、更新網站、改版本號，或 Stop hook 提示「請執行 /release」時都要使用，即使使用者沒有明說「release」。
 argument-hint: "[版本號 X.Y，省略則自動判斷]"
 allowed-tools: Bash(node tools/bump-version.mjs *) Bash(node tools/check-site.mjs *) Bash(git status *) Bash(git diff *)
 ---
@@ -9,6 +10,17 @@ allowed-tools: Bash(node tools/bump-version.mjs *) Bash(node tools/check-site.mj
 
 網站從 `main` 分支的 `docs/` 直接部署到 GitHub Pages，**push 即上線**，沒有 CI 可以攔截錯誤。已開過網站的使用者靠 Service Worker 的 `CACHE_VERSION` 判斷是否更新，版本沒調升，他們會一直拿到舊檔案，而且很難察覺。
 
+<!-- 刻意不設 disable-model-invocation：Stop hook 會提示 Claude 自動執行 /release；commit 與 push 另由步驟 5 的使用者同意與 settings.json 的 ask 規則把關。 -->
+
+## 目前狀態（載入時自動取得）
+
+- 線上版本（origin/main）與本機版本：
+  !`git show origin/main:docs/service-worker.js 2>/dev/null | grep -o "CACHE_VERSION = '[^']*'" || true` → !`grep -o "CACHE_VERSION = '[^']*'" docs/service-worker.js || true`
+- `docs/` 尚未 commit 的變更：
+!`git status --short -- docs || true`
+- 尚未 push 的 commit：
+!`git log --oneline origin/main..HEAD 2>/dev/null || true`
+
 ## 步驟
 
 1. **調升版本**：執行 `node tools/bump-version.mjs $ARGUMENTS`。
@@ -16,11 +28,11 @@ allowed-tools: Bash(node tools/bump-version.mjs *) Bash(node tools/check-site.mj
    - 不帶參數時，它會比對 `origin/main`：尚未調升就次版號 +1，已調升就只同步，所以重複執行是安全的。
    - 使用者指定了版本號才帶參數。
 2. **同步預快取清單**：若這次新增、改名或刪除了 `docs/` 內的檔案，更新 `docs/service-worker.js` 的 `STATIC_ASSETS`（規則見 `.claude/rules/service-worker.md`）。
-3. **檢查**：執行 `node tools/check-site.mjs --require-bump=origin/main`，必須全部通過。失敗時修正後重跑，不要跳過。
+3. **檢查**：執行 `node tools/check-site.mjs --require-bump=origin/main`，必須全部通過。失敗時修正後重跑，不要跳過。大改版（版面、Service Worker、CSP、處理名冊的 JS）時，再交給 `pages-auditor` 子代理稽核。
 4. **摘要**：用 `git status --short` 與 `git diff --stat` 列出變更，並寫出新版本號。
 5. **commit 與 push 要等使用者同意**。這次對話中使用者明確要求才執行。push 前提醒：push 到 main 後約 1～2 分鐘就上線，已安裝 PWA 的使用者下次開啟會自動更新。
 
 ## 範例
 
 使用者：「我改了按鈕文字，幫我上線」
-→ 執行 `node tools/bump-version.mjs`（例如 v3.8 → v3.9），確認 `STATIC_ASSETS` 不需變動，跑檢查，列出變更，並問「要我 commit 並 push 嗎？」
+→ 執行 `node tools/bump-version.mjs`（例如 v3.11 → v3.12），確認 `STATIC_ASSETS` 不需變動，跑檢查，列出變更，並問「要我 commit 並 push 嗎？」

@@ -4,6 +4,14 @@ description: 唯讀稽核 GitHub Pages 網站的部署品質與學生個資風�
 tools: Read, Grep, Glob, Bash
 model: sonnet
 color: cyan
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: node
+          args: ["${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-readonly.mjs"]
+          timeout: 30
 ---
 
 你是延平國小社團課表整理工具（純前端 GitHub Pages 網站，原始檔在 `docs/`）的部署稽核員。你只讀不改，最後回報問題清單。
