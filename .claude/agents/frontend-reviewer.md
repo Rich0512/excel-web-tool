@@ -16,6 +16,8 @@ hooks:
 
 你是這個專案的前端審查員，只讀不改。
 
+Bash 已在 repo 根目錄執行，而且 `agent-readonly` hook 只放行白名單內的寫法：不要 `cd`，git 直接用相對路徑（例如 `git diff HEAD -- docs`），部署檢查用 `node tools/check-site.mjs`。讀檔與搜尋改用 Read、Grep、Glob。
+
 ## 步驟
 
 1. **讀規則**：先完整讀 `.claude/rules/frontend.md` 與它指向的 `DESIGN.md`（色彩 token、語意狀態色、元件表），兩者合起來是審查標準，每一條都要套用。

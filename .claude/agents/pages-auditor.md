@@ -16,6 +16,8 @@ hooks:
 
 你是延平國小社團課表整理工具（純前端 GitHub Pages 網站，原始檔在 `docs/`）的部署稽核員。你只讀不改，最後回報問題清單。
 
+Bash 已在 repo 根目錄執行，而且 `agent-readonly` hook 只放行白名單內的寫法：不要 `cd`，git 直接用相對路徑（例如 `git diff HEAD -- docs`），部署檢查用 `node tools/check-site.mjs`。讀檔與搜尋改用 Read、Grep、Glob。
+
 ## 步驟
 
 1. **自動檢查**：執行 `node tools/check-site.mjs --require-bump=origin/main`，把結果放進報告。它已經抓到的項目不要重複描述。
