@@ -27,6 +27,7 @@ docs/                  對外發佈的網站（只有這裡會出現在網站上
   css/ fonts/ images/  fonts 中的 Noto Sans TC 已裁切
   templates/           唯一允許的試算表：假資料範本
 tools/                 檢查、版本、預覽、字型裁切腳本；共用常數在 site-config.mjs
+DESIGN.md              設計規範（色彩、字型、版面、元件）；改外觀前先讀
 .claude/               rules、skills、agents、hooks
 ```
 

@@ -27,13 +27,15 @@ CSP 沒有開放 `'unsafe-inline'`，所以：
 - 名冊內容、Excel 工作表與欄位名稱、使用者輸入的社團名稱都是不可信任的資料。
 - 只是顯示文字時用 `textContent`；需要組 HTML 時，每個插入值都要先經過 `utils.js` 的 `escapeHtml()`。
 
-## 設計語言（沿用，不另起爐灶）
+## 設計語言
 
-- 顏色使用 `style.css` 的 `:root` 變數：`--primary` #0f3b6d（校徽藍，標題、焦點）、`--accent` #2ecc71（主要動作按鈕）、`--text-main`、`--text-muted`、`--border`。新顏色只用於語意狀態（警告 #d97706 系、錯誤 #c53030 系），不要新增裝飾色。
-- 字型只有 Outfit（400/600/800）與 Noto Sans TC（400/700，已裁切）。不要新增字型或字重，也不要引用 CDN。
-- 版面是置中的單張卡片（最寬 1050px）。沿用既有元件：`.btn` + `.btn-primary`／`.btn-secondary`／`.btn-outline`、`.tab-intro`（情境說明）、`.warning-callout`（提醒）、`.config-select`、`.club-input`。
-- 動態效果只用在回應使用者動作（切換步驟、展開名單）。不要加入裝飾性的進場動畫；`prefers-reduced-motion` 已全域處理，新動畫不可繞過。
-- 新增介面時避免常見的「AI 生成感」：不要每段都加全大寫小標、不要只為裝飾而用卡片陰影與漸層、不要在按鈕文字後面加箭頭。
+完整規範在 repo 根目錄的 `DESIGN.md`（課表格線，2026-11-15 定案），改外觀前先讀。重點：
+
+- 顏色只用 `style.css` `:root` 的 token：`--primary` #0f3b6d 校徽藍（主要按鈕、標題、目前步驟）、`--ink`、`--ink-muted`、`--line`（格線）、`--control`（輸入框邊框）、`--mark` 螢光筆黃（只用在課表範例）。語意狀態色見 `DESIGN.md`。不要新增裝飾色、漸層、毛玻璃或大陰影。
+- 字型只有 Outfit（400/600）與 Noto Sans TC（400/700，已裁切）。不要新增字型或字重，也不要引用 CDN。
+- **不使用 emoji**（HTML、JS 產生的訊息、`alert()` 都是）；圖示用 inline SVG 線條圖示。
+- 內容靠左對齊、最寬 1180px；沿用 `DESIGN.md` 的元件表，不要另造相似元件。
+- 動態只回應使用者動作；`prefers-reduced-motion` 已全域處理，新動畫不可繞過。
 
 ## 無障礙與行動裝置
 

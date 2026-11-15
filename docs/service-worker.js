@@ -3,7 +3,7 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.8';
+const CACHE_VERSION = 'v3.9';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
 // 需要快取的核心靜態資源清單
@@ -23,7 +23,6 @@ const STATIC_ASSETS = [
     './fonts/NotoSansTC-Bold.woff2',
     './fonts/Outfit-Regular.woff2',
     './fonts/Outfit-SemiBold.woff2',
-    './fonts/Outfit-ExtraBold.woff2',
     './js/libs/exceljs.min.js',
     './js/utils.js',
     './js/exporter.js',

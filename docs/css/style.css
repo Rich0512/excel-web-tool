@@ -1,574 +1,284 @@
+/* ===================================================
+ * 延平國小社團課表整理工具：課表格線
+ * 設計規範見 repo 根目錄 DESIGN.md；token 修改時兩邊同步
+ * =================================================== */
+
 :root {
     --primary: #0f3b6d;
     --primary-hover: #1b4f8f;
-    --accent: #2ecc71;
-    --accent-hover: #27ae60;
-    --bg: #f1f5f9;
-    --card-bg: rgba(255, 255, 255, 0.95);
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --border: #e2e8f0;
+    --primary-tint: #eef3f9;
+    --ink: #14253d;
+    --ink-muted: #4a5a70;
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --line: #d6e0ec;
+    --control: #7b8ca3;
+    --mark: #ffe58a;
+
+    --warning-text: #6b3d00;
+    --warning-bg: #fff6e5;
+    --warning-line: #e0a43a;
+    --danger-text: #9b2c2c;
+    --danger-bg: #fdf2f2;
+    --danger-line: #e3a8a8;
+    --success-text: #1f6b45;
+    --success-bg: #eef8f1;
+    --success-line: #9fd3b2;
+
+    --radius-control: 6px;
+    --radius-panel: 8px;
+    --font: 'Outfit', 'Noto Sans TC', sans-serif;
 }
 
-* {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
-/* 語義 HTML 標籤相容性 (確保舊瀏覽器正確渲染) */
-header, main, footer, section {
-    display: block;
-}
-
 body {
-    font-family: 'Outfit', 'Noto Sans TC', sans-serif;
-    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
-    color: var(--text-main);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--bg);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    padding: 30px 15px;
 }
 
-.container {
-    max-width: 1050px;
-    width: 100%;
-    background: var(--card-bg);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 35px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-}
-
-/* 標題區 */
-.header {
-    text-align: center;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 20px;
-}
-
-.logo-text {
-    font-size: 26px;
-    font-weight: 800;
+a {
     color: var(--primary);
-    letter-spacing: 0.5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
+    text-underline-offset: 3px;
 }
 
-.logo-text img.logo-img {
-    width: 48px;
-    height: 48px;
+a:hover {
+    color: var(--primary-hover);
+}
+
+strong {
+    font-weight: 700;
+}
+
+.icon {
+    flex: 0 0 auto;
+    vertical-align: -3px;
+}
+
+/* ---------- 頁首 ---------- */
+
+.site-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+
+.site-header-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 12px 32px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-logo {
+    width: 40px;
+    height: 40px;
     object-fit: contain;
 }
 
-.subtitle {
-    font-size: 15px;
-    color: var(--text-muted);
-    margin-top: 6px;
-    font-weight: 400;
+.brand-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
 }
 
-/* 步驟容器 */
+.privacy-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+}
+
+.privacy-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+/* ---------- 主要內容 ---------- */
+
+.page {
+    flex: 1 0 auto;
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 32px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.intro {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.page-title {
+    font-size: 34px;
+    line-height: 1.3;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 0.02em;
+}
+
+.page-lead {
+    max-width: 34em;
+    color: var(--ink-muted);
+}
+
+/* 步驟列：畫成課表表頭的三格 */
+.stepper {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    background: var(--surface);
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+    max-width: 760px;
+}
+
+.stepper-item {
+    padding: 12px 16px;
+    color: var(--ink-muted);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.stepper-item + .stepper-item {
+    border-left: 1px solid var(--control);
+}
+
+.stepper-num {
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.stepper-item[aria-current="step"] {
+    background: var(--primary);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* 步驟面板 */
 .step-panel {
     display: none;
-    animation: slideIn 0.3s ease forwards;
 }
 
 .step-panel.active {
     display: block;
+    animation: fadeIn 0.2s ease;
 }
 
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
-/* 步驟一：拖曳上傳 */
-.upload-zone {
-    border: 3px dashed #cbd5e1;
-    border-radius: 16px;
-    padding: 60px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    background: rgba(248, 250, 252, 0.6);
+/* ---------- 步驟一：兩欄版面 ---------- */
+
+.upload-layout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 40px;
 }
 
-.upload-zone:hover, .upload-zone.dragover {
-    border-color: var(--primary);
-    background: rgba(15, 59, 109, 0.04);
-    transform: scale(1.01);
-}
-
-.upload-icon {
-    font-size: 55px;
-    margin-bottom: 15px;
-    display: inline-block;
-}
-
-.upload-text {
-    font-size: 17px;
-    font-weight: 700;
-    color: #334155;
-    margin-bottom: 8px;
-}
-
-.upload-hint {
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
-#file-input {
-    display: none;
-}
-
-/* 步驟二：對照設定表 */
-.mapping-container {
+.upload-main {
+    flex: 7 1 520px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
-.table-responsive {
-    max-height: 380px;
-    overflow-y: auto;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: #fff;
-    position: relative;
+/* 來源切換 */
+.tab-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
+.tab-btn {
     text-align: left;
-    font-size: 16px;
-}
-
-thead {
-    position: sticky;
-    top: 0;
-    background: #f8fafc;
-    box-shadow: 0 1px 0 var(--border);
-    z-index: 10;
-}
-
-th, td {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
-}
-
-th {
-    font-weight: 700;
-    color: var(--text-muted);
-}
-
-tr:last-child td {
-    border-bottom: none;
-}
-
-.slot-badge {
-    font-weight: 700;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 13px;
-}
-
-.slot-a {
-    background: rgba(192, 57, 43, 0.1);
-    color: #c0392b;
-}
-
-.slot-other {
-    background: rgba(15, 59, 109, 0.1);
-    color: #0f3b6d;
-}
-
-.club-input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 15px;
-    font-family: inherit;
-    color: var(--text-main);
-    background: #f8fafc;
-    transition: all 0.2s;
-}
-
-.club-input:focus {
-    border-color: var(--primary);
-    background: #fff;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(15, 59, 109, 0.1);
-}
-
-.day-select {
-    padding: 10px 14px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 15px;
-    font-family: inherit;
-    color: var(--text-main);
-    background: #fff;
-    width: 100%;
+    padding: 14px 16px;
+    min-height: 44px;
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
     cursor: pointer;
-}
-
-.day-select:focus {
-    border-color: var(--primary);
-    outline: none;
-}
-
-/* 按鈕區 */
-.btn-group {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.btn {
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 15px;
+.tab-btn:hover {
+    border-color: var(--primary);
+}
+
+.tab-btn.active {
+    border: 2px solid var(--primary);
+    padding: 13px 15px;
+}
+
+.tab-title {
     font-weight: 700;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s;
-    font-family: inherit;
     display: inline-flex;
     align-items: center;
     gap: 8px;
 }
 
-.btn-primary {
-    background: var(--accent);
-    color: white;
-}
-
-.btn-primary:hover {
-    background: var(--accent-hover);
-    transform: translateY(-1px);
-}
-
-.btn-secondary {
-    background: #94a3b8;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #64748b;
-}
-
-/* 外框按鈕 (安全清除) */
-.btn-outline {
-    font-size: 13px;
-    padding: 6px 12px;
-    border: 1px solid var(--primary);
-    background: transparent;
+.tab-btn.active .tab-title {
     color: var(--primary);
-    white-space: nowrap;
 }
 
-.btn-outline:hover {
-    background: rgba(15, 59, 109, 0.06);
-}
-
-/* 尺寸與排版修飾 */
-.btn-sm {
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: normal;
-    text-decoration: none;
-}
-
-.btn-xs {
-    font-size: 12px;
-    padding: 4px 10px;
-    justify-content: center;
-}
-
-.btn-block {
-    width: 100%;
-    justify-content: center;
-    margin-top: 15px;
-}
-
-.btn-center {
-    margin: 0 auto;
-}
-
-/* ⌨️ 鍵盤操作焦點 (滑鼠點擊不顯示，Tab 鍵操作時顯示) */
-.btn:focus-visible,
-.tab-btn:focus-visible,
-.loaded-club-info:focus-visible,
-.loaded-club-delete:focus-visible,
-.upload-zone:focus-visible {
-    outline: 3px solid var(--primary);
-    outline-offset: 2px;
-}
-
-/* 記憶狀態標示 */
-.memory-hint {
-    font-size: 13px;
-    color: #27ae60;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-/* 成功轉檔卡片 */
-.success-panel {
-    text-align: center;
-    padding: 40px 10px;
-}
-
-.success-icon {
-    font-size: 60px;
-    color: var(--accent);
-    margin-bottom: 20px;
-    animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-@keyframes scaleUp {
-    from { transform: scale(0.5); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-
-.success-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--primary);
-    margin-bottom: 12px;
-}
-
-.success-desc {
-    font-size: 15px;
-    color: var(--text-muted);
-    margin-bottom: 30px;
-    line-height: 1.5;
-}
-
-/* 頁尾 */
-.footer-note {
-    text-align: center;
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 15px;
-}
-
-.footer-disclaimer {
-    font-size: 11px;
-    opacity: 0.8;
-    margin-top: 5px;
-    display: inline-block;
-}
-
-/* 🛡️ 安全防護與重設橫幅 */
-.security-banner {
-    background: rgba(15, 59, 109, 0.05);
-    border-left: 4px solid var(--primary);
-    padding: 12px 18px;
-    border-radius: 8px;
-    font-size: 13.5px;
-    color: var(--text-main);
-    line-height: 1.6;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 15px;
-    flex-wrap: wrap;
-    margin-bottom: 5px;
-}
-
-.security-banner-text {
-    flex: 1;
-    min-width: 250px;
-}
-
-.security-banner-tip {
-    font-size: 12px;
-    opacity: 0.85;
-}
-
-/* 步驟二：對照表標題列 */
-.mapping-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.mapping-title {
-    font-weight: 700;
-    color: var(--primary);
-    font-size: 16px;
-}
-
-.col-slot { width: 20%; }
-.col-name { width: 50%; }
-.col-day { width: 30%; }
-
-/* 💾 檔名設定欄位 */
-.filename-field {
-    margin-top: 15px;
-}
-
-.filename-field-divided {
-    margin-top: 20px;
-    border-top: 1px solid var(--border);
-    padding-top: 15px;
-    margin-bottom: 15px;
-}
-
-/* 需高於手機版 .club-input 的 padding 規則，各尺寸都維持 10px */
-.club-input.club-input-full {
-    padding: 10px;
-}
-
-/* 🚨 衝堂警示 (由 JS 控制顯示；需高於 .warning-callout 的權重) */
-.warning-callout.conflict-alert {
-    display: none;
-    background: #fff5f5;
-    border-left-color: #f56565;
-    color: #c53030;
-}
-
-.conflict-title {
-    font-weight: bold;
-    margin-bottom: 6px;
+.tab-desc {
     font-size: 14px;
+    color: var(--ink-muted);
 }
 
-.conflict-list {
-    margin: 0;
-    padding-left: 20px;
-    font-size: 12px;
-    max-height: 150px;
-    overflow-y: auto;
-    text-align: left;
-    line-height: 1.5;
-}
-
-.conflict-list li {
-    margin-bottom: 4px;
-}
-
-/* ⚙️ 設定面板區 */
-.config-section {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 15px 20px;
-    margin-bottom: 10px;
-}
-
-.config-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.config-row.full-width {
-    grid-column: span 2;
-    flex-direction: row;
-    align-items: center;
-    margin-top: 5px;
-}
-
-.config-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--primary);
-}
-
-.config-select {
-    padding: 8px 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-    color: var(--text-main);
-    background: #fff;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.config-select:focus {
-    border-color: var(--primary);
-    outline: none;
-}
-
-.config-checkbox-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--primary);
-    user-select: none;
-}
-
-.config-checkbox-container input {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-}
-
-@media (max-width: 600px) {
-    .config-section {
-        grid-template-columns: 1fr;
-    }
-    .config-row.full-width {
-        grid-column: span 1;
-    }
-}
-
-/* 🏷️ 頁籤控制 */
-.tab-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 10px;
-}
-
-.tab-btn {
-    padding: 10px 20px;
-    border: none;
-    background: transparent;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text-muted);
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s;
-}
-
-.tab-btn:hover {
-    color: var(--primary);
-    background: rgba(15, 59, 109, 0.05);
-}
-
-.tab-btn.active {
-    color: #fff;
+.tab-count {
+    min-width: 22px;
+    padding: 0 7px;
+    border-radius: 11px;
     background: var(--primary);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 22px;
+    text-align: center;
+}
+
+.tab-count[hidden] {
+    display: none;
 }
 
 .tab-content {
@@ -576,545 +286,834 @@ tr:last-child td {
 }
 
 .tab-content.active {
-    display: block;
-}
-
-/* 頁籤上的社團計數徽章 */
-.tab-count {
-    background: var(--accent);
-    color: white;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 11px;
-    margin-left: 4px;
-    font-weight: bold;
-}
-
-/* 📋 貼上區域樣式 */
-.paste-zone {
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-}
-
-.paste-inputs {
     display: flex;
-    gap: 15px;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.paste-inputs + .paste-inputs {
-    margin-top: 12px;
+/* 拖曳上傳 */
+.upload-zone {
+    border: 2px dashed var(--control);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
 }
 
-.paste-input-col {
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: var(--primary);
+    background: var(--primary-tint);
+}
+
+.upload-icon {
+    color: var(--primary);
+}
+
+.upload-text {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.upload-hint {
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+.upload-btn {
+    margin-top: 6px;
+    pointer-events: none;
+}
+
+#file-input {
+    display: none;
+}
+
+.template-link {
+    font-size: 15px;
+}
+
+.tab-intro {
+    color: var(--ink-muted);
+    max-width: 40em;
+}
+
+/* ---------- 表單 ---------- */
+
+.paste-zone {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.field {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0;
 }
 
-.paste-input-grow {
-    flex: 1;
+.field-wide {
+    grid-column: span 2;
 }
 
-.input-narrow {
-    width: 120px;
+.field-full {
+    grid-column: 1 / -1;
 }
 
-.config-select-full {
-    width: 100%;
+.field-check {
+    justify-content: flex-end;
 }
 
-/* 年級範圍選擇 */
-.grade-range {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.grade-range select {
-    min-width: 85px;
-}
-
-.grade-range-sep {
-    color: var(--text-muted);
-}
-
-.textarea-container {
-    margin-top: 15px;
+.field-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
 }
 
 .field-tip {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--ink-muted);
 }
 
-/* 貼上即時解析預覽 (由 JS 控制顯示) */
+.club-input,
+.config-select,
+.day-select,
+.paste-textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 16px;
+}
+
+.config-select,
+.day-select {
+    cursor: pointer;
+}
+
+.club-input:focus,
+.config-select:focus,
+.day-select:focus,
+.paste-textarea:focus {
+    outline: 3px solid var(--primary);
+    outline-offset: 0;
+    border-color: var(--primary);
+}
+
+.paste-textarea {
+    min-height: 200px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.grade-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.grade-range select {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.grade-range-sep {
+    color: var(--ink-muted);
+}
+
+.config-checkbox-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.config-checkbox-container input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+/* 貼上即時解析回饋 (由 JS 控制顯示與狀態) */
 .parse-preview {
     display: none;
-    font-size: 12px;
-    color: #27ae60;
-    margin-top: 8px;
-    font-weight: bold;
-    background: rgba(46, 204, 113, 0.1);
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(46, 204, 113, 0.2);
-    line-height: 1.4;
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--success-line);
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+
+.parse-preview.is-warning {
+    border-color: var(--warning-line);
+    background: var(--warning-bg);
+    color: var(--warning-text);
 }
 
 .parse-preview-detail {
-    opacity: 0.95;
-    font-size: 11px;
+    display: block;
+    font-size: 13px;
 }
 
 .text-danger {
-    color: #c53030;
+    color: var(--danger-text);
 }
 
-/* 已載入社團區 (由 JS 控制顯示) */
+/* ---------- 已加入的社團 (由 JS 控制顯示) ---------- */
+
 .loaded-clubs-section {
     display: none;
-    margin-top: 20px;
+    margin-top: 8px;
+}
+
+.loaded-clubs-section > * + * {
+    margin-top: 16px;
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    gap: 12px;
 }
 
 .section-title {
+    font-size: 20px;
     font-weight: 700;
-    color: var(--primary);
-    font-size: 15px;
 }
 
-.paste-options-row {
-    margin-top: 20px;
-    border-top: 1px solid var(--border);
-    padding-top: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.paste-options-main {
-    flex: 1;
-    min-width: 200px;
-}
-
-.paste-options-check {
-    margin-top: 20px;
-}
-
-.paste-label {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--primary);
-}
-
-.paste-textarea {
-    width: 100%;
-    height: 220px;
-    padding: 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 15px;
-    color: var(--text-main);
-    background: #fff;
-    resize: vertical;
-    transition: all 0.2s;
-}
-
-.paste-textarea:focus {
-    border-color: var(--primary);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(15, 59, 109, 0.1);
-}
-
-/* 已載入社團清單樣式 */
 .loaded-clubs-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 250px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    max-height: 320px;
     overflow-y: auto;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px;
 }
 
 .loaded-club-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 15px;
-    font-size: 14px;
-    animation: slideIn 0.2s ease forwards;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 16px;
+    font-size: 15px;
+}
+
+.loaded-club-item + .loaded-club-item {
+    border-top: 1px solid var(--line);
 }
 
 .loaded-club-body {
-    flex: 1;
-    margin-right: 15px;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .loaded-club-info {
-    font-weight: 700;
-    color: var(--primary);
     cursor: pointer;
     display: flex;
-    align-items: center;
-    gap: 6px;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    min-height: 32px;
+}
+
+.loaded-club-name {
+    font-weight: 700;
+}
+
+.loaded-club-meta {
+    color: var(--ink-muted);
+    font-size: 14px;
 }
 
 .loaded-club-badge {
-    background: var(--primary);
-    color: white;
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 11px;
-    font-weight: normal;
+    color: var(--primary);
+    font-size: 14px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
     white-space: nowrap;
 }
 
-/* 社團正取／備取名單 (點擊展開) */
 .loaded-club-details {
-    font-size: 13px;
     margin-top: 8px;
-    padding: 10px;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    line-height: 1.6;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: var(--radius-control);
+    font-size: 14px;
 }
 
 .roster-selected {
-    color: var(--accent-hover);
+    color: var(--success-text);
 }
 
 .roster-backup {
     margin-top: 6px;
-    color: #b45309;
+    color: var(--warning-text);
 }
 
 .loaded-club-delete {
-    color: #e74c3c;
-    cursor: pointer;
-    font-weight: 700;
-    background: none;
-    border: none;
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--danger-text);
+    font: inherit;
     font-size: 14px;
-    transition: all 0.2s;
+    cursor: pointer;
 }
 
 .loaded-club-delete:hover {
-    color: #c0392b;
-    transform: scale(1.1);
+    background: var(--danger-bg);
 }
 
-/* 💡 頁籤情境提示樣式 */
-.tab-intro {
-    background: #f8fafc;
-    border-left: 4px solid var(--primary);
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    font-size: 13px;
-    color: #475569;
-    line-height: 1.5;
-    text-align: left;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+.paste-options {
+    padding-top: 4px;
 }
 
-.tab-intro strong {
-    color: var(--primary);
-}
+/* ---------- 提醒與衝堂 ---------- */
 
-/* ⚠️ 警示提示框樣式 */
 .warning-callout {
-    background: #fffbeb;
-    border-left: 4px solid #d97706;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-top: 15px;
-    font-size: 13px;
-    color: #b45309;
-    line-height: 1.5;
-    text-align: left;
-}
-
-.warning-callout strong {
-    color: #92400e;
-}
-
-/* 💡 頁籤情境提示：左文字、右按鈕 */
-.tab-intro-split {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border: 1px solid var(--warning-line);
+    border-radius: var(--radius-panel);
+    background: var(--warning-bg);
+    color: var(--warning-text);
+    font-size: 15px;
 }
 
-/* ===================================================
- * 📱 RWD 響應式設計 (符合 W3C WCAG 2.2 與 Google web.dev 規範)
- * =================================================== */
+.warning-callout .icon {
+    margin-top: 2px;
+}
 
-/* 提示滑動指示標籤 */
-.mobile-table-hint {
+/* 衝堂警示 (由 JS 控制顯示；需高於 .warning-callout 的權重) */
+.warning-callout.conflict-alert {
     display: none;
-    font-size: 12px;
+    border-color: var(--danger-line);
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+
+.conflict-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.conflict-list {
+    padding-left: 1.2em;
+    font-size: 14px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.conflict-list li + li {
+    margin-top: 4px;
+}
+
+/* ---------- 按鈕 ---------- */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: var(--radius-control);
+    border: 1px solid transparent;
+    font: inherit;
+    font-weight: 700;
+    font-size: 16px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--surface);
     color: var(--primary);
-    background: rgba(15, 59, 109, 0.08);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-weight: 600;
+    border: 2px solid var(--primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--primary-tint);
+}
+
+.btn-outline {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--control);
+    font-weight: 400;
+}
+
+.btn-outline:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.btn-small {
+    min-height: 40px;
+    padding: 0 14px;
+    font-size: 14px;
+}
+
+.btn-large {
+    min-height: 52px;
+    padding: 0 28px;
+    font-size: 17px;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+/* ---------- 課表範例 ---------- */
+
+.sample-card {
+    flex: 5 1 340px;
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.sample-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.sample-scroll {
+    overflow-x: auto;
+}
+
+.sample-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.sample-table th,
+.sample-table td {
+    border: 1px solid var(--line);
+    padding: 8px 4px;
     text-align: center;
 }
 
-/* 💻/📱 平板與小型筆電適配 (max-width: 768px) */
+.sample-table th {
+    background: var(--primary-tint);
+    color: var(--ink-muted);
+    font-weight: 700;
+}
+
+.sample-table td.is-filled {
+    background: var(--mark);
+    color: var(--ink);
+}
+
+.sample-note {
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+.after-use {
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+}
+
+.after-use-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.after-use-list {
+    padding-left: 1.2em;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+.after-use-list li + li {
+    margin-top: 4px;
+}
+
+/* ---------- 步驟二：對照設定表 ---------- */
+
+.mapping-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.mapping-header-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px 24px;
+}
+
+.mapping-title {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.mapping-desc {
+    color: var(--ink-muted);
+}
+
+.memory-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--success-text);
+}
+
+.config-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 16px 20px;
+}
+
+.config-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.config-row.full-width {
+    grid-column: 1 / -1;
+}
+
+.table-responsive {
+    max-height: 420px;
+    overflow: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+}
+
+.mapping-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.mapping-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--primary-tint);
+}
+
+.mapping-table th,
+.mapping-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+}
+
+.mapping-table th {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-muted);
+}
+
+.mapping-table th + th,
+.mapping-table td + td {
+    border-left: 1px solid var(--line);
+}
+
+.mapping-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.col-slot { width: 18%; }
+.col-name { width: 52%; }
+.col-day { width: 30%; }
+
+.slot-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.slot-a {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.slot-other {
+    background: var(--primary-tint);
+    color: var(--primary);
+}
+
+.mobile-table-hint {
+    display: none;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+.filename-field {
+    max-width: 560px;
+}
+
+.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ---------- 步驟三：完成 ---------- */
+
+.success-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 48px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+}
+
+.success-icon {
+    color: var(--success-text);
+}
+
+.success-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.success-desc {
+    color: var(--ink-muted);
+    margin-bottom: 12px;
+}
+
+/* ---------- 頁尾 ---------- */
+
+.site-footer {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 32px 32px;
+    font-size: 13px;
+    color: var(--ink-muted);
+}
+
+.footer-disclaimer {
+    margin-top: 2px;
+}
+
+/* ---------- 鍵盤焦點 ---------- */
+
+.btn:focus-visible,
+.tab-btn:focus-visible,
+.loaded-club-info:focus-visible,
+.loaded-club-delete:focus-visible,
+.upload-zone:focus-visible,
+a:focus-visible,
+.config-checkbox-container input:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* ---------- 平板 (max-width: 768px) ---------- */
+
 @media (max-width: 768px) {
-    .container {
-        padding: 24px 20px;
-        border-radius: 16px;
+    .site-header-inner,
+    .page,
+    .site-footer {
+        padding-left: 20px;
+        padding-right: 20px;
     }
 
-    .logo-text {
-        font-size: 22px;
+    .page {
+        padding-top: 28px;
     }
 
-    .logo-text img.logo-img {
-        width: 42px;
-        height: 42px;
+    .page-title {
+        font-size: 28px;
+    }
+
+    .upload-layout {
+        gap: 28px;
     }
 }
 
-/* 📱 行動裝置與手機適配 (max-width: 640px) */
+/* ---------- 手機 (max-width: 640px) ---------- */
+
 @media (max-width: 640px) {
-    /* 1. 全域容器與 iPhone 安全區域 (Safe Area Inset) */
     body {
-        padding: 10px 8px calc(12px + env(safe-area-inset-bottom, 0px)) 8px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    .container {
-        padding: 16px 12px;
-        border-radius: 14px;
-        gap: 16px;
+    .site-header-inner,
+    .page,
+    .site-footer {
+        padding-left: 16px;
+        padding-right: 16px;
     }
 
-    /* 2. 標題與校徽尺寸 */
-    .header {
-        padding-bottom: 14px;
+    .page {
+        padding-top: 24px;
+        gap: 20px;
     }
 
-    .logo-text {
-        font-size: 18px;
-        gap: 8px;
-        flex-wrap: wrap;
-        line-height: 1.3;
+    .brand-logo {
+        width: 32px;
+        height: 32px;
     }
 
-    .logo-text img.logo-img {
-        width: 36px;
-        height: 36px;
+    .brand-name {
+        font-size: 16px;
     }
 
-    .subtitle {
-        font-size: 12px;
-        margin-top: 4px;
-    }
-
-    /* 3. 安全防護與重設橫幅 */
-    .security-banner {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        padding: 12px 14px;
-    }
-
-    .security-banner button {
+    .privacy-status {
         width: 100%;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        justify-content: space-between;
     }
 
-    /* 4. 頁籤切換按鈕 (50%/50% 等寬與 44px 觸控熱區) */
-    .tab-container {
-        gap: 6px;
-        margin-bottom: 14px;
-        padding-bottom: 8px;
+    .page-title {
+        font-size: 24px;
     }
 
-    .tab-btn {
-        flex: 1;
-        padding: 10px 6px;
-        font-size: 13px;
-        min-height: 44px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-    }
-
-    /* 5. 檔案上傳區塊 */
-    .upload-zone {
-        padding: 35px 12px;
-        border-width: 2px;
-    }
-
-    .upload-icon {
-        font-size: 40px;
-        margin-bottom: 8px;
-    }
-
-    .upload-text {
-        font-size: 14.5px;
-    }
-
-    .upload-hint {
-        font-size: 12px;
-    }
-
-    .tab-intro {
+    .stepper-item {
+        flex-direction: column;
+        gap: 2px;
         padding: 10px 12px;
-        font-size: 12.5px;
+        font-size: 14px;
     }
 
-    .tab-intro-split {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
+    .stepper-num {
+        font-size: 18px;
     }
 
-    .tab-intro a.btn {
-        width: 100%;
-        min-height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .tab-container {
+        grid-template-columns: 1fr;
     }
 
-    /* 6. 文字貼上名單區塊 (垂直單欄化流體排版) */
+    .upload-zone {
+        padding: 28px 16px;
+    }
+
     .paste-zone {
-        padding: 14px 12px;
+        padding: 16px;
     }
 
-    .paste-inputs {
-        flex-direction: column;
-        gap: 12px;
+    .form-grid,
+    .config-section {
+        grid-template-columns: 1fr;
     }
 
-    .paste-input-col {
-        width: 100%;
-    }
-
-    .paste-input-col input,
-    .paste-input-col select {
-        width: 100%;
-    }
-
-    .grade-range select {
-        flex: 1;
-        min-width: 0;
+    .field-wide,
+    .field-full {
+        grid-column: 1 / -1;
     }
 
     .paste-textarea {
-        height: 150px;
+        min-height: 150px;
     }
 
-    /* 7. iOS Safari 防縮放保護 (Input Focus >= 16px) */
-    input.club-input,
-    select.day-select,
-    select.config-select,
-    textarea.paste-textarea {
-        font-size: 16px !important;
+    .loaded-club-item {
+        padding: 12px;
     }
 
-    /* 8. 社團對照表格 (慣性滑動與緊湊排版) */
     .mobile-table-hint {
         display: block;
-        margin: 4px 0 8px 0;
     }
 
     .table-responsive {
+        max-height: 360px;
         -webkit-overflow-scrolling: touch;
-        max-height: 320px;
-        border-radius: 8px;
     }
 
-    table {
-        font-size: 13.5px;
-        min-width: 520px; /* 確保表格內各欄不被擠壓，透過橫向滾動瀏覽 */
+    .mapping-table {
+        min-width: 520px;
     }
 
-    th, td {
+    .mapping-table th,
+    .mapping-table td {
         padding: 8px 10px;
     }
 
-    .day-select, .club-input {
-        padding: 8px 10px;
-        min-height: 40px;
-    }
-
-    .slot-badge {
-        font-size: 12px;
-        padding: 3px 6px;
-    }
-
-    /* 9. 底部按鈕群 (大拇指友善滿版排列) */
     .btn-group {
         flex-direction: column-reverse;
-        gap: 10px;
+        align-items: stretch;
+    }
+
+    .btn-group .btn,
+    .success-panel .btn {
         width: 100%;
-        margin-top: 8px;
     }
 
-    .btn-group .btn {
-        width: 100%;
-        min-height: 46px;
-        justify-content: center;
-        font-size: 15px;
-    }
-
-    .memory-hint {
-        justify-content: center;
-        margin-top: 4px;
-        font-size: 12px;
-    }
-
-    /* 10. 成功轉檔面板 */
     .success-panel {
-        padding: 25px 10px;
-    }
-
-    .success-icon {
-        font-size: 48px;
-        margin-bottom: 14px;
-    }
-
-    .success-title {
-        font-size: 19px;
-    }
-
-    .success-desc {
-        font-size: 13.5px;
-        margin-bottom: 20px;
+        padding: 32px 16px;
     }
 }
 
-/* ♿ 使用者偏好減少動態效果時，關閉進場與縮放動畫 */
+/* 使用者偏好減少動態效果時，關閉動畫與轉場 */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -1123,12 +1122,4 @@ tr:last-child td {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
-
-    .upload-zone:hover,
-    .upload-zone.dragover,
-    .btn-primary:hover,
-    .loaded-club-delete:hover {
-        transform: none;
-    }
 }
-

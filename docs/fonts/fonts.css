@@ -42,11 +42,3 @@
     font-display: swap;
     src: url('Outfit-SemiBold.woff2') format('woff2');
 }
-
-@font-face {
-    font-family: 'Outfit';
-    font-style: normal;
-    font-weight: 800;
-    font-display: swap;
-    src: url('Outfit-ExtraBold.woff2') format('woff2');
-}

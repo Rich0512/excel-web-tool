@@ -50,176 +50,213 @@
     <link rel="preload" href="fonts/Outfit-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.8">
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.9">
     <!-- 引入 ExcelJS (前端處理 Excel 格式與樣式的核心庫 - 已本地化以維護個資安全與支援離線使用) -->
     <script src="js/libs/exceljs.min.js" defer></script>
     <!-- 引入外部樣式表 (使用版本參數防止瀏覽器快取舊樣式) -->
-    <link rel="stylesheet" href="css/style.css?v=3.8">
+    <link rel="stylesheet" href="css/style.css?v=3.9">
 </head>
 <body>
 
-    <div class="container">
-        <!-- 標題區 -->
-        <header class="header" role="banner">
-            <h1 class="logo-text">
-                <img src="images/logo.png" class="logo-img" alt="延平國小校徽">
-                台北市延平國小社團課表整理工具
-            </h1>
-            <div class="subtitle">網頁發佈版 ── 免安裝、純瀏覽器本地處理，100% 保障學生個資安全</div>
-        </header>
-
-        <main role="main">
-
-        <!-- 🛡️ 安全防護與個資重設警示區 -->
-        <div class="security-banner">
-            <div class="security-banner-text">
-                🛡️ <strong>本地安全隔離保護中</strong>：所有個資完全在本機瀏覽器處理，絕不上載。<strong>使用完畢後請關閉此分頁，並刪除下載資料夾中的 Excel 暫存檔</strong>，防止他人偷看。
-                <br><span class="security-banner-tip">💡 建議：可使用瀏覽器「無痕視窗」操作，防堵瀏覽器外掛插件竊取或監視網頁內容。</span>
+    <!-- 頁首：校名與個資狀態 -->
+    <header class="site-header" role="banner">
+        <div class="site-header-inner">
+            <div class="brand">
+                <img src="images/logo.png" class="brand-logo" alt="延平國小校徽" width="40" height="40">
+                <span class="brand-name">延平國小社團課表整理工具</span>
             </div>
-            <button type="button" class="btn btn-outline" id="btn-hard-reset">🧹 一鍵安全清除所有暫存</button>
+            <div class="privacy-status">
+                <span class="privacy-note">
+                    <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                    資料只在這台電腦處理
+                </span>
+                <button type="button" class="btn btn-outline btn-small" id="btn-hard-reset">清除這次的資料</button>
+            </div>
         </div>
+    </header>
+
+    <main class="page" role="main">
+
+        <div class="intro">
+            <h1 class="page-title">把錄取名冊整理成學生週課表</h1>
+            <p class="page-lead">上傳學校匯出的 Excel，或貼上選課網頁的名單。確認每個社團在星期幾上課後，就能下載每位學生一列的週課表。</p>
+        </div>
+
+        <ol class="stepper" aria-label="操作步驟">
+            <li class="stepper-item" data-step="step-upload" aria-current="step"><span class="stepper-num">1</span>選擇名冊</li>
+            <li class="stepper-item" data-step="step-mapping"><span class="stepper-num">2</span>確認上課星期</li>
+            <li class="stepper-item" data-step="step-success"><span class="stepper-num">3</span>下載課表</li>
+        </ol>
 
         <!-- 步驟一：資料輸入 -->
         <div class="step-panel active" id="step-upload">
-            <div class="tab-container" role="tablist">
-                <button type="button" class="tab-btn active" id="tab-btn-file" role="tab" aria-selected="true" aria-controls="tab-file-content">📂 上傳 Excel 檔案</button>
-                <button type="button" class="tab-btn" id="tab-btn-paste" role="tab" aria-selected="false" aria-controls="tab-paste-content">📋 貼上網頁複製名單</button>
-            </div>
-
-            <!-- 檔案上傳區 -->
-            <div id="tab-file-content" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-file">
-                <div class="tab-intro tab-intro-split">
-                    <div>💡 <strong>適用情境：</strong>已有錄取名單 Excel。一鍵上傳多個社團，快速轉化為以學生為單位的個人週課表總表。</div>
-                    <a href="templates/115學期名冊_範本.xlsx" download class="btn btn-secondary btn-sm">📥 下載測試範本 Excel</a>
-                </div>
-                <div class="upload-zone" id="drop-zone" role="button" tabindex="0" aria-label="選擇或拖曳錄取名冊 Excel 檔案">
-                    <span class="upload-icon">📂</span>
-                    <div class="upload-text">將錄取名冊 Excel 檔案拖曳至此，或點選這裡上傳</div>
-                    <div class="upload-hint">支援學校導出的 .xlsx 試算表格式</div>
-                    <input type="file" id="file-input" accept=".xlsx, .xls">
-                </div>
-            </div>
-
-            <!-- 文字貼上區 -->
-            <div id="tab-paste-content" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-paste">
-                <div class="tab-intro">
-                    💡 <strong>適用情境：</strong>尚未抽籤。直接貼上選課網頁複製的名冊，進行<strong>線上隨機抽籤、設定年級限制及高低年級優先權</strong>。請在<strong>載入所有社團名冊後，再一併點選下方按鈕彙整下載</strong>。
-                </div>
-                <div class="paste-zone">
-                    <div class="paste-inputs">
-                        <div class="paste-input-col">
-                            <label class="paste-label" for="paste-day-select">📅 上課星期：</label>
-                            <select id="paste-day-select" class="config-select">
-                                <option value="週一">週一</option>
-                                <option value="週二">週二</option>
-                                <option value="週三">週三</option>
-                                <option value="週四">週四</option>
-                                <option value="週五">週五</option>
-                                <option value="週六">週六</option>
-                                <option value="週日">週日</option>
-                            </select>
-                        </div>
-                        <div class="paste-input-col paste-input-grow">
-                            <label class="paste-label" for="paste-club-name">🏫 社團名稱：</label>
-                            <input type="text" id="paste-club-name" class="club-input" placeholder="例：舞蹈社、籃球社 (系統會自動嘗試從貼上內容中預測，也可手動修改)">
-                        </div>
+            <div class="upload-layout">
+                <div class="upload-main">
+                    <div class="tab-container" role="tablist" aria-label="名冊來源">
+                        <button type="button" class="tab-btn active" id="tab-btn-file" role="tab" aria-selected="true" aria-controls="tab-file-content">
+                            <span class="tab-title">上傳 Excel 檔</span>
+                            <span class="tab-desc">已有錄取名單，直接排課表</span>
+                        </button>
+                        <button type="button" class="tab-btn" id="tab-btn-paste" role="tab" aria-selected="false" aria-controls="tab-paste-content">
+                            <span class="tab-title">貼上網頁名單 <span class="tab-count" id="paste-club-count" hidden></span></span>
+                            <span class="tab-desc">還沒抽籤，要在線上抽籤</span>
+                        </button>
                     </div>
 
-                    <div class="paste-inputs">
-                        <div class="paste-input-col">
-                            <label class="paste-label" for="paste-quota">👥 招收正取人數：</label>
-                            <input type="number" id="paste-quota" class="club-input input-narrow" value="12" min="1" inputmode="numeric">
+                    <!-- 檔案上傳區 -->
+                    <div id="tab-file-content" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-file">
+                        <div class="upload-zone" id="drop-zone" role="button" tabindex="0" aria-label="選擇或拖曳錄取名冊 Excel 檔案">
+                            <svg class="upload-icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h8M12 11v8"/></svg>
+                            <div class="upload-text">把名冊 Excel 拖到這裡，或點這裡選擇檔案</div>
+                            <div class="upload-hint">支援學校匯出的 .xlsx 檔。檔案不會上傳到任何伺服器。</div>
+                            <span class="btn btn-primary upload-btn" aria-hidden="true">選擇檔案</span>
+                            <input type="file" id="file-input" accept=".xlsx, .xls">
                         </div>
-                        <div class="paste-input-col">
-                            <label class="paste-label" for="paste-grade-start">🎓 招收年級限制：</label>
-                            <div class="grade-range">
-                                <select id="paste-grade-start" class="config-select" aria-label="起始年級">
-                                    <option value="1" selected>1年級</option>
-                                    <option value="2">2年級</option>
-                                    <option value="3">3年級</option>
-                                    <option value="4">4年級</option>
-                                    <option value="5">5年級</option>
-                                    <option value="6">6年級</option>
-                                    <option value="新生">新生</option>
-                                </select>
-                                <span class="grade-range-sep">~</span>
-                                <select id="paste-grade-end" class="config-select" aria-label="結束年級">
-                                    <option value="1">1年級</option>
-                                    <option value="2" selected>2年級</option>
-                                    <option value="3">3年級</option>
-                                    <option value="4">4年級</option>
-                                    <option value="5">5年級</option>
-                                    <option value="6">6年級</option>
-                                    <option value="新生">新生</option>
-                                </select>
+                        <p class="template-link">
+                            <a href="templates/115學期名冊_範本.xlsx" download>沒有檔案？下載測試用的範本 Excel</a>
+                        </p>
+                    </div>
+
+                    <!-- 文字貼上區 -->
+                    <div id="tab-paste-content" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-paste">
+                        <p class="tab-intro">每貼上一個社團的名單，就按一次「加入這個社團」。所有社團都加入後，再到下方一起抽籤並下載課表，這樣才能檢查跨社團的衝堂。</p>
+
+                        <div class="paste-zone">
+                            <div class="form-grid">
+                                <div class="field field-wide">
+                                    <label class="field-label" for="paste-club-name">社團名稱</label>
+                                    <input type="text" id="paste-club-name" class="club-input" placeholder="例如：舞蹈社">
+                                </div>
+                                <div class="field">
+                                    <label class="field-label" for="paste-day-select">上課星期</label>
+                                    <select id="paste-day-select" class="config-select">
+                                        <option value="週一">週一</option>
+                                        <option value="週二">週二</option>
+                                        <option value="週三">週三</option>
+                                        <option value="週四">週四</option>
+                                        <option value="週五">週五</option>
+                                        <option value="週六">週六</option>
+                                        <option value="週日">週日</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label class="field-label" for="paste-quota">正取人數</label>
+                                    <input type="number" id="paste-quota" class="club-input" value="12" min="1" inputmode="numeric">
+                                </div>
+                                <div class="field field-wide">
+                                    <span class="field-label" id="paste-grade-label">招收年級</span>
+                                    <div class="grade-range">
+                                        <select id="paste-grade-start" class="config-select" aria-label="起始年級">
+                                            <option value="1" selected>1 年級</option>
+                                            <option value="2">2 年級</option>
+                                            <option value="3">3 年級</option>
+                                            <option value="4">4 年級</option>
+                                            <option value="5">5 年級</option>
+                                            <option value="6">6 年級</option>
+                                            <option value="新生">新生</option>
+                                        </select>
+                                        <span class="grade-range-sep" aria-hidden="true">至</span>
+                                        <select id="paste-grade-end" class="config-select" aria-label="結束年級">
+                                            <option value="1">1 年級</option>
+                                            <option value="2" selected>2 年級</option>
+                                            <option value="3">3 年級</option>
+                                            <option value="4">4 年級</option>
+                                            <option value="5">5 年級</option>
+                                            <option value="6">6 年級</option>
+                                            <option value="新生">新生</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="field field-wide">
+                                    <label class="field-label" for="paste-priority">抽籤優先順序</label>
+                                    <select id="paste-priority" class="config-select">
+                                        <option value="desc" selected>高年級優先</option>
+                                        <option value="asc">低年級優先</option>
+                                    </select>
+                                    <p class="field-tip">沒有班級座號的新生一律排在最後。</p>
+                                </div>
+                                <div class="field field-full">
+                                    <label class="field-label" for="paste-text-area">名單內容</label>
+                                    <p class="field-tip">在選課網頁上選取整份名冊（包含欄位標題）後複製貼上。只要有班級、座號、姓名就能抽籤，不需要「抽籤順序」欄位。</p>
+                                    <textarea id="paste-text-area" class="paste-textarea" placeholder="在這裡貼上（Ctrl + V），例如：&#10;班級  座號  姓名&#10;301   05    王小明&#10;302   11    陳小華"></textarea>
+                                    <div id="paste-parse-preview" class="parse-preview" role="status"></div>
+                                </div>
                             </div>
+
+                            <button type="button" class="btn btn-secondary btn-block" id="btn-load-club">加入這個社團</button>
                         </div>
-                        <div class="paste-input-col paste-input-grow">
-                            <label class="paste-label" for="paste-priority">⚖️ 抽籤優先順序：</label>
-                            <select id="paste-priority" class="config-select config-select-full">
-                                <option value="desc" selected>高年級優先 (6 > 5 > 4 > 3 > 2 > 1 > 新生)</option>
-                                <option value="asc">低年級優先 (1 > 2 > 3 > 4 > 5 > 6 > 新生)</option>
-                            </select>
+
+                        <!-- 已加入的社團列表 -->
+                        <div id="loaded-clubs-section" class="loaded-clubs-section">
+                            <div class="section-header">
+                                <h2 class="section-title">已加入的社團</h2>
+                                <button type="button" class="btn btn-outline btn-small" id="btn-clear-clubs">全部移除</button>
+                            </div>
+                            <div class="loaded-clubs-list" id="loaded-clubs-list">
+                                <!-- 動態產生已加入社團 -->
+                            </div>
+
+                            <div class="form-grid paste-options">
+                                <div class="field field-wide">
+                                    <label class="field-label" for="paste-slot-mode-select">時段模式</label>
+                                    <select id="paste-slot-mode-select" class="config-select">
+                                        <option value="semester">一般學期（沒有 AB 時段）</option>
+                                        <option value="vacation">寒暑假（有 AB 時段）</option>
+                                    </select>
+                                    <p class="field-tip">寒暑假模式會在課表的社團名稱後加上時段。</p>
+                                </div>
+                                <div class="field field-wide field-check">
+                                    <label class="config-checkbox-container">
+                                        <input type="checkbox" id="paste-include-freshmen" checked>
+                                        <span class="checkbox-text">包含沒有班級座號的新生</span>
+                                    </label>
+                                </div>
+                                <div class="field field-full">
+                                    <label class="field-label" for="paste-excel-filename">下載的檔名（選填）</label>
+                                    <input type="text" id="paste-excel-filename" class="club-input" placeholder="留空時使用「直接貼上名單彙整」">
+                                </div>
+                            </div>
+
+                            <div class="warning-callout">
+                                <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
+                                <div>按下載後，已加入的社團會一起抽籤並匯出，之後要重新貼上。請先確認<strong>所有要整理的社團都已加入</strong>，否則無法檢查跨社團的衝堂。</div>
+                            </div>
+
+                            <div id="paste-conflict-alert" class="warning-callout conflict-alert" role="alert"></div>
+
+                            <button type="button" class="btn btn-primary btn-block btn-large" id="btn-process-paste">
+                                抽籤並下載課表（共 <span id="total-pasted-students">0</span> 筆錄取資料）
+                            </button>
                         </div>
                     </div>
-
-                    <div class="textarea-container">
-                        <label class="paste-label" for="paste-text-area">
-                            📋 請將網頁上的選課名冊<strong>「完整拖曳反黑選擇 (包含欄位標題)」</strong>並複製貼上到下方：
-                        </label>
-                        <div class="field-tip">
-                            💡 <strong>貼心提示：</strong>複製的內容不一定需要包含「抽籤順序」欄位。系統只需解析出「班級、座號、姓名」即可為您自動進行隨機抽籤並編排籤序！
-                        </div>
-                        <textarea id="paste-text-area" class="paste-textarea" placeholder="直接在此貼上 (Ctrl + V)...&#10;例：&#10;班級	座號	姓名&#10;101	05	張三&#10;102	12	李四"></textarea>
-                        <div id="paste-parse-preview" class="parse-preview" role="status"></div>
-                    </div>
-
-                    <button type="button" class="btn btn-primary btn-block" id="btn-load-club">
-                        ➕ 載入此社團名單
-                    </button>
                 </div>
 
-                <!-- 已載入的社團列表 -->
-                <div id="loaded-clubs-section" class="loaded-clubs-section">
-                    <div class="section-header">
-                        <span class="section-title">已載入的社團名單列表：</span>
-                        <button type="button" class="btn btn-secondary btn-xs" id="btn-clear-clubs">🗑️ 清空所有社團</button>
+                <!-- 課表範例 (靜態示意，姓名為虛構) -->
+                <aside class="sample-card" aria-labelledby="sample-title">
+                    <h2 class="sample-title" id="sample-title">下載後會得到這樣的課表</h2>
+                    <div class="sample-scroll">
+                        <table class="sample-table">
+                            <thead>
+                                <tr><th scope="col">班級</th><th scope="col">座號</th><th scope="col">姓名</th><th scope="col">一</th><th scope="col">二</th><th scope="col">三</th><th scope="col">四</th><th scope="col">五</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>301</td><td>05</td><td>王小明</td><td class="is-filled">桌遊</td><td></td><td class="is-filled">足球</td><td></td><td></td></tr>
+                                <tr><td>302</td><td>11</td><td>陳小華</td><td class="is-filled">游泳</td><td class="is-filled">游泳</td><td></td><td class="is-filled">游泳</td><td class="is-filled">游泳</td></tr>
+                                <tr><td>405</td><td>23</td><td>林小美</td><td></td><td></td><td></td><td class="is-filled">舞蹈</td><td></td></tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="loaded-clubs-list" id="loaded-clubs-list">
-                        <!-- 動態產生已載入社團 -->
+                    <p class="sample-note">同一位學生的社團合併成一列；晨間社團會填入每一個上課日。範例姓名為虛構。</p>
+
+                    <div class="after-use">
+                        <h3 class="after-use-title">用完之後</h3>
+                        <ul class="after-use-list">
+                            <li>關閉這個分頁，名冊資料就會從記憶體清除。</li>
+                            <li>刪除下載資料夾裡的課表 Excel，避免他人看到。</li>
+                            <li>學校公用電腦建議用無痕視窗，避免瀏覽器外掛讀取頁面內容。</li>
+                        </ul>
                     </div>
-
-                    <div class="paste-options-row">
-                        <div class="paste-options-main">
-                            <label class="paste-label" for="paste-slot-mode-select">📅 時段模式：</label>
-                            <select id="paste-slot-mode-select" class="config-select config-select-full">
-                                <option value="semester">一般學期模式 (無 AB 時段，課表名稱無括號)</option>
-                                <option value="vacation">寒暑假模式 (有 AB 時段，課表名稱加後綴)</option>
-                            </select>
-                        </div>
-                        <div class="paste-options-check">
-                            <label class="config-checkbox-container">
-                                <input type="checkbox" id="paste-include-freshmen" checked>
-                                <span class="checkbox-text">👶 包含無班級座號之「新生」</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="warning-callout">
-                        ⚠️ <strong>重要提醒：</strong>請重複「貼上名單 ➔ 點擊載入此社團名單」的步驟，將<strong>所有要整理的社團</strong>都載入到下方的列表中，最後再點選下方的彙整下載按鈕。若提早點選彙整，系統會直接清除當前載入狀態並匯出，將無法進行多社團衝堂衝突檢查！
-                    </div>
-
-                    <div class="filename-field">
-                        <label class="paste-label" for="paste-excel-filename">💾 儲存 Excel 檔名設定 (選填)：</label>
-                        <input type="text" id="paste-excel-filename" class="club-input club-input-full" placeholder="留空將自動使用「直接貼上名單彙整」命名">
-                    </div>
-
-                    <div id="paste-conflict-alert" class="warning-callout conflict-alert" role="alert"></div>
-
-                    <button type="button" class="btn btn-primary btn-block" id="btn-process-paste">
-                        ⚡ 開始彙整並下載課表 (共 <span id="total-pasted-students">0</span> 筆錄取資料)
-                    </button>
-                </div>
+                </aside>
             </div>
         </div>
 
@@ -227,46 +264,48 @@
         <div class="step-panel" id="step-mapping">
             <div class="mapping-container">
                 <div class="mapping-header-row">
-                    <div class="mapping-title">
-                        請確認本學期社團上課星期 (可直接點擊名稱欄位修改名稱)：
+                    <div>
+                        <h2 class="mapping-title">確認每個社團的上課星期</h2>
+                        <p class="mapping-desc">社團名稱可以直接修改，修改後的名稱會出現在課表上。</p>
                     </div>
                     <div class="memory-hint">
-                        <span>⚙️</span> 已自動載入瀏覽器記憶設定
+                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
+                        已套用這台電腦上次的設定
                     </div>
                 </div>
-                <div class="mobile-table-hint">👉 表格可向左滑動查看完整欄位</div>
 
-                <!-- ⚙️ 智慧彙整與時段參數設定 -->
                 <div class="config-section">
                     <div class="config-row">
-                        <label class="config-label" for="mode-select">📁 彙整模式：</label>
+                        <label class="field-label" for="mode-select">彙整模式</label>
                         <select id="mode-select" class="config-select">
-                            <option value="single">單一清單模式 (有「課程與學生清單」或「總表」工作表)</option>
-                            <option value="multi">多工作表分社團模式 (無總表/清單，分不同 Sheet)</option>
+                            <option value="single">單一清單（有「課程與學生清單」或「總表」工作表）</option>
+                            <option value="multi">多工作表（沒有總表，每個社團一個工作表）</option>
                         </select>
                     </div>
                     <div class="config-row">
-                        <label class="config-label" for="slot-mode-select">📅 時段模式：</label>
+                        <label class="field-label" for="slot-mode-select">時段模式</label>
                         <select id="slot-mode-select" class="config-select">
-                            <option value="semester">一般學期模式 (無 AB 時段，課表名稱無括號)</option>
-                            <option value="vacation">寒暑假模式 (有 AB 時段，課表名稱加後綴)</option>
+                            <option value="semester">一般學期（沒有 AB 時段）</option>
+                            <option value="vacation">寒暑假（有 AB 時段）</option>
                         </select>
+                        <p class="field-tip">寒暑假模式會在課表的社團名稱後加上時段。</p>
                     </div>
                     <div class="config-row full-width">
                         <label class="config-checkbox-container">
                             <input type="checkbox" id="include-freshmen" checked>
-                            <span class="checkbox-text">👶 包含無班級座號之「新生」名單</span>
+                            <span class="checkbox-text">包含沒有班級座號的新生名單</span>
                         </label>
                     </div>
                 </div>
 
+                <p class="mobile-table-hint">表格可以左右滑動，查看所有欄位。</p>
                 <div class="table-responsive">
-                    <table>
+                    <table class="mapping-table">
                         <thead>
                             <tr>
-                                <th class="col-slot">時段</th>
-                                <th class="col-name">社團名稱 (可點擊修改)</th>
-                                <th class="col-day">設定上課星期</th>
+                                <th class="col-slot" scope="col">時段</th>
+                                <th class="col-name" scope="col">社團名稱（可修改）</th>
+                                <th class="col-day" scope="col">上課星期</th>
                             </tr>
                         </thead>
                         <tbody id="mapping-table-body">
@@ -275,16 +314,16 @@
                     </table>
                 </div>
 
-                <div class="filename-field filename-field-divided">
-                    <label class="paste-label" for="excel-filename">💾 儲存 Excel 檔名設定 (選填)：</label>
-                    <input type="text" id="excel-filename" class="club-input club-input-full" placeholder="留空將自動使用原始檔案名稱命名">
+                <div class="field filename-field">
+                    <label class="field-label" for="excel-filename">下載的檔名（選填）</label>
+                    <input type="text" id="excel-filename" class="club-input" placeholder="留空時使用原始檔名">
                 </div>
 
                 <div id="mapping-conflict-alert" class="warning-callout conflict-alert" role="alert"></div>
 
                 <div class="btn-group">
-                    <button type="button" class="btn btn-secondary" id="btn-back-to-upload">⬅️ 重新選取檔案</button>
-                    <button type="button" class="btn btn-primary" id="btn-process-mapping">⚡ 開始轉換並下載課表</button>
+                    <button type="button" class="btn btn-secondary" id="btn-back-to-upload">重新選擇檔案</button>
+                    <button type="button" class="btn btn-primary btn-large" id="btn-process-mapping">開始轉換並下載課表</button>
                 </div>
             </div>
         </div>
@@ -292,35 +331,32 @@
         <!-- 步驟三：轉檔成功 -->
         <div class="step-panel" id="step-success">
             <div class="success-panel">
-                <div class="success-icon">🎉</div>
-                <div class="success-title">轉換成功！</div>
-                <div class="success-desc">
-                    您的「課程與學生清單」課表已整理完畢，並開始自動下載！<br>
-                    若下載未開始，請確認瀏覽器下載提示或手動檢查下載資料夾。
-                </div>
-                <button type="button" class="btn btn-primary btn-center" id="btn-restart">🔄 繼續轉換新檔案</button>
+                <svg class="success-icon" viewBox="0 0 48 48" width="56" height="56" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M14 25l7 7 14-15"/></svg>
+                <h2 class="success-title">課表已開始下載</h2>
+                <p class="success-desc">
+                    如果沒有看到下載，請檢查瀏覽器的下載提示或下載資料夾。<br>
+                    用完請刪除下載資料夾裡的課表 Excel。
+                </p>
+                <button type="button" class="btn btn-primary" id="btn-restart">整理另一份名冊</button>
             </div>
         </div>
 
-        </main>
+    </main>
 
-        <!-- 頁尾宣告 -->
-        <footer class="footer-note" role="contentinfo">
-            🛡️ 安全宣告：本工具完全在您的本機瀏覽器中處理資料，資料不會上傳至任何網路伺服器，請安心使用。<br>
-            <span class="footer-disclaimer">
-                * 聲明：本網頁為個人開發之公益行政輔助工具，專供台北市延平國小內部社團業務整理使用，非學校官方系統。網頁不收集任何學生個資。 *
-            </span>
-        </footer>
-    </div>
+    <!-- 頁尾宣告 -->
+    <footer class="site-footer" role="contentinfo">
+        <p>名冊只在這個瀏覽器分頁裡處理，不會上傳到任何伺服器。</p>
+        <p class="footer-disclaimer">本網頁為個人開發的公益行政輔助工具，供台北市延平國小社團業務使用，非學校官方系統。不收集任何學生資料。</p>
+    </footer>
 
     <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼；依相依順序載入) -->
-    <script src="js/utils.js?v=3.8" defer></script>
-    <script src="js/exporter.js?v=3.8" defer></script>
-    <script src="js/parser.js?v=3.8" defer></script>
-    <script src="js/processor.js?v=3.8" defer></script>
-    <script src="js/mapping-ui.js?v=3.8" defer></script>
-    <script src="js/app.js?v=3.8" defer></script>
+    <script src="js/utils.js?v=3.9" defer></script>
+    <script src="js/exporter.js?v=3.9" defer></script>
+    <script src="js/parser.js?v=3.9" defer></script>
+    <script src="js/processor.js?v=3.9" defer></script>
+    <script src="js/mapping-ui.js?v=3.9" defer></script>
+    <script src="js/app.js?v=3.9" defer></script>
     <!-- 📱 註冊 Service Worker (離線快取) -->
-    <script src="js/register-sw.js?v=3.8" defer></script>
+    <script src="js/register-sw.js?v=3.9" defer></script>
 </body>
 </html>

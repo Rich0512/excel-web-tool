@@ -118,6 +118,15 @@ function switchStep(stepId) {
         panel.classList.remove('active');
     });
     document.getElementById(stepId).classList.add('active');
+
+    // 同步頁首步驟列 (目前步驟以 aria-current 標示，樣式由 CSS 處理)
+    document.querySelectorAll('.stepper-item').forEach(item => {
+        if (item.dataset.step === stepId) {
+            item.setAttribute('aria-current', 'step');
+        } else {
+            item.removeAttribute('aria-current');
+        }
+    });
 }
 
 function resetToUpload() {
@@ -185,7 +194,7 @@ function manualHardResetAll() {
         
         renderLoadedClubs();
         switchStep('step-upload');
-        alert("🔒 所有記憶體暫存與個資已安全清空，網頁已完成重設！");
+        alert("這次讀取的名冊與設定都已從記憶體清除，可以重新開始。");
     }
 }
 
@@ -200,7 +209,7 @@ async function processAndDownload() {
     try {
         if (actionBtn) {
             actionBtn.disabled = true;
-            actionBtn.innerHTML = '⏳ 正在彙整並匯出課表...';
+            actionBtn.textContent = '正在轉換並下載課表…';
         }
 
         const mode = document.getElementById('mode-select').value;
@@ -353,7 +362,8 @@ const parsePreview = document.getElementById('paste-parse-preview');
 function updatePastePreview() {
     const text = pasteArea.value;
     if (text.length > 200000) {
-        parsePreview.innerHTML = `⚠️ <strong class="text-danger">貼上失敗：</strong>資料量過大（超過 200,000 字元），為防範網頁無回應已拒絕解析。`;
+        parsePreview.innerHTML = `<strong class="text-danger">無法讀取：</strong>貼上的內容超過 200,000 字元。請一次只貼上一個社團的名單。`;
+        parsePreview.classList.add('is-warning');
         parsePreview.style.display = 'block';
         return;
     }
@@ -372,11 +382,13 @@ function updatePastePreview() {
         const hasSeat = parsed.filter(s => s.seat).length;
         const hasName = parsed.filter(s => s.name).length;
         
-        parsePreview.innerHTML = `🟢 <strong>系統已即時識別：</strong>偵測到 <strong>${parsed.length}</strong> 筆學生名冊資料！<br>` +
-                                 `<span class="parse-preview-detail">(包含：${hasClass} 個有效班級、${hasSeat} 個座號、${hasName} 個姓名，名單格式解析正常)</span>`;
+        parsePreview.innerHTML = `讀到 <strong>${parsed.length}</strong> 位學生` +
+                                 `<span class="parse-preview-detail">其中 ${hasClass} 位有班級、${hasSeat} 位有座號、${hasName} 位有姓名</span>`;
+        parsePreview.classList.remove('is-warning');
         parsePreview.style.display = 'block';
     } else {
-        parsePreview.innerHTML = `⚠️ <strong>解析提示：</strong>目前貼上的文字無法識別出學生資料，請確認是否包含「姓名、班級、座號」資料列。`;
+        parsePreview.innerHTML = `<strong>讀不到學生資料。</strong>請確認貼上的內容包含班級、座號、姓名這幾欄。`;
+        parsePreview.classList.add('is-warning');
         parsePreview.style.display = 'block';
     }
 }
@@ -424,7 +436,7 @@ function loadPastedClub() {
     }
     
     if (pastedText.length > 200000) {
-        alert("⚠️ 貼上的資料量過大（超過 200,000 字元），為防範網頁當機已拒絕處理！");
+        alert("貼上的內容超過 200,000 字元，無法處理。請一次只貼上一個社團的名單。");
         return;
     }
     
@@ -492,8 +504,9 @@ function renderLoadedClubs() {
         infoHeader.setAttribute('role', 'button');
         infoHeader.setAttribute('tabindex', '0');
         infoHeader.setAttribute('aria-expanded', 'false');
-        infoHeader.innerHTML = `<span>📅 ${escapeHtml(club.day)} ── 🏫 ${escapeHtml(club.clubName)} (正取 ${club.selectedCount}/${club.quota} 人，報名 ${club.students.length} 人，限制 ${escapeHtml(club.gradeStart)}-${escapeHtml(club.gradeEnd)}年級)</span> ` +
-                               `<span class="loaded-club-badge">🔍 點擊查看名單</span>`;
+        infoHeader.innerHTML = `<span class="loaded-club-name">${escapeHtml(club.clubName)}</span>` +
+                               `<span class="loaded-club-meta">${escapeHtml(club.day)}，正取 ${club.selectedCount}／${club.quota} 人，報名 ${club.students.length} 人，限 ${escapeHtml(club.gradeStart)}–${escapeHtml(club.gradeEnd)} 年級</span>` +
+                               `<span class="loaded-club-badge">查看名單</span>`;
 
         const infoDetails = document.createElement('div');
         infoDetails.className = "loaded-club-details";
@@ -502,14 +515,14 @@ function renderLoadedClubs() {
         const selectedList = club.students.filter(s => s.selected).map(s => escapeHtml(`${s.class || '新生'}${s.seat ? `座號${s.seat}` : ''} ${s.name}`)).join('、');
         const backupList = club.students.filter(s => !s.selected).map(s => escapeHtml(`${s.name}(${s.drawSequence})`)).join('、');
 
-        infoDetails.innerHTML = `<div class="roster-selected"><strong>🟢 正取：</strong>${selectedList || '無'}</div>` +
-                                 `<div class="roster-backup"><strong>🟡 備取/不符：</strong>${backupList || '無'}</div>`;
+        infoDetails.innerHTML = `<div class="roster-selected"><strong>正取：</strong>${selectedList || '無'}</div>` +
+                                 `<div class="roster-backup"><strong>備取或不符資格：</strong>${backupList || '無'}</div>`;
 
         const toggleDetails = () => {
             const willShow = infoDetails.hidden;
             infoDetails.hidden = !willShow;
             infoHeader.setAttribute('aria-expanded', String(willShow));
-            infoHeader.querySelector('.loaded-club-badge').textContent = willShow ? "▲ 收合名單" : "🔍 點擊查看名單";
+            infoHeader.querySelector('.loaded-club-badge').textContent = willShow ? "收合名單" : "查看名單";
         };
         infoHeader.addEventListener('click', toggleDetails);
         infoHeader.addEventListener('keydown', (e) => {
@@ -525,7 +538,8 @@ function renderLoadedClubs() {
         const delBtn = document.createElement('button');
         delBtn.type = "button";
         delBtn.className = "loaded-club-delete";
-        delBtn.textContent = "🗑️ 刪除";
+        delBtn.textContent = "移除";
+        delBtn.setAttribute('aria-label', `移除 ${club.clubName}`);
         delBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             pastedClubs.splice(index, 1);
@@ -556,13 +570,11 @@ function renderLoadedClubs() {
     }
 
     // 動態更新 Tab 按鈕上的社團計數器
-    const pasteTabBtn = document.getElementById('tab-btn-paste');
-    if (pasteTabBtn) {
-        if (pastedClubs.length > 0) {
-            pasteTabBtn.innerHTML = `📋 貼上網頁複製名單 <span class="tab-count">${pastedClubs.length}</span>`;
-        } else {
-            pasteTabBtn.innerHTML = `📋 貼上網頁複製名單`;
-        }
+    const pasteCount = document.getElementById('paste-club-count');
+    if (pasteCount) {
+        pasteCount.textContent = String(pastedClubs.length);
+        pasteCount.hidden = pastedClubs.length === 0;
+        pasteCount.setAttribute('aria-label', `已加入 ${pastedClubs.length} 個社團`);
     }
 }
 
@@ -578,7 +590,7 @@ async function processPastedData() {
         
         if (actionBtn) {
             actionBtn.disabled = true;
-            actionBtn.innerHTML = '⏳ 正在彙整並下載課表...';
+            actionBtn.textContent = '正在抽籤並下載課表…';
         }
 
         const slotMode = document.getElementById('paste-slot-mode-select').value;
@@ -636,14 +648,14 @@ function showConflictAlert(resultData, elementId) {
 
     const conflictingStudents = resultData.filter(s => s.remarks && s.remarks.length > 0);
     if (conflictingStudents.length > 0) {
-        let html = `<div class="conflict-title">🚨 偵測到學生上課時段衝突 (共 ${conflictingStudents.length} 人衝堂)：</div>`;
+        let html = `<div class="conflict-title">有 ${conflictingStudents.length} 位學生同一天上兩個社團：</div>`;
         html += `<ul class="conflict-list">`;
         conflictingStudents.forEach(s => {
             const conflictDetails = escapeHtml(s.remarks.join('；'));
             const safeClass = escapeHtml(s.class);
             const safeSeat = escapeHtml(s.seat);
             const safeName = escapeHtml(s.name);
-            html += `<li><strong>${safeClass} 座號 ${safeSeat} ${safeName}</strong> ── ${conflictDetails}</li>`;
+            html += `<li><strong>${safeClass} 班 ${safeSeat} 號 ${safeName}</strong>：${conflictDetails}</li>`;
         });
         html += `</ul>`;
         alertDiv.innerHTML = html;
@@ -729,7 +741,7 @@ window.addEventListener('unhandledrejection', (event) => {
     const msg = event.reason?.message || event.reason || '系統發生未預期的非同步異常';
     // 若為非取消操作則跳出提示
     if (!String(msg).includes('abort')) {
-        alert('⚠️ 系統運行發生非預期錯誤：\n' + msg);
+        alert('發生非預期的錯誤，請重新整理網頁後再試一次。\n錯誤內容：' + msg);
     }
 });
 
