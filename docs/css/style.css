@@ -159,7 +159,8 @@ strong {
     border: 1px solid var(--control);
     border-radius: var(--radius-control);
     overflow: hidden;
-    max-width: 760px;
+    /* 與步驟一的左欄同寬：(內容寬 - 欄距 40px) × 3/5 */
+    max-width: calc((100% - 40px) * 3 / 5);
 }
 
 .stepper-item {
@@ -203,15 +204,17 @@ strong {
 
 /* ---------- 步驟一：兩欄版面 ---------- */
 
+/* 欄寬比例與 .stepper 的 max-width 連動，改一邊要同步改另一邊 */
 .upload-layout {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     gap: 40px;
 }
 
+/* 左欄撐滿列高，讓上傳區的虛線框與右側課表範例底部切齊；
+   範例卡片（.sample-card）維持自身高度，貼上名單時左欄較高也不會被拉長 */
 .upload-main {
-    flex: 7 1 520px;
+    align-self: stretch;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -286,6 +289,7 @@ strong {
 }
 
 .tab-content.active {
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -297,9 +301,11 @@ strong {
     border-radius: var(--radius-panel);
     background: var(--surface);
     padding: 40px 24px;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     text-align: center;
     cursor: pointer;
@@ -713,7 +719,7 @@ strong {
 /* ---------- 課表範例 ---------- */
 
 .sample-card {
-    flex: 5 1 340px;
+    align-self: start;
     min-width: 0;
     background: var(--surface);
     border: 1px solid var(--line);
@@ -997,7 +1003,12 @@ a:focus-visible,
         font-size: 28px;
     }
 
+    .stepper {
+        max-width: none;
+    }
+
     .upload-layout {
+        grid-template-columns: 1fr;
         gap: 28px;
     }
 }
