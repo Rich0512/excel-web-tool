@@ -9,6 +9,8 @@ let colClassIdx = -1;
 let colSeatIdx = -1;
 let colNameIdx = -1;
 let slotCols = [];
+// 多工作表模式：工作表名稱 → 學生名單（載入對照表時讀一次）
+let sheetStudents = new Map();
 
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
@@ -56,13 +58,11 @@ async function handleFileSelect(file) {
     if (!file) return;
 
     // 檔頭簽章檢查：精準攔截舊版 .xls (BIFF8) 或偽裝格式
-    if (typeof checkExcelFileFormat === 'function') {
-        const formatCheck = await checkExcelFileFormat(file);
-        if (!formatCheck.valid) {
-            alert(formatCheck.reason || "這不是可以讀取的 Excel 檔案。請改選學校系統匯出的 .xlsx 名冊。");
-            if (fileInput) fileInput.value = "";
-            return;
-        }
+    const formatCheck = await checkExcelFileFormat(file);
+    if (!formatCheck.valid) {
+        alert(formatCheck.reason || "這不是可以讀取的 Excel 檔案。請改選學校系統匯出的 .xlsx 名冊。");
+        if (fileInput) fileInput.value = "";
+        return;
     }
 
     originalFileName = file.name;
@@ -129,41 +129,35 @@ function switchStep(stepId) {
     });
 }
 
-function resetToUpload() {
+// 清除檔案模式讀進記憶體的名冊與對照表狀態
+function clearFileModeState() {
     fileInput.value = "";
     uploadedWorkbook = null;
     sheetData = [];
+    sheetStudents = new Map();
     detectedHeaders = [];
     colClassIdx = -1;
     colSeatIdx = -1;
     colNameIdx = -1;
     slotCols = [];
     document.getElementById('excel-filename').value = "";
-    
-    // 清空衝突警告
-    const alertDiv = document.getElementById('mapping-conflict-alert');
-    if (alertDiv) {
-        alertDiv.style.display = 'none';
-        alertDiv.innerHTML = '';
-    }
-    
+
+    const mappingTableBody = document.getElementById('mapping-table-body');
+    if (mappingTableBody) mappingTableBody.innerHTML = "";
+    showSkippedSheets([]);
+    showConflictAlert([], 'mapping-conflict-alert');
+}
+
+function resetToUpload() {
+    clearFileModeState();
     switchStep('step-upload');
 }
 
 // 一鍵安全清除所有暫存個資
 function manualHardResetAll() {
     if (confirm("確定要清除這次的資料嗎？會清除選擇的 Excel 檔案、星期設定、已加入的社團，以及瀏覽器記住的社團星期，畫面會回到第一步。")) {
-        // 清除檔案模式狀態
-        fileInput.value = "";
-        uploadedWorkbook = null;
-        sheetData = [];
-        detectedHeaders = [];
-        colClassIdx = -1;
-        colSeatIdx = -1;
-        colNameIdx = -1;
-        slotCols = [];
-        document.getElementById('excel-filename').value = "";
-        
+        clearFileModeState();
+
         // 清除貼上模式狀態
         pastedClubs = [];
         document.getElementById('paste-text-area').value = "";
@@ -174,18 +168,9 @@ function manualHardResetAll() {
         clearLocalStorageConfig();
 
         // 重設 UI
-        const mappingTableBody = document.getElementById('mapping-table-body');
-        if (mappingTableBody) mappingTableBody.innerHTML = "";
-        
         const pastePreview = document.getElementById('paste-parse-preview');
         if (pastePreview) pastePreview.style.display = 'none';
-        
-        const mappingConflictAlert = document.getElementById('mapping-conflict-alert');
-        if (mappingConflictAlert) {
-            mappingConflictAlert.style.display = 'none';
-            mappingConflictAlert.innerHTML = '';
-        }
-        
+
         const pasteConflictAlert = document.getElementById('paste-conflict-alert');
         if (pasteConflictAlert) {
             pasteConflictAlert.style.display = 'none';
@@ -212,42 +197,12 @@ async function processAndDownload() {
             actionBtn.textContent = '正在轉換並下載課表…';
         }
 
-        const mode = document.getElementById('mode-select').value;
-        const includeFreshmen = document.getElementById('include-freshmen').checked;
         const slotMode = document.getElementById('slot-mode-select').value;
+        const { mode, finalMapping, rows, hasEmptyName, unselectedClubs } = collectMapping();
 
-        const rows = document.getElementById('mapping-table-body').querySelectorAll('tr');
-        
-        const finalMapping = {};
-        const unselectedClubs = [];
-
-        for (const tr of rows) {
-            const input = tr.querySelector('.club-input');
-            const select = tr.querySelector('.day-select');
-            
-            const origKey = input.dataset.original;
-            const editedClub = input.value.trim();
-            const selectedDay = select.value;
-
-            if (!editedClub) {
-                alert("有社團的名稱是空白的。請在每一列的「社團名稱」填入名稱，再開始轉換。");
-                return;
-            }
-
-            if (selectedDay === "請選擇") {
-                if (mode === 'single') {
-                    const slotCol = input.dataset.slot;
-                    unselectedClubs.push(`${slotCol} 的「${origKey}」`);
-                } else {
-                    unselectedClubs.push(`工作表「${origKey}」`);
-                }
-            }
-
-            finalMapping[origKey] = {
-                editedName: editedClub,
-                day: selectedDay,
-                slot: tr.dataset.detectedSlot || ""
-            };
+        if (hasEmptyName) {
+            alert("有社團的名稱是空白的。請在每一列的「社團名稱」填入名稱，再開始轉換。");
+            return;
         }
 
         if (unselectedClubs.length > 0) {
@@ -255,26 +210,9 @@ async function processAndDownload() {
             return;
         }
 
-        // 自動更新並儲存 LocalStorage 設定
-        const savedConfig = loadLocalStorageConfig();
-        Object.entries(finalMapping).forEach(([origKey, data]) => {
-            savedConfig[origKey] = data.day;
-        });
-        saveLocalStorageConfig(savedConfig);
+        saveMappingConfig(mode, rows);
 
-        // 呼叫 Core 彙整處理器
-        const { resultData, activeDays } = processExcelData(
-            mode,
-            includeFreshmen,
-            slotMode,
-            finalMapping,
-            sheetData,
-            detectedHeaders,
-            colClassIdx,
-            colSeatIdx,
-            colNameIdx,
-            slotCols
-        );
+        const { resultData, activeDays } = runExcelProcessing(finalMapping);
 
         if (resultData.length === 0) {
             alert("名冊中沒有可以匯出的學生資料。請確認選擇的是錄取名冊，並檢查每個社團都選了上課星期。");
@@ -323,7 +261,8 @@ async function processAndDownload() {
 
 // 綁定彙整模式切換監聽與衝突偵測監聽
 document.getElementById('mode-select').addEventListener('change', analyzeAndRenderMapping);
-document.getElementById('include-freshmen').addEventListener('change', analyzeAndRenderMapping);
+// 新生是否納入只影響彙整結果，不重建對照表（否則已修改的名稱與星期會被重設）
+document.getElementById('include-freshmen').addEventListener('change', updateMappingConflicts);
 document.getElementById('slot-mode-select').addEventListener('change', updateMappingConflicts);
 
 // ==========================================
@@ -660,7 +599,7 @@ function showConflictAlert(resultData, elementId) {
     const conflictingStudents = resultData.filter(s => s.remarks && s.remarks.length > 0);
     if (conflictingStudents.length > 0) {
         // 與其他 .warning-callout 相同的結構：左側線條圖示＋內容（DESIGN.md 元件表「提醒」）
-        let html = `<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>`;
+        let html = WARNING_ICON_SVG;
         html += `<div><div class="conflict-title">有 ${escapeHtml(String(conflictingStudents.length))} 位學生同一天上兩個社團：</div>`;
         html += `<ul class="conflict-list">`;
         conflictingStudents.forEach(s => {
@@ -676,44 +615,82 @@ function showConflictAlert(resultData, elementId) {
     }
 }
 
-function updateMappingConflicts() {
-    if (!uploadedWorkbook || sheetData.length === 0) return;
-
+/**
+ * 讀取對照表畫面上的設定
+ * 對照鍵在單一清單模式是「時段欄位＋社團」（同一社團可能在 A、B 時段不同天），多工作表模式是工作表名稱
+ */
+function collectMapping() {
     const mode = document.getElementById('mode-select').value;
-    const includeFreshmen = document.getElementById('include-freshmen').checked;
-    const slotMode = document.getElementById('slot-mode-select').value;
-    const rows = document.getElementById('mapping-table-body').querySelectorAll('tr');
-    
     const finalMapping = {};
-    rows.forEach(tr => {
+    const rows = [];
+    const unselectedClubs = [];
+    let hasEmptyName = false;
+
+    document.getElementById('mapping-table-body').querySelectorAll('tr').forEach(tr => {
         const input = tr.querySelector('.club-input');
         const select = tr.querySelector('.day-select');
         if (!input || !select) return;
-        
-        const origKey = input.dataset.original;
-        const editedClub = input.value.trim();
-        const selectedDay = select.value;
 
-        finalMapping[origKey] = {
-            editedName: editedClub,
-            day: selectedDay,
+        const row = {
+            key: tr.dataset.key,
+            original: tr.dataset.original,
+            slotCol: tr.dataset.slot || "",
+            editedName: input.value.trim(),
+            day: select.value
+        };
+        rows.push(row);
+
+        if (!row.editedName) hasEmptyName = true;
+        if (row.day === "請選擇") {
+            unselectedClubs.push(mode === 'single' ? `${row.slotCol} 的「${row.original}」` : `工作表「${row.original}」`);
+        }
+
+        finalMapping[row.key] = {
+            editedName: row.editedName,
+            day: row.day,
             slot: tr.dataset.detectedSlot || ""
         };
     });
 
-    const { resultData } = processExcelData(
-        mode,
-        includeFreshmen,
-        slotMode,
+    return { mode, finalMapping, rows, hasEmptyName, unselectedClubs };
+}
+
+/**
+ * 記住這次的星期設定（只存社團／工作表名稱 → 星期，不含學生資料）
+ * 單一清單模式依時段欄位分開存，避免 A、B 時段的同名社團互相覆蓋
+ */
+function saveMappingConfig(mode, rows) {
+    const savedConfig = loadLocalStorageConfig();
+    rows.forEach(row => {
+        if (mode === 'single') {
+            const slotMap = getSavedSlotMap(savedConfig, row.slotCol);
+            slotMap[row.original] = row.day;
+            savedConfig[row.slotCol] = slotMap;
+        } else {
+            savedConfig[row.original] = row.day;
+        }
+    });
+    saveLocalStorageConfig(savedConfig);
+}
+
+function runExcelProcessing(finalMapping) {
+    return processExcelData({
+        mode: document.getElementById('mode-select').value,
+        includeFreshmen: document.getElementById('include-freshmen').checked,
+        slotMode: document.getElementById('slot-mode-select').value,
         finalMapping,
         sheetData,
-        detectedHeaders,
-        colClassIdx,
-        colSeatIdx,
-        colNameIdx,
-        slotCols
-    );
+        classCol: detectedHeaders[colClassIdx],
+        seatCol: detectedHeaders[colSeatIdx],
+        nameCol: detectedHeaders[colNameIdx],
+        slotCols,
+        sheetStudents
+    });
+}
 
+function updateMappingConflicts() {
+    if (!uploadedWorkbook) return;
+    const { resultData } = runExcelProcessing(collectMapping().finalMapping);
     showConflictAlert(resultData, 'mapping-conflict-alert');
 }
 

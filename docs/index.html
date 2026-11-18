@@ -50,11 +50,11 @@
     <link rel="preload" href="fonts/Outfit-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.12">
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.13">
     <!-- 引入 ExcelJS (前端處理 Excel 格式與樣式的核心庫 - 已本地化以維護個資安全與支援離線使用) -->
     <script src="js/libs/exceljs.min.js" defer></script>
     <!-- 引入外部樣式表 (使用版本參數防止瀏覽器快取舊樣式) -->
-    <link rel="stylesheet" href="css/style.css?v=3.12">
+    <link rel="stylesheet" href="css/style.css?v=3.13">
 </head>
 <body>
 
@@ -298,6 +298,8 @@
                     </div>
                 </div>
 
+                <div id="mapping-skip-alert" class="warning-callout skip-alert" role="status" hidden></div>
+
                 <p class="mobile-table-hint">表格可以左右滑動，查看所有欄位。</p>
                 <div class="table-responsive">
                     <table class="mapping-table">
@@ -350,13 +352,13 @@
     </footer>
 
     <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼；依相依順序載入) -->
-    <script src="js/utils.js?v=3.12" defer></script>
-    <script src="js/exporter.js?v=3.12" defer></script>
-    <script src="js/parser.js?v=3.12" defer></script>
-    <script src="js/processor.js?v=3.12" defer></script>
-    <script src="js/mapping-ui.js?v=3.12" defer></script>
-    <script src="js/app.js?v=3.12" defer></script>
+    <script src="js/utils.js?v=3.13" defer></script>
+    <script src="js/exporter.js?v=3.13" defer></script>
+    <script src="js/parser.js?v=3.13" defer></script>
+    <script src="js/processor.js?v=3.13" defer></script>
+    <script src="js/mapping-ui.js?v=3.13" defer></script>
+    <script src="js/app.js?v=3.13" defer></script>
     <!-- 註冊 Service Worker (離線快取) -->
-    <script src="js/register-sw.js?v=3.12" defer></script>
+    <script src="js/register-sw.js?v=3.13" defer></script>
 </body>
 </html>

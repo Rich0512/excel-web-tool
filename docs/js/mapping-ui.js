@@ -2,22 +2,111 @@
  * 課表對照設定 UI 渲染器 (View/UI Component)
  */
 
+// 記憶設定裡是否為有效的星期選項（舊版設定或格式損毀時略過）
+function isValidDayOption(day) {
+    return typeof day === 'string' && day !== '請選擇' && weekdaysList.includes(day);
+}
+
+function isValidMorningOption(day) {
+    return MORNING_OPTIONS.includes(day);
+}
+
+/**
+ * 單一清單模式的記憶設定：依時段欄位分開存（同一社團在 A、B 時段可能不同天）
+ * 舊版設定只存「社團 → 星期」，讀取時當作備援
+ */
+function getSavedSlotMap(savedConfig, slotCol) {
+    const map = savedConfig[slotCol];
+    return map && typeof map === 'object' ? map : {};
+}
+
+/**
+ * 新增一列對照設定（時段標籤、可修改的社團名稱、星期選單）
+ * 社團與工作表名稱來自名冊，一律用 textContent / setAttribute 放入，不經過 innerHTML
+ */
+function appendMappingRow(tbody, row) {
+    const tr = document.createElement('tr');
+    tr.className = row.rowClass;
+    tr.dataset.key = row.key;
+    tr.dataset.original = row.original;
+    tr.dataset.slot = row.slotCol || '';
+    tr.dataset.detectedSlot = row.detectedSlot || '';
+
+    const tdSlot = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = row.badgeClass;
+    badge.textContent = row.badgeText;
+    tdSlot.appendChild(badge);
+    tr.appendChild(tdSlot);
+
+    const tdName = document.createElement('td');
+    const input = document.createElement('input');
+    input.type = "text";
+    input.className = "club-input";
+    input.value = row.displayName;
+    // 每列沒有可見的 <label>，用 aria-label 讓螢幕閱讀器唸出是哪個社團
+    input.setAttribute('aria-label', `社團名稱：${row.ariaName}`);
+    tdName.appendChild(input);
+    tr.appendChild(tdName);
+
+    const tdDay = document.createElement('td');
+    const select = document.createElement('select');
+    select.className = "day-select";
+    select.setAttribute('aria-label', `上課星期：${row.ariaName}`);
+    const finalDay = weekdaysList.includes(row.day) ? row.day : "請選擇";
+    weekdaysList.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w;
+        opt.textContent = w;
+        if (w === finalDay) opt.selected = true;
+        select.appendChild(opt);
+    });
+    tdDay.appendChild(select);
+    tr.appendChild(tdDay);
+
+    tbody.appendChild(tr);
+}
+
+/**
+ * 多工作表模式中找不到姓名欄而略過的工作表，顯示在對照表上方，避免社團默默從課表消失
+ */
+function showSkippedSheets(names) {
+    const box = document.getElementById('mapping-skip-alert');
+    if (!box) return;
+    if (!names || names.length === 0) {
+        box.hidden = true;
+        box.innerHTML = '';
+        return;
+    }
+    box.innerHTML = WARNING_ICON_SVG +
+        `<div><div class="conflict-title">有 ${escapeHtml(String(names.length))} 張工作表找不到「姓名」欄，沒有列入課表：</div>` +
+        `<ul class="conflict-list">${names.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` +
+        `<p class="skip-alert-hint">請確認這些工作表的學生名單上方有「姓名」欄位標題，再重新選擇檔案。</p></div>`;
+    box.hidden = false;
+}
+
 function analyzeAndRenderMapping() {
     if (!uploadedWorkbook) return;
     const mode = document.getElementById('mode-select').value;
     const tbody = document.getElementById('mapping-table-body');
     tbody.innerHTML = "";
 
+    sheetData = [];
+    sheetStudents = new Map();
+    showSkippedSheets([]);
+
     const savedConfig = loadLocalStorageConfig();
+    // 檔案內的上課時間（1152 課程表、各社團工作表的「上課時間」），找不到時是空物件
+    const excelSchedule = loadScheduleFromExcel(uploadedWorkbook) || {};
 
     if (mode === 'single') {
         // --- 單一總表/清單分欄模式 ---
         let sheet = null;
         uploadedWorkbook.eachSheet((ws) => {
             const n = ws.name.trim();
-            if (n === '課程與學生清單' || n.includes('課程與學生清單')) {
+            if (n.includes('課程與學生清單')) {
                 sheet = ws;
-            } else if (!sheet && (n === '總表' || n.includes('總表'))) {
+            } else if (!sheet && n.includes('總表')) {
                 sheet = ws;
             }
         });
@@ -29,57 +118,21 @@ function analyzeAndRenderMapping() {
             return;
         }
 
-        // 智慧偵測表頭
-        let foundHeader = false;
-        for (let r = 1; r <= 10; r++) {
-            const row = sheet.getRow(r);
-            const rowValues = [];
-            row.eachCell({ includeEmpty: true }, (cell) => {
-                rowValues.push(getCellValueAsString(cell));
-            });
-            
-            const matchCount = ['班級', '班', '座號', '姓名'].filter(kw => 
-                rowValues.some(val => val.includes(kw))
-            ).length;
-            
-            if (matchCount >= 2) {
-                detectedHeaders = rowValues;
-                headerRowIndex = r;
-                foundHeader = true;
-                break;
-            }
-        }
-        
-        if (!foundHeader) {
-            const row = sheet.getRow(1);
-            detectedHeaders = [];
-            row.eachCell({ includeEmpty: true }, (cell) => {
-                detectedHeaders.push(getCellValueAsString(cell));
-            });
-            headerRowIndex = 1;
-        }
-        
-        // 去重
-        const headers = [];
-        const seenCols = {};
-        detectedHeaders.forEach(col => {
-            if (!col) {
-                headers.push("");
-                return;
-            }
-            if (seenCols[col]) {
-                seenCols[col]++;
-                headers.push(`${col}_${seenCols[col]}`);
-            } else {
-                seenCols[col] = 1;
-                headers.push(col);
-            }
-        });
-        detectedHeaders = headers;
+        const header = findHeaderRow(sheet);
+        headerRowIndex = header.rowIndex;
 
-        colClassIdx = findColumnByKeywords(headers, ['班級', '班', 'Class', 'class']);
-        colSeatIdx = findColumnByKeywords(headers, ['座號', '座', 'Seat', 'seat'], true, false);
-        colNameIdx = findColumnByKeywords(headers, ['學生姓名', '姓名', 'Name', 'name', '名'], false, true);
+        // 欄位名稱去重（重複的欄位加上 _2、_3）
+        const seenCols = {};
+        detectedHeaders = header.headers.map(col => {
+            if (!col) return "";
+            seenCols[col] = (seenCols[col] || 0) + 1;
+            return seenCols[col] > 1 ? `${col}_${seenCols[col]}` : col;
+        });
+        const headers = detectedHeaders;
+
+        colClassIdx = findColumnByKeywords(headers, CLASS_KEYWORDS);
+        colSeatIdx = findColumnByKeywords(headers, SEAT_KEYWORDS, true, false);
+        colNameIdx = findColumnByKeywords(headers, NAME_KEYWORDS, false, true);
 
         if (colClassIdx === -1 || colSeatIdx === -1 || colNameIdx === -1) {
             alert(`工作表「${sheet.name}」缺少必要欄位（班級、座號、學生姓名或姓名），無法整理。請確認選擇的是學校系統匯出的錄取名冊，或把「彙整模式」改成「多工作表」。`);
@@ -103,218 +156,121 @@ function analyzeAndRenderMapping() {
             return;
         }
 
-        const excelSchedule = loadScheduleFromExcel(uploadedWorkbook);
-
-        // 讀取學生行
-        sheetData = [];
+        // 讀取學生列。新生（沒有班級）也先讀進來，是否納入由轉換時的勾選決定，
+        // 這樣切換「包含新生」時不必重建對照表，已修改的名稱與星期才不會被重設
         sheet.eachRow((row, rowNum) => {
             if (rowNum <= headerRowIndex) return;
-            
             const nameVal = getCellValueAsString(row.getCell(colNameIdx + 1));
             const classVal = getCellValueAsString(row.getCell(colClassIdx + 1));
-            
-            if (!nameVal) return;
-            const includeFreshmen = document.getElementById('include-freshmen').checked;
-            if (!includeFreshmen && !classVal) return;
-            
-            // 略過合計行
-            if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k) || (classVal && classVal.includes(k)))) {
-                return;
-            }
-            
+            if (!nameVal || isTotalRow(nameVal, classVal)) return;
+
             const rowData = {};
             headers.forEach((colName, idx) => {
                 if (!colName) return;
-                const cell = row.getCell(idx + 1);
-                rowData[colName] = getCellValueAsString(cell);
+                rowData[colName] = getCellValueAsString(row.getCell(idx + 1));
             });
             sheetData.push(rowData);
         });
 
-        // 蒐集時段社團
-        const activeClubs = {};
+        // 渲染對照表：每個「時段欄位 × 社團」一列
         slotCols.forEach(slot => {
-            activeClubs[slot.name] = new Set();
+            const slotCol = slot.name;
+            const clubs = new Set();
             sheetData.forEach(row => {
-                const val = row[slot.name];
-                if (val && val !== "無") {
-                    activeClubs[slot.name].add(val);
-                }
+                const val = row[slotCol];
+                if (val && val !== "無") clubs.add(val);
             });
-        });
 
-        // 渲染對照表 (總表分欄模式)
-        Object.entries(activeClubs).forEach(([slotCol, clubs]) => {
-            const isASlot = slotCol.includes('A') || slotCol.includes('一');
-            const badgeClass = isASlot ? "slot-badge slot-a" : "slot-badge slot-other";
-            const savedSlotMap = savedConfig[slotCol] || {};
+            const isASlot = detectSlot(slotCol) === 'A' || slotCol.includes('一');
+            const savedSlotMap = getSavedSlotMap(savedConfig, slotCol);
 
             clubs.forEach(club => {
-                const tr = document.createElement('tr');
-                tr.className = "mapping-row-single";
-                tr.dataset.slot = slotCol;
-                
                 const cleanName = cleanClubDisplayName(club);
-                let day = null;
-                // 1. 若為晨間社團，直接細分至具體上課日之專屬直欄 (晨間(週一、週四)等)
-                if (club.includes('晨間') || cleanName.includes('晨間')) {
-                    if (club.includes('晨間棒球A班') || club.includes('晨間足球社') || (excelSchedule && (excelSchedule[club] === '一、四' || excelSchedule[club] === '週一、四'))) {
-                        day = '晨間(週一、週四)';
-                    } else if (club.includes('晨間棒球B班') || (excelSchedule && (excelSchedule[club] === '二、五' || excelSchedule[club] === '週二、五'))) {
-                        day = '晨間(週二、週五)';
-                    } else if (club.includes('晨間游泳社') || (excelSchedule && (excelSchedule[club] === '一、二、四、五' || excelSchedule[club] === '週一、二、四、五'))) {
-                        day = '晨間(週一、週二、週四、週五)';
-                    } else {
-                        const sched = (excelSchedule && excelSchedule[club]) || '';
-                        if (sched.includes('二') && sched.includes('五')) {
-                            day = '晨間(週二、週五)';
-                        } else if (sched.includes('一') && sched.includes('四')) {
-                            day = '晨間(週一、週四)';
-                        } else {
-                            day = '晨間(週一、週四)';
-                        }
-                    }
+                const sched = excelSchedule[club] || excelSchedule[cleanName];
+                let day;
+                if (club.includes('晨間')) {
+                    // 晨間社團排在專屬欄位：檔案的上課時間 > 上次的設定 > 依名稱推測
+                    day = morningDayFromSchedule(sched) ||
+                          [savedSlotMap[club], savedConfig[club]].find(isValidMorningOption) ||
+                          morningDayFromName(club);
                 } else {
-                    // 2. 優先從社團自身完整名稱中擷取星期 (例如「周一桌遊社 (一 10,11)」必為週一)
-                    day = extractWeekdayFromName(club);
-                    if (!day && excelSchedule) {
-                        day = excelSchedule[club];
-                    }
-                    if (!day) day = savedConfig[club];
-                    if (!day) day = savedSlotMap[club];
+                    // 名稱本身的星期最可靠（「周一桌遊社 (一 10,11)」必為週一），其次是檔案的上課時間，最後是上次的設定
+                    day = extractWeekdayFromName(club) ||
+                          normalizeDayOption(sched) ||
+                          [savedSlotMap[club], savedConfig[club]].find(isValidDayOption);
                 }
 
-                const finalDay = weekdaysList.includes(day) ? day : "請選擇";
-
-                // 時段
-                const tdSlot = document.createElement('td');
-                tdSlot.innerHTML = `<span class="${escapeHtml(badgeClass)}">${escapeHtml(slotCol)}</span>`;
-                tr.appendChild(tdSlot);
-
-                // 社團名輸入框
-                const tdName = document.createElement('td');
-                const input = document.createElement('input');
-                input.type = "text";
-                input.className = "club-input";
-                input.value = cleanClubDisplayName(club) || club;
-                input.dataset.slot = slotCol;
-                input.dataset.original = club;
-                // 每列沒有可見的 <label>，用 aria-label 讓螢幕閱讀器唸出是哪個社團（setAttribute 不解析 HTML，不需跳脫）
-                input.setAttribute('aria-label', `社團名稱：${club}`);
-                tdName.appendChild(input);
-                tr.appendChild(tdName);
-
-                // 星期選擇
-                const tdDay = document.createElement('td');
-                const select = document.createElement('select');
-                select.className = "day-select";
-                select.setAttribute('aria-label', `上課星期：${club}`);
-
-                weekdaysList.forEach(w => {
-                    const opt = document.createElement('option');
-                    opt.value = w;
-                    opt.textContent = w;
-                    if (w === finalDay) opt.selected = true;
-                    select.appendChild(opt);
+                appendMappingRow(tbody, {
+                    rowClass: "mapping-row-single",
+                    key: mappingKey(slotCol, club),
+                    original: club,
+                    slotCol,
+                    badgeClass: isASlot ? "slot-badge slot-a" : "slot-badge slot-other",
+                    badgeText: slotCol,
+                    displayName: cleanName || club,
+                    ariaName: club,
+                    day
                 });
-                
-                tdDay.appendChild(select);
-                tr.appendChild(tdDay);
-
-                tbody.appendChild(tr);
             });
         });
 
     } else {
         // --- 多工作表分社團模式 ---
-        const sheetsToProcess = [];
         const ignoreKeywords = ['對照', '說明', 'README', '總表', '統計', '人數', '小計', '1152', '清單', '報表'];
+        const skipped = [];
+        let candidateCount = 0;
 
         uploadedWorkbook.eachSheet((ws) => {
             const name = ws.name.trim();
-            if (ignoreKeywords.some(kw => name.includes(kw))) {
+            if (ignoreKeywords.some(kw => name.includes(kw))) return;
+            candidateCount++;
+
+            // 學生名單在這裡讀一次，衝堂即時提醒與轉換都用同一份資料
+            const students = readClubSheetStudents(ws);
+            if (!students) {
+                skipped.push(name);
                 return;
             }
-            sheetsToProcess.push(ws);
+            sheetStudents.set(name, students);
+
+            const parsed = parseSheetName(name);
+            const sched = excelSchedule[parsed.baseName] || excelSchedule[name];
+            const saved = savedConfig[name];
+            let day;
+            if (name.includes('晨間')) {
+                day = (isValidMorningOption(saved) && saved) ||
+                      morningDayFromSchedule(sched) ||
+                      morningDayFromName(parsed.baseName);
+            } else {
+                // 上次的設定 > 工作表名稱的星期 > 檔案內的上課時間
+                day = (isValidDayOption(saved) && saved) ||
+                      (parsed.day !== '請選擇' ? parsed.day : null) ||
+                      normalizeDayOption(sched);
+            }
+
+            appendMappingRow(tbody, {
+                rowClass: "mapping-row-multi",
+                key: name,
+                original: name,
+                detectedSlot: parsed.slot,
+                badgeClass: parsed.slot === 'A' ? "slot-badge slot-a" : "slot-badge slot-other",
+                badgeText: parsed.slot ? `時段 ${parsed.slot}` : "多工作表",
+                displayName: parsed.clubName,
+                ariaName: `工作表「${name}」`,
+                day
+            });
         });
 
-        if (sheetsToProcess.length === 0) {
+        if (candidateCount === 0) {
             alert("這個 Excel 找不到可以彙整的社團名單工作表。請確認選擇的是錄取名冊，或把「彙整模式」改成「單一清單」。");
             return;
         }
-
-        sheetsToProcess.forEach((ws) => {
-            const name = ws.name.trim();
-            const parsed = parseSheetName(name);
-
-            // 讀取歷史星期設定 (若為晨間社團，細分至具體上課日專屬直欄)
-            let day = null;
-            if (name.includes('晨間') || (parsed.clubName && parsed.clubName.includes('晨間'))) {
-                const cTarget = name + ' ' + (parsed.clubName || '');
-                if (cTarget.includes('棒球A') || cTarget.includes('足球') || parsed.day === '週一、四') {
-                    day = '晨間(週一、週四)';
-                } else if (cTarget.includes('棒球B') || parsed.day === '週二、五') {
-                    day = '晨間(週二、週五)';
-                } else if (cTarget.includes('游泳') || parsed.day === '週一、二、四、五') {
-                    day = '晨間(週一、週二、週四、週五)';
-                } else {
-                    day = '晨間(週一、週四)';
-                }
-            } else {
-                day = savedConfig[name] || parsed.day;
-            }
-
-            const finalDay = weekdaysList.includes(day) ? day : "請選擇";
-
-            const tr = document.createElement('tr');
-            tr.className = "mapping-row-multi";
-            tr.dataset.sheetName = name;
-            tr.dataset.detectedSlot = parsed.slot;
-
-            // 時段 (多 Sheet 模式下顯示工作表特徵)
-            const tdSlot = document.createElement('td');
-            const displaySlot = parsed.slot ? `時段 ${parsed.slot}` : "多工作表";
-            const badgeClass = parsed.slot ? (parsed.slot === 'A' ? "slot-badge slot-a" : "slot-badge slot-other") : "slot-badge slot-other";
-            tdSlot.innerHTML = `<span class="${escapeHtml(badgeClass)}">${escapeHtml(displaySlot)}</span>`;
-            tr.appendChild(tdSlot);
-
-            // 社團名輸入框
-            const tdName = document.createElement('td');
-            const input = document.createElement('input');
-            input.type = "text";
-            input.className = "club-input";
-            input.value = parsed.clubName;
-            input.dataset.original = name;
-            input.setAttribute('aria-label', `社團名稱：工作表「${name}」`);
-            tdName.appendChild(input);
-            tr.appendChild(tdName);
-
-            // 星期選擇
-            const tdDay = document.createElement('td');
-            const select = document.createElement('select');
-            select.className = "day-select";
-            select.setAttribute('aria-label', `上課星期：工作表「${name}」`);
-
-            weekdaysList.forEach(w => {
-                const opt = document.createElement('option');
-                opt.value = w;
-                opt.textContent = w;
-                if (w === finalDay) opt.selected = true;
-                select.appendChild(opt);
-            });
-            
-            tdDay.appendChild(select);
-            tr.appendChild(tdDay);
-
-            tbody.appendChild(tr);
-        });
+        showSkippedSheets(skipped);
     }
 
-    // 綁定動態事件監聽以更新衝突 (若 app.js 已載入對應函數)
-    if (typeof updateMappingConflicts === 'function') {
-        tbody.querySelectorAll('.day-select, .club-input').forEach(el => {
-            el.addEventListener('change', updateMappingConflicts);
-        });
-        updateMappingConflicts();
-    }
+    // 修改名稱或星期時即時更新衝堂提醒
+    tbody.querySelectorAll('.day-select, .club-input').forEach(el => {
+        el.addEventListener('change', updateMappingConflicts);
+    });
+    updateMappingConflicts();
 }

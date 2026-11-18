@@ -2,224 +2,116 @@
  * 學生社團課表彙整核心處理器 (Business Logic / Model)
  */
 
+// 匯出與衝堂備註使用的星期順序
+const DAY_ORDER = ['週一', '週二', '週三', '週四', '週五', ...MORNING_OPTIONS, '週六', '週日'];
+
+function dayOrderIndex(day) {
+    const idx = DAY_ORDER.indexOf(day);
+    return idx === -1 ? DAY_ORDER.length : idx;
+}
+
 /**
- * 彙整上傳的 Excel 資料 (模式 A & 模式 B)
+ * 取得（或建立）一位學生。以「班級＋姓名」合併同一位學生；同班同名但座號不同時視為不同人
+ * 沒有姓名回傳 null；沒有班級時視為新生
  */
-function processExcelData(mode, includeFreshmen, slotMode, finalMapping, sheetData, detectedHeaders, colClassIdx, colSeatIdx, colNameIdx, slotCols) {
+function upsertStudent(studentMap, rawClass, rawSeat, rawName) {
+    const name = cleanInvisibleChars(rawName);
+    if (!name) return null;
+    const cls = cleanInvisibleChars(rawClass) || '新生';
+    const seat = cleanInvisibleChars(rawSeat);
+
+    let key = `${cls}_${name}`;
+    const sameName = studentMap.get(key);
+    if (seat && sameName && sameName.seat && sameName.seat !== seat) {
+        key = `${cls}_${seat}_${name}`;
+    }
+
+    let student = studentMap.get(key);
+    if (!student) {
+        student = { class: cls, seat, name, days: {} };
+        studentMap.set(key, student);
+    } else if (!student.seat && seat) {
+        student.seat = seat;
+    }
+    return student;
+}
+
+/**
+ * 把社團排進學生的上課日。每天的社團以陣列保存，社團名稱含逗號也不會被誤判成衝堂
+ */
+function addClubToStudent(student, dayStr, entryText) {
+    parseDays(dayStr).forEach(d => {
+        const clubs = student.days[d] || (student.days[d] = []);
+        if (!clubs.includes(entryText)) clubs.push(entryText);
+    });
+}
+
+/**
+ * 轉成匯出格式：schedule 是「星期 → 社團（逗號分隔）」，remarks 是衝堂說明
+ * 晨間社團和下午的社團不同時段，不算衝堂
+ */
+function finalizeStudents(studentMap) {
     const resultData = [];
     const activeDays = new Set();
 
+    studentMap.forEach(s => {
+        const schedule = {};
+        const remarks = [];
+        Object.keys(s.days)
+            .sort((a, b) => dayOrderIndex(a) - dayOrderIndex(b))
+            .forEach(day => {
+                const clubs = s.days[day];
+                activeDays.add(day);
+                schedule[day] = clubs.join(', ');
+                if (!day.startsWith('晨間') && clubs.length > 1) {
+                    remarks.push(`「${day}」時段衝突：同時錄取「${schedule[day]}」`);
+                }
+            });
+        resultData.push({ class: s.class, seat: s.seat, name: s.name, schedule, remarks });
+    });
+
+    return { resultData, activeDays };
+}
+
+/**
+ * 彙整上傳的 Excel 資料
+ * - single：單一總表，每列是「一位學生 × 各時段欄位的社團」，對照鍵是 mappingKey(時段欄位, 社團)
+ * - multi：每個社團一張工作表，學生已在載入時由 readClubSheetStudents() 讀進 sheetStudents，對照鍵是工作表名稱
+ */
+function processExcelData({ mode, includeFreshmen, slotMode, finalMapping, sheetData, classCol, seatCol, nameCol, slotCols, sheetStudents }) {
+    const studentMap = new Map();
+
     if (mode === 'single') {
-        // ==========================================
-        // 模式 A：單一總表分欄彙整 (依學生合併，同一位學生排好一到五課表，僅佔一列)
-        // ==========================================
-        const studentMap = {};
-
         sheetData.forEach(row => {
-            const rawClass = row[detectedHeaders[colClassIdx]];
-            const rawSeat = row[detectedHeaders[colSeatIdx]];
-            const rawName = row[detectedHeaders[colNameIdx]];
-            
-            const cleanFn = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars : (s) => String(s || "").trim();
-            const nameVal = cleanFn(rawName);
-            if (!nameVal) return;
-            
-            const rawClassClean = cleanFn(rawClass);
-            const studentClass = rawClassClean || "新生";
-            const studentSeat = cleanFn(rawSeat);
-            
-            let studentKey = `${studentClass}_${nameVal}`;
-            if (studentSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== studentSeat) {
-                studentKey = `${studentClass}_${studentSeat}_${nameVal}`;
-            }
-
-            let student = studentMap[studentKey];
-            if (!student) {
-                student = {
-                    class: studentClass,
-                    seat: studentSeat,
-                    name: nameVal,
-                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '晨間社團': '', '週六': '', '週日': '' },
-                    remarks: []
-                };
-                studentMap[studentKey] = student;
-            } else if (!student.seat && studentSeat) {
-                student.seat = studentSeat;
-            }
+            if (!includeFreshmen && !cleanInvisibleChars(row[classCol])) return;
+            const student = upsertStudent(studentMap, row[classCol], row[seatCol], row[nameCol]);
+            if (!student) return;
 
             slotCols.forEach(slot => {
-                const origClub = (row[slot.name] || "").trim();
-                if (origClub && origClub !== "無") {
-                    const mapData = finalMapping[origClub];
-                    if (mapData) {
-                        const day = mapData.day;
-                        const displayName = mapData.editedName;
-                        
-                        let label = "";
-                        if (slotMode === 'vacation') {
-                            label = slot.name.replace("時段", "").replace("Slot", "").replace("slot", "").replace("社團", "").replace("課程", "").trim();
-                        }
-                        const entryText = label ? `${displayName}(${label})` : displayName;
-                        
-                        const targetDays = parseDays(day);
-                        targetDays.forEach(d => {
-                            activeDays.add(d);
-                            if (student.schedule[d]) {
-                                const existing = student.schedule[d].split(',').map(s => s.trim());
-                                if (!existing.includes(entryText)) {
-                                    student.schedule[d] += `, ${entryText}`;
-                                }
-                            } else {
-                                student.schedule[d] = entryText;
-                            }
-                        });
-                    }
-                }
+                const club = (row[slot.name] || "").trim();
+                if (!club || club === "無") return;
+                const mapData = finalMapping[mappingKey(slot.name, club)];
+                if (!mapData) return;
+                const label = slotMode === 'vacation' ? slotLabelFromColumn(slot.name) : "";
+                addClubToStudent(student, mapData.day, label ? `${mapData.editedName}(${label})` : mapData.editedName);
             });
         });
-
-        // 統一生產衝突備註 (避免重複堆疊)
-        Object.values(studentMap).forEach(student => {
-            student.remarks = [];
-            Object.keys(student.schedule).forEach(day => {
-                if (day.startsWith('晨間')) return;
-                if (student.schedule[day] && student.schedule[day].includes(',')) {
-                    student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
-                }
-            });
-            resultData.push(student);
-        });
-
     } else {
-        // ==========================================
-        // 模式 B：多工作表分社團彙整
-        // ==========================================
-        const studentMap = {};
-
         Object.entries(finalMapping).forEach(([sheetName, mapData]) => {
-            const sheet = uploadedWorkbook.getWorksheet(sheetName);
-            if (!sheet) return;
+            const students = sheetStudents.get(sheetName);
+            if (!students) return;
+            const label = slotMode === 'vacation' ? mapData.slot : "";
+            const entryText = label ? `${mapData.editedName}(${label})` : mapData.editedName;
 
-            const day = mapData.day;
-            const displayName = mapData.editedName;
-            const slot = mapData.slot;
-
-            activeDays.add(day);
-
-            // 在每個子 Sheet 智慧定位表頭
-            let localHeaders = [];
-            let localHeaderRowIndex = 1;
-            let foundHeader = false;
-
-            for (let r = 1; r <= 10; r++) {
-                const row = sheet.getRow(r);
-                const rowValues = [];
-                row.eachCell({ includeEmpty: true }, (cell) => {
-                    rowValues.push(getCellValueAsString(cell));
-                });
-                
-                const matchCount = ['班級', '班', '座號', '姓名'].filter(kw => 
-                    rowValues.some(val => val.includes(kw))
-                ).length;
-                
-                if (matchCount >= 2) {
-                    localHeaders = rowValues;
-                    localHeaderRowIndex = r;
-                    foundHeader = true;
-                    break;
-                }
-            }
-
-            if (!foundHeader) {
-                const row = sheet.getRow(1);
-                row.eachCell({ includeEmpty: true }, (cell) => {
-                    localHeaders.push(getCellValueAsString(cell));
-                });
-                localHeaderRowIndex = 1;
-            }
-
-            const lClassIdx = findColumnByKeywords(localHeaders, ['班級', '班', 'Class', 'class']);
-            const lSeatIdx = findColumnByKeywords(localHeaders, ['座號', '座', 'Seat', 'seat'], true, false);
-            const lNameIdx = findColumnByKeywords(localHeaders, ['學生姓名', '姓名', 'Name', 'name', '名'], false, true);
-
-            if (lClassIdx === -1 || lSeatIdx === -1 || lNameIdx === -1) {
-                console.warn(`工作表「${sheetName}」缺少必要欄位，已跳過。`);
-                return;
-            }
-
-            sheet.eachRow((row, rowNum) => {
-                if (rowNum <= localHeaderRowIndex) return;
-
-                const nameVal = getCellValueAsString(row.getCell(lNameIdx + 1));
-                const classVal = getCellValueAsString(row.getCell(lClassIdx + 1));
-                const seatVal = getCellValueAsString(row.getCell(lSeatIdx + 1));
-
-                if (!nameVal) return;
-                if (!includeFreshmen && !classVal) return;
-
-                if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k) || (classVal && classVal.includes(k)))) {
-                    return;
-                }
-
-                const cleanFn = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars : (s) => String(s || "").trim();
-                const nameClean = cleanFn(nameVal);
-                if (!nameClean) return;
-
-                const rawClassClean = cleanFn(classVal);
-                const studentClass = rawClassClean || "新生";
-                const studentSeat = cleanFn(seatVal);
-
-                let studentKey = `${studentClass}_${nameClean}`;
-                if (studentSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== studentSeat) {
-                    studentKey = `${studentClass}_${studentSeat}_${nameClean}`;
-                }
-
-                let student = studentMap[studentKey];
-                if (!student) {
-                    student = {
-                        class: studentClass,
-                        seat: studentSeat,
-                        name: nameClean,
-                        schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '晨間社團': '', '週六': '', '週日': '' },
-                        remarks: []
-                    };
-                    studentMap[studentKey] = student;
-                } else if (!student.seat && studentSeat) {
-                    student.seat = studentSeat;
-                }
-
-                const label = (slotMode === 'vacation') ? slot : "";
-                const entryText = label ? `${displayName}(${label})` : displayName;
-
-                const targetDays = parseDays(day);
-                targetDays.forEach(d => {
-                    activeDays.add(d);
-                    if (student.schedule[d]) {
-                        const existing = student.schedule[d].split(',').map(s => s.trim());
-                        if (!existing.includes(entryText)) {
-                            student.schedule[d] += `, ${entryText}`;
-                        }
-                    } else {
-                        student.schedule[d] = entryText;
-                    }
-                });
+            students.forEach(s => {
+                if (!includeFreshmen && !s.class) return;
+                const student = upsertStudent(studentMap, s.class, s.seat, s.name);
+                if (student) addClubToStudent(student, mapData.day, entryText);
             });
-        });
-
-        // 統一生產衝突備註
-        Object.values(studentMap).forEach(student => {
-            student.remarks = [];
-            Object.keys(student.schedule).forEach(day => {
-                if (day.startsWith('晨間')) return;
-                if (student.schedule[day] && student.schedule[day].includes(',')) {
-                    student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
-                }
-            });
-            resultData.push(student);
         });
     }
 
-    return { resultData, activeDays };
+    return finalizeStudents(studentMap);
 }
 
 /**
@@ -304,11 +196,11 @@ function runClubLottery(candidates, quota, gradeStart, gradeEnd, priority) {
         const classA = getNumericSortKey(a.class);
         const classB = getNumericSortKey(b.class);
         if (classA !== classB) return classA - classB;
-        
+
         const seatA = getNumericSortKey(a.seat);
         const seatB = getNumericSortKey(b.seat);
         if (seatA !== seatB) return seatA - seatB;
-        
+
         return String(a.name).localeCompare(b.name, 'zh-hant');
     });
 
@@ -324,11 +216,11 @@ function runClubLottery(candidates, quota, gradeStart, gradeEnd, priority) {
         const classA = getNumericSortKey(a.class);
         const classB = getNumericSortKey(b.class);
         if (classA !== classB) return classA - classB;
-        
+
         const seatA = getNumericSortKey(a.seat);
         const seatB = getNumericSortKey(b.seat);
         if (seatA !== seatB) return seatA - seatB;
-        
+
         return String(a.name).localeCompare(b.name, 'zh-hant');
     });
 
@@ -339,14 +231,11 @@ function runClubLottery(candidates, quota, gradeStart, gradeEnd, priority) {
  * 彙整直接貼上的名冊資料 (僅包含被抽中的錄取學生)
  */
 function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
-    const studentMap = {};
-    const activeDays = new Set(['週一', '週二', '週三', '週四', '週五']);
+    const studentMap = new Map();
 
     pastedClubs.forEach(club => {
-        const day = club.day;
         const rawClubName = club.clubName;
-        activeDays.add(day);
-        
+
         let slot = "";
         const slotMatch = rawClubName.match(/([A-Ba-b]|一時段|二時段|第一節|第二節|SlotA|SlotB)$/);
         if (slotMatch) {
@@ -354,71 +243,21 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
             if (["A", "一時段", "第一節", "SLOTA"].includes(rawSlot)) slot = "A";
             else if (["B", "二時段", "第二節", "SLOTB"].includes(rawSlot)) slot = "B";
         }
-        
+
         let cleanName = rawClubName.replace(/([A-Ba-b]|一時段|二時段|第一節|第二節|時段|Slot|slot)$/i, '').trim();
         if (!cleanName) cleanName = rawClubName;
-        
+
         const label = slotMode === 'vacation' ? slot : "";
         const entryText = label ? `${cleanName}(${label})` : cleanName;
-        
-        club.students.forEach(student => {
+
+        club.students.forEach(s => {
             // 僅彙整正式被抽中錄取的學生！
-            if (student.selected === false) return;
-            
-            const cleanFn = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars : (s) => String(s || "").trim();
-            let sClass = cleanFn(student.class);
-            let sSeat = cleanFn(student.seat);
-            let sName = cleanFn(student.name);
-            
-            if (!sName) return;
-            if (!includeFreshmen && !sClass) return;
-            
-            if (!sClass) sClass = "新生";
-            
-            let studentKey = `${sClass}_${sName}`;
-            if (sSeat && studentMap[studentKey] && studentMap[studentKey].seat && studentMap[studentKey].seat !== sSeat) {
-                studentKey = `${sClass}_${sSeat}_${sName}`;
-            }
-
-            let studentObj = studentMap[studentKey];
-            if (!studentObj) {
-                studentObj = {
-                    class: sClass,
-                    seat: sSeat,
-                    name: sName,
-                    schedule: { '週一': '', '週二': '', '週三': '', '週四': '', '週五': '', '晨間社團': '', '週六': '', '週日': '' },
-                    remarks: []
-                };
-                studentMap[studentKey] = studentObj;
-            } else if (!studentObj.seat && sSeat) {
-                studentObj.seat = sSeat;
-            }
-            
-            const targetDays = parseDays(day);
-            targetDays.forEach(d => {
-                activeDays.add(d);
-                if (studentObj.schedule[d]) {
-                    const existing = studentObj.schedule[d].split(',').map(s => s.trim());
-                    if (!existing.includes(entryText)) {
-                        studentObj.schedule[d] += `, ${entryText}`;
-                    }
-                } else {
-                    studentObj.schedule[d] = entryText;
-                }
-            });
+            if (s.selected === false) return;
+            if (!includeFreshmen && !cleanInvisibleChars(s.class)) return;
+            const student = upsertStudent(studentMap, s.class, s.seat, s.name);
+            if (student) addClubToStudent(student, club.day, entryText);
         });
     });
 
-    Object.values(studentMap).forEach(student => {
-        student.remarks = [];
-        Object.keys(student.schedule).forEach(day => {
-            if (day.startsWith('晨間')) return;
-            if (student.schedule[day] && student.schedule[day].includes(',')) {
-                student.remarks.push(`「${day}」時段衝突：同時錄取「${student.schedule[day]}」`);
-            }
-        });
-    });
-
-    const resultData = Object.values(studentMap);
-    return { resultData, activeDays };
+    return finalizeStudents(studentMap);
 }

@@ -641,6 +641,20 @@ strong {
     display: none;
 }
 
+/* 多工作表模式略過的工作表：有內容時由 JS 移除 hidden */
+.warning-callout[hidden] {
+    display: none;
+}
+
+.skip-alert {
+    margin-bottom: 16px;
+}
+
+.skip-alert-hint {
+    margin-top: 6px;
+    font-size: 14px;
+}
+
 .conflict-title {
     font-weight: 700;
     margin-bottom: 6px;

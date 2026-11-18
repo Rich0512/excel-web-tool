@@ -1,15 +1,21 @@
-// 全域狀態宣告 (確保在所有後續模組載入前就緒)
-window.uploadedWorkbook = window.uploadedWorkbook || null;
-window.originalFileName = window.originalFileName || "";
-window.sheetData = window.sheetData || [];
-window.detectedHeaders = window.detectedHeaders || [];
-window.headerRowIndex = window.headerRowIndex || 1;
-window.colClassIdx = window.colClassIdx || -1;
-window.colSeatIdx = window.colSeatIdx || -1;
-window.colNameIdx = window.colNameIdx || -1;
-window.slotCols = window.slotCols || [];
+// 全域狀態（uploadedWorkbook、sheetData 等）宣告在 app.js
 
 const WEEKDAY_REGEX = /(星期|週|周)([一二三四五六日1-7])/;
+
+// 星期字元 → 標準名稱（一 / 1 → 週一）
+const DAY_CHAR_MAP = {
+    '一': '週一', '1': '週一',
+    '二': '週二', '2': '週二',
+    '三': '週三', '3': '週三',
+    '四': '週四', '4': '週四',
+    '五': '週五', '5': '週五',
+    '六': '週六', '6': '週六',
+    '日': '週日', '7': '週日'
+};
+
+// 晨間社團的專屬欄位（依序排在週五之後）
+const MORNING_OPTIONS = ['晨間(週一、週四)', '晨間(週二、週五)', '晨間(週一、週二、週四、週五)'];
+
 const weekdaysList = [
     "請選擇",
     "週一",
@@ -26,6 +32,9 @@ const weekdaysList = [
     "週二、五",
     "週一、二、四、五"
 ];
+
+// 提醒框（.warning-callout）左側的警告線條圖示，DESIGN.md 元件表「提醒」
+const WARNING_ICON_SVG = '<svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>';
 
 /**
  * XSS HTML 特殊字元安全跳脫防護
@@ -48,27 +57,84 @@ function parseDays(dayStr) {
     if (!dayStr) return [];
     const str = String(dayStr).trim();
     if (str.startsWith('晨間')) return [str];
-    const dayMap = {
-        '一': '週一', '1': '週一',
-        '二': '週二', '2': '週二',
-        '三': '週三', '3': '週三',
-        '四': '週四', '4': '週四',
-        '五': '週五', '5': '週五',
-        '六': '週六', '6': '週六',
-        '日': '週日', '7': '週日'
-    };
     const found = [];
-    const matches = String(dayStr).match(/(?:星期|週|周)?([一二三四五六日1-7])/g);
+    const matches = str.match(/(?:星期|週|周)?([一二三四五六日1-7])/g);
     if (matches) {
         matches.forEach(m => {
-            const char = m.replace(/星期|週|周/, '');
-            const d = dayMap[char];
+            const d = DAY_CHAR_MAP[m.replace(/星期|週|周/, '')];
             if (d && !found.includes(d)) {
                 found.push(d);
             }
         });
     }
     return found;
+}
+
+/**
+ * 把各種星期寫法轉成下拉選單的選項，例如「一、二、四、五」→「週一、二、四、五」、「星期三」→「週三」
+ * 對不上任何選項時回傳 null
+ */
+function normalizeDayOption(dayStr) {
+    if (!dayStr) return null;
+    const str = String(dayStr).replace(/\s+/g, '');
+    if (weekdaysList.includes(str) && str !== '請選擇') return str;
+    const days = parseDays(str);
+    if (days.length === 0 || days[0].startsWith('晨間')) return null;
+    const option = days.length === 1 ? days[0] : '週' + days.map(d => d.replace('週', '')).join('、');
+    return weekdaysList.includes(option) ? option : null;
+}
+
+/**
+ * 從上課時間判斷晨間社團屬於哪個專屬欄位；上課時間沒有星期資訊時回傳 null
+ */
+function morningDayFromSchedule(sched) {
+    const s = String(sched || '');
+    if (['一', '二', '四', '五'].every(c => s.includes(c))) return MORNING_OPTIONS[2];
+    if (s.includes('二') && s.includes('五')) return MORNING_OPTIONS[1];
+    if (s.includes('一') && s.includes('四')) return MORNING_OPTIONS[0];
+    return null;
+}
+
+/**
+ * 檔案中沒有上課時間時，依社團名稱推測晨間社團的欄位（預設週一、週四）
+ */
+function morningDayFromName(name) {
+    const s = String(name || '');
+    if (s.includes('游泳')) return MORNING_OPTIONS[2];
+    if (/棒球\s*B/i.test(s)) return MORNING_OPTIONS[1];
+    return MORNING_OPTIONS[0];
+}
+
+/**
+ * 從欄位或工作表名稱辨識 A/B 時段，找不到回傳 ""
+ * 單獨的 A/B 字母才算時段：「晨間棒球A班」的 A 是班別，「MV」等英文字中的字母也不算
+ */
+const SLOT_WORD_RE = /(第一時段|第二時段|一時段|二時段|第一節|第二節|Slot\s*[AB])/i;
+const SLOT_LETTER_RE = /(^|[^A-Za-z])([AB])(?![A-Za-z班組])/i;
+
+function detectSlot(text) {
+    const str = String(text || '');
+    const word = str.match(SLOT_WORD_RE);
+    if (word) return /^(第一|一)|A$/i.test(word[1]) ? 'A' : 'B';
+    const letter = str.match(SLOT_LETTER_RE);
+    return letter ? letter[2].toUpperCase() : '';
+}
+
+/**
+ * 寒暑假模式下，總表的時段欄位名稱要加在社團名稱後面的標籤
+ * 能辨識出 A/B 時就只用字母（「第一時段(社團A)」→「A」），否則清掉通用字詞後使用欄位名稱
+ */
+function slotLabelFromColumn(colName) {
+    const slot = detectSlot(colName);
+    if (slot) return slot;
+    return String(colName || '').replace(/時段|Slot|slot|社團|課程|項目|節/g, '').replace(/[()（）]/g, '').trim();
+}
+
+/**
+ * 單一清單模式的對照鍵：同一個社團可能同時出現在 A、B 兩個時段欄位，星期可能不同，所以要連同欄位一起區分
+ */
+function mappingKey(slotCol, club) {
+    return `${slotCol}\u0001${club}`;
 }
 
 // 解析年級數值 (新生為 0, 1-6 年級為 1-6)
@@ -217,34 +283,9 @@ function normalizeWeekdayName(dayStr) {
     if (!dayStr) return null;
     const str = String(dayStr).trim();
     const match = str.match(WEEKDAY_REGEX);
-    if (match) {
-        const dayChar = match[2];
-        const dayMap = {
-            '一': '週一', '1': '週一',
-            '二': '週二', '2': '週二',
-            '三': '週三', '3': '週三',
-            '四': '週四', '4': '週四',
-            '五': '週五', '5': '週五',
-            '六': '週六', '6': '週六',
-            '日': '週日', '7': '週日'
-        };
-        return dayMap[dayChar] || null;
-    }
-    const matchParen = str.match(/[(（]([一二三四五六日1-7])/);
-    if (matchParen) {
-        const c = matchParen[1];
-        const dayMap = {
-            '一': '週一', '1': '週一',
-            '二': '週二', '2': '週二',
-            '三': '週三', '3': '週三',
-            '四': '週四', '4': '週四',
-            '五': '週五', '5': '週五',
-            '六': '週六', '6': '週六',
-            '日': '週日', '7': '週日'
-        };
-        return dayMap[c] || null;
-    }
-    return null;
+    if (match) return DAY_CHAR_MAP[match[2]] || null;
+    const paren = str.match(/[(（]([一二三四五六日1-7])/);
+    return paren ? (DAY_CHAR_MAP[paren[1]] || null) : null;
 }
 
 /**
@@ -269,30 +310,24 @@ function extractWeekdayFromName(clubName) {
  * 智慧解析工作表名稱與時段資訊
  */
 function parseSheetName(name) {
-    const day = normalizeWeekdayName(name);
-    let slot = "";
-    
-    const slotMatch = name.match(/([A-Ba-b]|一時段|二時段|第一節|第二節|SlotA|SlotB)/i);
-    if (slotMatch) {
-        const rawSlot = slotMatch[1].toUpperCase();
-        if (rawSlot === "A" || rawSlot === "一時段" || rawSlot === "第一節" || rawSlot === "SLOTA") {
-            slot = "A";
-        } else if (rawSlot === "B" || rawSlot === "二時段" || rawSlot === "第二節" || rawSlot === "SLOTB") {
-            slot = "B";
-        }
-    }
-    
-    let cleanName = name;
-    cleanName = cleanName.replace(/(星期|週|周)[一二三四五六日1-7]/g, "");
-    cleanName = cleanName.replace(/([A-Ba-b]|一時段|二時段|第一節|第二節|時段|Slot|slot|社團|課程|項目)/gi, "");
-    cleanName = cleanName.trim();
-    
-    if (!cleanName) cleanName = name.trim();
-    
+    const raw = String(name || '').trim();
+    // 學校系統匯出的工作表名稱是「社團-周一桌遊社」，「社團-」是前綴，不是社團名稱的一部分
+    const base = raw.replace(/^社團\s*[-－_]?\s*/, '');
+    const day = normalizeWeekdayName(base);
+    const slot = detectSlot(base);
+
+    let cleanName = base.replace(/(星期|週|周)[一二三四五六日1-7]/g, '');
+    cleanName = cleanName.replace(SLOT_WORD_RE, '');
+    if (slot) cleanName = cleanName.replace(SLOT_LETTER_RE, '$1');
+    cleanName = cleanName.replace(/時段|課程|項目/g, '');
+    // 清掉刪字後殘留在頭尾的分隔符號與空括號
+    cleanName = cleanName.replace(/[(（]\s*[)）]/g, '').replace(/^[\s\-－_]+|[\s\-－_]+$/g, '');
+
     return {
         day: day || "請選擇",
         slot: slot,
-        clubName: cleanName
+        baseName: base || raw,
+        clubName: cleanName || base || raw
     };
 }
 

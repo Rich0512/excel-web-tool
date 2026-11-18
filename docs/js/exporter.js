@@ -45,8 +45,7 @@ function mergeAndStyleCountCell(ws, startRow, endRow, count, grade) {
 async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName, pastedClubsList = null) {
     const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
     // 晨間專屬欄位（依序排在週五之後）
-    const morningOrder = ['晨間(週一、週四)', '晨間(週二、週五)', '晨間(週一、週二、週四、週五)'];
-    morningOrder.forEach(m => {
+    MORNING_OPTIONS.forEach(m => {
         if (activeDays.has(m)) targetWeekdays.push(m);
     });
     Array.from(activeDays).forEach(d => {
@@ -154,8 +153,7 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
 
         pastedClubsList.forEach(club => {
             // 工作表名稱消毒與唯一性保護（防止特殊字元與重複命名導致 ExcelJS 拋錯）
-            const sanitizeFn = typeof sanitizeSheetName === 'function' ? sanitizeSheetName : (n) => String(n || "社團").replace(/[\\/?*\[\]:]/g, '_').substring(0, 31);
-            let baseWsName = sanitizeFn(club.clubName, '社團名冊');
+            let baseWsName = sanitizeSheetName(club.clubName, '社團名冊');
             let finalWsName = baseWsName;
             let counter = 2;
             while (usedSheetNames.has(finalWsName)) {
@@ -298,18 +296,7 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
     const outputSuffix = slotMode === 'semester' ? "_學期社團彙整.xlsx" : "_寒暑假社團彙整.xlsx";
     const outputName = outputBaseName.replace(/\.[^/.]+$/, "") + outputSuffix;
 
-    if (typeof triggerFileDownload === 'function') {
-        triggerFileDownload(blob, outputName);
-    } else {
-        const downloadLink = document.createElement('a');
-        downloadLink.href = URL.createObjectURL(blob);
-        downloadLink.download = outputName;
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        setTimeout(() => {
-            document.body.removeChild(downloadLink);
-        }, 1000);
-    }
+    triggerFileDownload(blob, outputName);
 
     switchStep('step-success');
 }

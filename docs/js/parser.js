@@ -5,19 +5,19 @@ const PARSER_WEEKDAY_REGEX = /^(星期|週|周)([一二三四五六日]|[1-7])/;
 const FIELD_DETECTION_RULES = {
     // 1. 姓名規則：2~4個純中文，且不含有班級或年級的特定詞彙
     name: (val) => {
-        const clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(val) : String(val).trim();
+        const clean = cleanInvisibleChars(val);
         return /^[\u4e00-\u9fa5]{2,4}$/.test(clean) && 
                !['班', '年', '組', '級', '社', '校'].some(kw => clean.includes(kw));
     },
     // 2. 班級規則：字串包含「班」、「年」或符合3位數代碼 (如 102) 或特殊專班
     class: (val) => {
-        const clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(val) : String(val).trim();
+        const clean = cleanInvisibleChars(val);
         return clean.includes('班') || clean.includes('年') || /^\d{2,3}$/.test(clean) || 
                /^(幼|附幼|特教|資優|潛能|新生)/.test(clean);
     },
     // 3. 座號規則：限制在 1~60 之間的短數值字串 (避免誤判長位數的學號)
     seat: (val, idx, guessedClass) => {
-        const clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(val) : String(val).trim();
+        const clean = cleanInvisibleChars(val);
         const num = parseInt(clean, 10);
         const isValidNumber = !isNaN(num) && num > 0 && num <= 60;
         const isShortString = clean.length <= 2;
@@ -33,7 +33,7 @@ const FIELD_DETECTION_RULES = {
  */
 function normalizePastedText(text) {
     if (!text) return "";
-    let clean = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(text) : String(text);
+    let clean = cleanInvisibleChars(text);
     
     let inQuotes = false;
     let result = '';
@@ -74,6 +74,61 @@ function findColumnByKeywords(headers, keywords, isSeat = false, isName = false)
         }
     }
     return -1;
+}
+
+// 班級、座號、姓名欄位的關鍵字（總表與各社團工作表共用）
+const CLASS_KEYWORDS = ['班級', '班', 'Class', 'class'];
+const SEAT_KEYWORDS = ['座號', '座', 'Seat', 'seat'];
+const NAME_KEYWORDS = ['學生姓名', '姓名', 'Name', 'name', '名'];
+// 名冊底部的合計列，不是學生
+const TOTAL_ROW_KEYWORDS = ['合計', '總計', '統計', '人數', '小計'];
+
+function isTotalRow(...values) {
+    return TOTAL_ROW_KEYWORDS.some(k => values.some(v => v && String(v).includes(k)));
+}
+
+function readRowValues(ws, rowNum) {
+    const values = [];
+    ws.getRow(rowNum).eachCell({ includeEmpty: true }, (cell) => {
+        values.push(getCellValueAsString(cell));
+    });
+    return values;
+}
+
+/**
+ * 在工作表前幾列找表頭（同一列出現班級、座號、姓名等字詞至少兩個）；找不到時用第 1 列
+ */
+function findHeaderRow(ws, maxRows = 10) {
+    for (let r = 1; r <= maxRows; r++) {
+        const values = readRowValues(ws, r);
+        const matchCount = ['班級', '班', '座號', '姓名'].filter(kw => values.some(v => v.includes(kw))).length;
+        if (matchCount >= 2) return { headers: values, rowIndex: r };
+    }
+    return { headers: readRowValues(ws, 1), rowIndex: 1 };
+}
+
+/**
+ * 讀取一張社團工作表的學生（多工作表模式）
+ * 只有姓名欄是必要的，沒有班級或座號欄時留空；找不到姓名欄回傳 null
+ */
+function readClubSheetStudents(ws) {
+    const { headers, rowIndex } = findHeaderRow(ws);
+    const nameIdx = findColumnByKeywords(headers, NAME_KEYWORDS, false, true);
+    if (nameIdx === -1) return null;
+    const classIdx = findColumnByKeywords(headers, CLASS_KEYWORDS);
+    const seatIdx = findColumnByKeywords(headers, SEAT_KEYWORDS, true, false);
+    const cellText = (row, idx) => (idx === -1 ? '' : cleanInvisibleChars(getCellValueAsString(row.getCell(idx + 1))));
+
+    const students = [];
+    ws.eachRow((row, rowNum) => {
+        if (rowNum <= rowIndex) return;
+        const name = cellText(row, nameIdx);
+        if (!name) return;
+        const cls = cellText(row, classIdx);
+        if (isTotalRow(name, cls)) return;
+        students.push({ class: cls, seat: cellText(row, seatIdx), name });
+    });
+    return students;
 }
 
 // 讀取檔案內的內置對照工作表或課程總表 (支援 1152、對照表、個別社團 Sheet)
@@ -148,13 +203,13 @@ function parsePastedText(text) {
     if (!text) return [];
     const normalized = normalizePastedText(text);
     const lines = normalized.split(/\r?\n/)
-        .map(l => (typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(l) : l.trim()))
+        .map(l => cleanInvisibleChars(l))
         .filter(l => l.length > 0);
     if (lines.length === 0) return [];
     
     // 輔助清洗儲存格兩側引號與空白
     const cleanCell = (c) => {
-        const str = typeof cleanInvisibleChars === 'function' ? cleanInvisibleChars(c) : String(c).trim();
+        const str = cleanInvisibleChars(c);
         return str.replace(/^["']+|["']+$/g, '').trim();
     };
 
@@ -241,7 +296,7 @@ function parsePastedText(text) {
         const nameVal = cleanCell(rawName);
         if (!nameVal) continue;
         
-        if (['合計', '總計', '統計', '人數', '小計'].some(k => nameVal.includes(k))) {
+        if (isTotalRow(nameVal)) {
             continue;
         }
         
@@ -269,17 +324,7 @@ function guessClubAndDayFromPastedText(text) {
         const line = lines[i];
         const dayMatch = PARSER_WEEKDAY_REGEX.exec(line);
         if (dayMatch) {
-            const day_char = dayMatch[2];
-            const dayMap = {
-                '一': '週一', '1': '週一',
-                '二': '週二', '2': '週二',
-                '三': '週三', '3': '週三',
-                '四': '週四', '4': '週四',
-                '五': '週五', '5': '週五',
-                '六': '週六', '6': '週六',
-                '日': '週日', '7': '週日'
-            };
-            const matchedDay = dayMap[day_char];
+            const matchedDay = DAY_CHAR_MAP[dayMatch[2]];
             if (matchedDay) {
                 const dayEl = document.getElementById('paste-day-select');
                 if (dayEl) dayEl.value = matchedDay;
