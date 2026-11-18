@@ -11,8 +11,12 @@
 ## 程式碼裡的個資
 
 學生資料只能存在記憶體中，關閉分頁即消失：
-- 不可寫入 localStorage、sessionStorage、IndexedDB、Cache Storage。localStorage 只存社團對照設定（key `yenping_club_config`：社團名稱 → 星期）。
+- 不可寫入 localStorage、sessionStorage、IndexedDB、Cache Storage。localStorage 只存社團星期設定（key `yenping_club_config`，讀寫只透過 `utils.js` 的 `loadLocalStorageConfig()`／`saveLocalStorageConfig()`）：
+  - 單一清單模式：時段欄位名稱 → { 社團名稱 → 星期 }（`app.js` 的 `saveMappingConfig()`）
+  - 多工作表模式：工作表名稱 → 星期
+  - 只能有欄位標題、社團或工作表名稱、星期，不可出現姓名、班級、座號。
 - 不可 `console.log` 學生資料；錯誤訊息只記錄例外本身。
+- `throw new Error()` 與 `alert()` 的訊息不可串入名冊內容（儲存格值、整列資料、姓名）。例外會被 `console.error` 與全域錯誤處理印出，也會顯示在 alert 裡；需要指出位置時，用工作表名稱、欄位標題或列號。
 - 不可發出任何網路請求（CSP 的 `connect-src 'self'` 是最後一道防線，不是唯一一道）。
 - 匯出只透過使用者主動下載的 Excel 檔。
 

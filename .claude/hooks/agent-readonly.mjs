@@ -6,12 +6,15 @@
 //   因為這裡不是完整的 shell 解析器，解析結果與 bash 不一致時就可能被繞過
 // - 每一段指令都必須在白名單內，且不帶會寫檔或執行外部程式的選項
 // - 禁止 > 重導（>/dev/null、2>/dev/null、2>&1 除外）
+// - node 只能執行本 repo 的 tools/check-site.mjs（依 cwd 解析路徑後比對）
 // 無法判斷時阻擋（fail closed）；被擋時請改用 Read / Grep / Glob
 // ============================================
 
-import { readHookInput, block } from '../../tools/site-config.mjs';
+import { join, resolve } from 'node:path';
+import { ROOT, readHookInput, block } from '../../tools/site-config.mjs';
 
 const HOOK = 'agent-readonly';
+const CHECK_SITE = join(ROOT, 'tools', 'check-site.mjs');
 const GIT_READONLY = new Set(['status', 'diff', 'log', 'show', 'ls-files', 'rev-parse', 'cat-file', 'blame']);
 // git 選項用白名單而非黑名單：git 接受長選項縮寫（--outp=x 等同 --output=x），黑名單擋不完
 // 只比對完整名稱，所以任何縮寫都不會被放行；-- 之後是路徑，不再檢查
@@ -30,6 +33,14 @@ const TEXT_TOOLS = new Set(['ls', 'cat', 'head', 'tail', 'wc', 'grep', 'cut', 't
 const input = readHookInput();
 if (!input) block(HOOK, '無法解析 hook 輸入，唯讀子代理先行阻擋；請改用 Read / Grep / Glob');
 const command = String(input.tool_input?.command || '');
+
+// 子代理的工作目錄沿用主對話當下的位置，不一定是 repo 根目錄。
+// node 的腳本路徑依 cwd 解析後，必須正好是本 repo 的 tools/check-site.mjs（相對、絕對、Git Bash 的 /c/… 寫法都可）
+const isWin = process.platform === 'win32';
+const toNative = (p) => (isWin ? p.replace(/^\/([a-zA-Z])(?=\/|$)/, '$1:') : p);
+const samePath = (a, b) => (isWin ? a.toLowerCase() === b.toLowerCase() : a === b);
+const cwd = toNative(String(input.cwd || ROOT));
+const isCheckSite = (p) => Boolean(p) && samePath(resolve(cwd, toNative(p)), CHECK_SITE);
 
 // 逐字元掃描並追蹤引號狀態（兩段式的正規式比對會被 "'" 這類交錯引號騙過）：
 // - 單引號內是純文字
@@ -85,7 +96,8 @@ function allowed(w) {
         const end = rest.indexOf('--');
         return (end === -1 ? rest : rest.slice(0, end)).every(a => !a.startsWith('-') || gitOptionAllowed(a));
     }
-    if (cmd === 'node') return args[0] === 'tools/check-site.mjs' || args[0] === './tools/check-site.mjs';
+    // 第一個參數必須是腳本路徑（node 的 --require、-e 等選項會讓 args[0] 不是路徑而被擋下）
+    if (cmd === 'node') return isCheckSite(args[0]);
     // 只允許 unzip -p（輸出到 stdout）與 unzip -l（列出內容），且不帶其他選項
     if (cmd === 'unzip') return (args[0] === '-p' || args[0] === '-l') && !args.slice(1).some(a => a.startsWith('-'));
     return TEXT_TOOLS.has(cmd);

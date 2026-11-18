@@ -104,7 +104,22 @@ run('agent-readonly', shell('git status 2>&1 | head -3'), '2>&1 | head (allowed)
 run('agent-readonly', shell('git log >/dev/null; git status'), '>/dev/null; (allowed)', 0);
 run('agent-readonly', 'not json', 'malformed input -> fail closed', 2);
 
+// 子代理的工作目錄可能是 docs/（沿用主對話當下的位置），check-site 的路徑依 cwd 解析後比對
+const docsDir = join(ROOT, 'docs');
+const atDocs = (command) => ({ tool_name: 'Bash', cwd: docsDir, tool_input: { command } });
+const rootSlash = ROOT.replace(/\\/g, '/');
+const rootMsys = rootSlash.replace(/^([a-zA-Z]):/, (_, d) => `/${d.toLowerCase()}`);
+run('agent-readonly', atDocs('node tools/check-site.mjs'), 'cwd=docs: tools/check-site.mjs 指向 docs/tools（不存在）', 2);
+run('agent-readonly', atDocs('node ../tools/bump-version.mjs'), 'cwd=docs: 其他腳本', 2);
+run('agent-readonly', atDocs('node ../../tools/check-site.mjs'), 'cwd=docs: repo 外同名檔案', 2);
+run('agent-readonly', atDocs('node --require ./x.js ../tools/check-site.mjs'), 'cwd=docs: node 選項', 2);
+run('agent-readonly', atDocs(`node ${rootSlash}/tools/check-site.mjs.bak`), '相似檔名', 2);
+
 console.log('--- agent-readonly: 應放行');
+run('agent-readonly', atDocs('node ../tools/check-site.mjs --require-bump=origin/main'), 'cwd=docs: ../tools/check-site.mjs', 0);
+run('agent-readonly', atDocs(`node ${rootSlash}/tools/check-site.mjs`), 'cwd=docs: 絕對路徑（C:/…）', 0);
+run('agent-readonly', atDocs(`node ${rootMsys}/tools/check-site.mjs`), 'cwd=docs: Git Bash 路徑（/c/…）', 0);
+run('agent-readonly', atDocs(`node ${rootSlash.toUpperCase()}/tools/check-site.mjs`), 'cwd=docs: 大小寫不同（Windows）', process.platform === 'win32' ? 0 : 2);
 run('agent-readonly', shell("grep -n 'a$|b\\\\' docs/js/app.js"), '$ and \\ inside single quotes', 0);
 run('agent-readonly', shell('grep -c "escapeHtml(" docs/js/app.js'), '( inside double quotes', 0);
 run('agent-readonly', shell('node tools/check-site.mjs --require-bump=origin/main'), 'check-site', 0);
