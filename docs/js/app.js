@@ -534,6 +534,12 @@ function clearAllPastedClubs() {
 const MAX_PASTE_QUOTA = 500;
 
 function loadPastedClub() {
+    // 抽籤只用瀏覽器內建的密碼學亂數；沒有時不抽籤，也不退回 Math.random（結果無法保證公平）
+    if (!hasSecureRandom()) {
+        alert("這個瀏覽器版本太舊，不支援安全的亂數，無法公平抽籤。請改用最新版 Chrome、Edge 或 Safari 開啟這個網頁，再按「加入這個社團」。");
+        return;
+    }
+
     // 防抖中的預覽先跑完，社團名稱與星期的自動推測才會是最新內容
     flushPastePreview();
 
@@ -579,10 +585,14 @@ function loadPastedClub() {
         return;
     }
     
-    // 執行抽籤演算法
-    const finalStudentsList = runClubLottery(rawStudents, quota, gradeStart, gradeEnd, priority);
+    // 重複報名先去重（彙整課表時也會被併成同一位），再執行抽籤演算法
+    const { students: applicants, duplicateCount } = dedupeApplicants(rawStudents);
+    const finalStudentsList = runClubLottery(applicants, quota, gradeStart, gradeEnd, priority);
+    const drawnAt = new Date();
     const selectedCount = finalStudentsList.filter(s => s.selected).length;
+    const unrecognizedCount = finalStudentsList.filter(s => s.drawSequence === UNRECOGNIZED_CLASS_LABEL).length;
 
+    // 抽籤時間（drawnAt）與各項筆數不是學生資料，只放在記憶體，下載時寫進匯出檔的「抽籤資訊」
     const newClub = {
         id: Date.now(),
         day: day,
@@ -592,22 +602,52 @@ function loadPastedClub() {
         gradeEnd: gradeEnd,
         priority: priority,
         students: finalStudentsList,
-        selectedCount: selectedCount
+        selectedCount: selectedCount,
+        applicantCount: rawStudents.length,
+        duplicateCount: duplicateCount,
+        unrecognizedCount: unrecognizedCount,
+        drawnAt: drawnAt
     };
-    
+
     pastedClubs.push(newClub);
-    
+
     // 清空社團名稱與名單，並重設自動填入的記號，下一個社團重新推測名稱與星期
     document.getElementById('paste-club-name').value = "";
     resetPasteInput();
 
     renderLoadedClubs();
-    
+
+    // 有重複報名或班級無法辨識時提醒；訊息只有筆數，不含名冊內容
+    const notice = lotteryNoticeMessage(duplicateCount, unrecognizedCount);
+    if (notice) alert(notice);
+
     // 自動聚焦回社團名稱輸入框，方便打字下一個社團
     setTimeout(() => {
         const clubNameInput = document.getElementById('paste-club-name');
         if (clubNameInput) clubNameInput.focus();
     }, 50);
+}
+
+/**
+ * 加入社團後的提醒：重複報名與班級無法辨識的筆數，以及下一步；兩者都沒有時回傳 ""
+ * 只寫筆數，不可串入姓名、班級等名冊內容
+ */
+function lotteryNoticeMessage(duplicateCount, unrecognizedCount) {
+    const parts = [];
+    if (duplicateCount > 0) parts.push(`${duplicateCount} 筆重複報名（班級、姓名相同），重複的只保留一筆，已用去除重複後的名單抽籤`);
+    if (unrecognizedCount > 0) parts.push(`${parts.length ? '另有 ' : ''}${unrecognizedCount} 筆班級無法辨識，沒有參加抽籤，名單中標示為「${UNRECOGNIZED_CLASS_LABEL}」`);
+    if (parts.length === 0) return "";
+    return `名單裡有 ${parts.join('；')}。請確認貼上的內容，需要時移除這個社團後重新貼上。`;
+}
+
+// 已加入社團那一行後面的說明：略過重複、班級無法辨識的筆數與抽籤時間
+function loadedClubExtraMeta(club) {
+    const extra = [];
+    if (club.duplicateCount > 0) extra.push(`略過重複 ${club.duplicateCount} 筆`);
+    if (club.unrecognizedCount > 0) extra.push(`班級無法辨識 ${club.unrecognizedCount} 筆`);
+    const time = formatDrawTime(club.drawnAt);
+    if (time) extra.push(`${time} 抽籤`);
+    return extra.map(t => `，${t}`).join('');
 }
 
 function renderLoadedClubs() {
@@ -633,7 +673,7 @@ function renderLoadedClubs() {
         infoHeader.setAttribute('tabindex', '0');
         infoHeader.setAttribute('aria-expanded', 'false');
         infoHeader.innerHTML = `<span class="loaded-club-name">${escapeHtml(club.clubName)}</span>` +
-                               `<span class="loaded-club-meta">${escapeHtml(club.day)}，正取 ${escapeHtml(String(club.selectedCount))}／${escapeHtml(String(club.quota))} 人，報名 ${escapeHtml(String(club.students.length))} 人，限 ${escapeHtml(club.gradeStart)}–${escapeHtml(club.gradeEnd)} 年級</span>` +
+                               `<span class="loaded-club-meta">${escapeHtml(club.day)}，正取 ${escapeHtml(String(club.selectedCount))}／${escapeHtml(String(club.quota))} 人，報名 ${escapeHtml(String(club.students.length))} 人，限 ${escapeHtml(club.gradeStart)}–${escapeHtml(club.gradeEnd)} 年級${escapeHtml(loadedClubExtraMeta(club))}</span>` +
                                `<span class="loaded-club-badge">查看名單</span>`;
 
         const infoDetails = document.createElement('div');
@@ -642,10 +682,11 @@ function renderLoadedClubs() {
 
         // 先組成純文字，插入 HTML 時才統一跳脫，審查時一眼就能確認每個插入值都經過 escapeHtml()
         const selectedText = club.students.filter(s => s.selected).map(s => `${s.class || '新生'}${s.seat ? `座號${s.seat}` : ''} ${s.name}`).join('、');
+        // 未錄取的順序與 runClubLottery() 回傳的相同：備取 1、2、3…，接著是班級無法辨識、不符限制
         const backupText = club.students.filter(s => !s.selected).map(s => `${s.name}(${s.drawSequence})`).join('、');
 
         infoDetails.innerHTML = `<div class="roster-selected"><strong>正取：</strong>${escapeHtml(selectedText || '無')}</div>` +
-                                 `<div class="roster-backup"><strong>備取或不符資格：</strong>${escapeHtml(backupText || '無')}</div>`;
+                                 `<div class="roster-backup"><strong>備取與未參加抽籤：</strong>${escapeHtml(backupText || '無')}</div>`;
 
         const toggleDetails = () => {
             const willShow = infoDetails.hidden;

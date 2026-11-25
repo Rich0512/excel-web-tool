@@ -141,6 +141,31 @@ function detectSlot(text) {
 }
 
 /**
+ * 拆出社團名稱「結尾」的時段後綴（貼上模式用），回傳 { name, slot }；認不出時 name 是原名、slot 是 ""
+ * 時段字詞與 detectSlot() 相同（「第一時段」「一時段」「第一節」「Slot A」…），或單獨的 A/B 字母：
+ * 沒有括號時，字母前面是英文字母就不算（「Yoga」「Club」的結尾不是時段）；結尾是「A班」時也不算。
+ * 可以用括號包住（含全形括號）：「桌遊(A)」「桌遊（B）」。
+ * 清掉的就是辨識出來的那一段，連同前面的空白與括號；清完沒有名稱時（例如「A」）維持原名、不算時段。
+ * 單獨的「時段」二字沒有 A/B 資訊，不清掉。
+ */
+const SLOT_SUFFIX_RE = new RegExp(`\\s*([(\\uFF08]\\s*)?(${SLOT_WORD_RE.source}|[AB])(\\s*[)\\uFF09])?$`, 'i');
+
+function splitSlotSuffix(text) {
+    const str = String(text || '').trim();
+    const none = { name: str, slot: '' };
+    // 全形英數字先轉成一般英數字再比對（全形的 A 也算時段）；轉換不改變長度，名稱仍從原本的字串取出
+    const half = toHalfwidthAlnum(str);
+    const m = half.match(SLOT_SUFFIX_RE);
+    // m[1]、m[4] 是左右括號，只有其中一個時不算
+    if (!m || !m[1] !== !m[4]) return none;
+    const token = m[2];
+    if (!m[1] && token.length === 1 && /[A-Za-z]/.test(half.charAt(half.length - 2))) return none;
+    // 名稱和時段之間的「-」「_」也一起清掉（「桌遊-A」→「桌遊」）
+    const name = str.slice(0, m.index).replace(/[\s_-]+$/, '').trim();
+    return name ? { name, slot: detectSlot(token) } : none;
+}
+
+/**
  * 寒暑假模式下，總表的時段欄位名稱要加在社團名稱後面的標籤
  * 能辨識出 A/B 時就只用字母（「第一時段(社團A)」→「A」），否則清掉通用字詞後使用欄位名稱
  */
@@ -157,19 +182,72 @@ function mappingKey(slotCol, club) {
     return `${slotCol}\u0001${club}`;
 }
 
-// 解析年級數值 (新生為 0, 1-6 年級為 1-6)
+// 全形英數字轉成一般英數字，讓全形字母也能被當成英文判斷（全形的 Amy 與 Amy 相同）；parser.js、parseGrade、splitSlotSuffix 共用
+function toHalfwidthAlnum(str) {
+    return str.replace(/[\uff10-\uff19\uff21-\uff3a\uff41-\uff5a]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+}
+
+const GRADE_CHAR_MAP = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
+    '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6
+};
+
+/**
+ * 解析年級：空白或「新生」回傳 0；能辨識的回傳 1–6；不是空白卻讀不出年級時回傳 null
+ * 只看第一個有意義的字元（跳過空白與標點，全形數字當成一般數字）：「301」「3年1班」「三年一班」與全形的 301 都是 3 年級；
+ * 「701」「01」「資源班」回傳 null，不會在字串中間找到「1」就當成一年級
+ */
 function parseGrade(classStr) {
-    if (!classStr || classStr === "新生") return 0;
-    const match = classStr.match(/([一二三四五六1-6])/);
-    if (match) {
-        const char = match[1];
-        const map = {
-            '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
-            '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6
-        };
-        return map[char] || 0;
+    const str = toHalfwidthAlnum(cleanInvisibleChars(classStr));
+    if (!str || str.startsWith("新生")) return 0;
+    const first = str.match(/[\p{L}\p{N}]/u);
+    if (!first) return null;
+    return GRADE_CHAR_MAP[first[0]] || null;
+}
+
+/**
+ * 瀏覽器是否提供密碼學亂數（crypto.getRandomValues）。沒有時不可抽籤，也不可退回 Math.random
+ */
+function hasSecureRandom() {
+    return typeof crypto !== 'undefined' && !!crypto && typeof crypto.getRandomValues === 'function';
+}
+
+const UINT32_RANGE = 0x100000000;
+
+/**
+ * 回傳 0 到 n - 1 之間的隨機整數，每個結果的機率完全相同（n 是 1 到 2^32 的整數）
+ * 亂數來自 crypto.getRandomValues；超出可以被 n 整除的範圍的值直接丟掉重抽（rejection sampling），否則數字小的結果會多出一點機率
+ */
+function randomInt(n) {
+    if (!Number.isInteger(n) || n < 1 || n > UINT32_RANGE) {
+        throw new RangeError('randomInt 的範圍要是 1 到 2^32 之間的整數');
     }
-    return 0;
+    const limit = UINT32_RANGE - (UINT32_RANGE % n);
+    const buf = new Uint32Array(1);
+    for (;;) {
+        crypto.getRandomValues(buf);
+        if (buf[0] < limit) return buf[0] % n;
+    }
+}
+
+// 抽籤優先順序的顯示文字，與 index.html #paste-priority 的選項文字相同
+const PRIORITY_LABELS = { desc: '高年級優先', asc: '低年級優先' };
+
+// 年級選單的顯示文字，與 index.html #paste-grade-start／#paste-grade-end 的選項文字相同
+function gradeOptionLabel(value) {
+    return value === '新生' ? '新生' : `${value} 年級`;
+}
+
+/**
+ * 抽籤時間的顯示格式（本地時間）：withDate 為 true 時是 YYYY/MM/DD HH:mm:ss，否則是 HH:mm
+ * 不是有效的 Date 時回傳 ""
+ */
+function formatDrawTime(date, withDate = false) {
+    if (!date || typeof date.getTime !== 'function' || isNaN(date.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, '0');
+    const hm = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    if (!withDate) return hm;
+    return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${hm}:${pad(date.getSeconds())}`;
 }
 
 /**

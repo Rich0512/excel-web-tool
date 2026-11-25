@@ -341,11 +341,19 @@ if (bumpArg && swVersion) {
     if (changed.length && versionAt(baseRef) === swVersion) {
         errors.push(`網站檔案已變更（${changed.slice(0, 5).join(', ')}${changed.length > 5 ? '…' : ''}）但 CACHE_VERSION 仍為 v${swVersion}，請執行 /release 調升版本`);
     }
-    // sitemap 的 lastmod 也要一起更新（bump-version 會改成今天）
+    // sitemap 的 lastmod 也要一起更新（bump-version 會改成今天，算法要和 bump-version.mjs 相同）
+    // 同一天第二次發佈時，上一版的 lastmod 已經是今天，日期相同是正確的，不算漏改
     const lastmodOf = (xml) => ((xml || '').match(/<lastmod>([^<]*)<\/lastmod>/) || [])[1];
     const baseLastmod = lastmodOf(git(['show', `${baseRef}:${SITE}/sitemap.xml`]));
-    if (changed.some(f => f !== site('sitemap.xml')) && baseLastmod && baseLastmod === lastmodOf(read(site('sitemap.xml')))) {
-        errors.push(`網站檔案已變更但 sitemap.xml 的 lastmod 仍為 ${baseLastmod}，請執行 /release`);
+    // 前一天調升、隔天才 push 時 lastmod 是前一天，比上一版新，可以接受；比上一版舊表示被改錯
+    const today = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD（本地時區）
+    const curLastmod = lastmodOf(read(site('sitemap.xml')));
+    if (changed.some(f => f !== site('sitemap.xml')) && baseLastmod && curLastmod) {
+        if (curLastmod === baseLastmod && baseLastmod !== today) {
+            errors.push(`網站檔案已變更但 sitemap.xml 的 lastmod 仍為 ${baseLastmod}，請執行 /release`);
+        } else if (curLastmod < baseLastmod) {
+            errors.push(`sitemap.xml 的 lastmod（${curLastmod}）比上一版（${baseLastmod}）還舊，請執行 /release 改成今天`);
+        }
     }
 }
 

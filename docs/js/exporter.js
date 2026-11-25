@@ -15,8 +15,8 @@ const GRADE_COLORS = {
 // 輔助函數：合併並套用同一格式到錄取人數儲存格
 function mergeAndStyleCountCell(ws, startRow, endRow, count, grade) {
     const colNum = 5; // Column E
-    const color = GRADE_COLORS[grade] || 'FFFFFFFF';
-    
+    const color = GRADE_COLORS[grade] || 'FFFFFF';
+
     if (startRow < endRow) {
         ws.mergeCells(startRow, colNum, endRow, colNum);
     }
@@ -40,6 +40,71 @@ function mergeAndStyleCountCell(ws, startRow, endRow, count, grade) {
             right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
         };
     }
+}
+
+/**
+ * 抽籤資訊的內容（標題 → 值）。都是抽籤設定與筆數，不含學生資料。
+ * 舊的社團物件沒有某一項時，筆數以名單推算，抽籤時間寫「未記錄」
+ */
+function drawInfoRows(club) {
+    const students = Array.isArray(club.students) ? club.students : [];
+    const selectedCount = Number.isFinite(club.selectedCount) ? club.selectedCount : students.filter(s => s.selected).length;
+    const duplicateCount = club.duplicateCount || 0;
+    const unrecognizedCount = Number.isFinite(club.unrecognizedCount)
+        ? club.unrecognizedCount
+        : students.filter(s => s.drawSequence === UNRECOGNIZED_CLASS_LABEL).length;
+    // 「報名人數」與畫面上的「報名 N 人」相同，是去除重複後的人數；重複的筆數另列一行
+    return [
+        ['抽籤時間', formatDrawTime(club.drawnAt, true) || '未記錄'],
+        ['正取人數', `${selectedCount} 人（名額 ${club.quota} 人）`],
+        ['年級限制', `${gradeOptionLabel(club.gradeStart)} 至 ${gradeOptionLabel(club.gradeEnd)}`],
+        ['優先順序', PRIORITY_LABELS[club.priority] || String(club.priority || '')],
+        ['報名人數', `${students.length} 人（已去除重複）`],
+        ['重複略過筆數', `${duplicateCount} 筆`],
+        ['班級無法辨識筆數', `${unrecognizedCount} 筆`],
+        ['亂數來源', '瀏覽器內建的安全亂數（crypto.getRandomValues）'],
+    ];
+}
+
+/**
+ * 在社團工作表的 startCol 欄（與下一欄）寫入「抽籤資訊」小表：第 1 列是標題（與資料表表頭同樣式、合併兩欄），
+ * 之後每列是「項目、內容」。只寫這兩欄，不影響資料表與「錄取人數」欄的合併
+ */
+function writeDrawInfoBlock(ws, club, startCol) {
+    const thinBorder = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+    };
+
+    ws.mergeCells(1, startCol, 1, startCol + 1);
+    const title = ws.getCell(1, startCol);
+    title.value = '抽籤資訊';
+    title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F3B6D' } };
+    title.font = { name: 'Microsoft JhengHei', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    title.border = {
+        top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        bottom: { style: 'medium', color: { argb: 'FFFFFFFF' } },
+        left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+    };
+
+    drawInfoRows(club).forEach(([label, value], i) => {
+        const rowNum = i + 2;
+        const labelCell = ws.getCell(rowNum, startCol);
+        const valueCell = ws.getCell(rowNum, startCol + 1);
+        labelCell.value = label;
+        valueCell.value = value;
+        labelCell.font = { name: 'Microsoft JhengHei', size: 11, bold: true };
+        valueCell.font = { name: 'Microsoft JhengHei', size: 11 };
+        labelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        [labelCell, valueCell].forEach(c => {
+            c.border = thinBorder;
+            c.alignment = { horizontal: 'left', vertical: 'middle' };
+        });
+    });
 }
 
 async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName, pastedClubsList = null) {
@@ -228,6 +293,7 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
             });
 
             // 年級區塊著色與錄取人數合併
+            // gradeCount 為 0 表示目前沒有進行中的區間；正取的年級一定是 0–6，parseGrade 回傳 null 時也能分組（底色用白色）
             let currentGrade = null;
             let startRow = -1;
             let gradeCount = 0;
@@ -238,7 +304,7 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
 
                 if (s.selected) {
                     const g = parseGrade(s.class);
-                    const color = GRADE_COLORS[g] || 'FFFFFFFF';
+                    const color = GRADE_COLORS[g] || 'FFFFFF';
 
                     // 著色第 D 欄 (籤序)
                     const cellD = wsClub.getCell(rowNum, 4);
@@ -248,9 +314,9 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
                         fgColor: { argb: 'FF' + color }
                     };
 
-                    if (g !== currentGrade) {
+                    if (gradeCount === 0 || g !== currentGrade) {
                         // 當前年級改變時，合併並著色前一個年級區間
-                        if (currentGrade !== null && gradeCount > 0) {
+                        if (gradeCount > 0) {
                             mergeAndStyleCountCell(wsClub, startRow, rowNum - 1, gradeCount, currentGrade);
                         }
                         currentGrade = g;
@@ -261,7 +327,7 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
                     }
                 } else {
                     // 若當前學生未被選中，則前一段的選中區間結束，進行合併
-                    if (currentGrade !== null && gradeCount > 0) {
+                    if (gradeCount > 0) {
                         mergeAndStyleCountCell(wsClub, startRow, rowNum - 1, gradeCount, currentGrade);
                         currentGrade = null;
                         startRow = -1;
@@ -270,9 +336,12 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
                 }
             }
             // 處理最後一組錄取學生的合併
-            if (currentGrade !== null && gradeCount > 0) {
+            if (gradeCount > 0) {
                 mergeAndStyleCountCell(wsClub, startRow, students.length + 1, gradeCount, currentGrade);
             }
+
+            // 抽籤資訊放在資料表右側、中間空一欄；在 eachRow 格式化之後才寫入，不會被套成資料列樣式
+            writeDrawInfoBlock(wsClub, club, headers.length + 2);
 
             // 自適應欄寬
             wsClub.columns.forEach(column => {

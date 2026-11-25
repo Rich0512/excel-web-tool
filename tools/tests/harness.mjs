@@ -113,8 +113,10 @@ export const DEFAULT_FILES = ['utils', 'exporter', 'parser', 'processor', 'mappi
  * - files：要載入的檔案（不含 .js）
  * - withExcelJS：是否預先放好假的 window.ExcelJS（false 時模擬延遲載入）
  * - version：模擬 index.html 以 js/<檔名>.js?v=<version> 載入；null 時不帶 ?v=
+ * - crypto：頁面的 window.crypto。預設是 Node 內建的 Web Crypto（globalThis.crypto）；
+ *   可傳入假的物件（例如自訂 getRandomValues）；傳 null 時頁面沒有 crypto（模擬不支援的瀏覽器）
  */
-export function loadSite({ files = DEFAULT_FILES, withExcelJS = true, codeGeneration, version = '3.14' } = {}) {
+export function loadSite({ files = DEFAULT_FILES, withExcelJS = true, codeGeneration, version = '3.14', crypto = globalThis.crypto } = {}) {
     const registry = new Map();
     const alerts = [];
     const logs = [];
@@ -182,6 +184,7 @@ export function loadSite({ files = DEFAULT_FILES, withExcelJS = true, codeGenera
     ctx.window = ctx;
     ctx.self = ctx;
     ctx.globalThis = ctx;
+    if (crypto) ctx.crypto = crypto;
     if (withExcelJS) ctx.ExcelJS = makeFakeExcelJS(ctx);
 
     const context = vm.createContext(ctx, codeGeneration ? { codeGeneration } : undefined);

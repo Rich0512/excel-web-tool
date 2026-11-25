@@ -435,11 +435,6 @@ function guessClubNameFromLine(line) {
     return cleaned;
 }
 
-// 全形英數字轉成一般英數字，讓全形字母也能被當成英文判斷（全形的 Amy 與 Amy 相同）
-function toHalfwidthAlnum(str) {
-    return str.replace(/[\uff10-\uff19\uff21-\uff3a\uff41-\uff5a]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
-}
-
 /**
  * 名稱同時有英文字母與中文時，去掉英文後的中文部分要是社團（以社、隊、團、營、課、坊結尾），
  * 否則可能是英文名加上姓名（「Amy王小明」「王Amy」）。「Scratch程式社」「LEGO社」照常推測
