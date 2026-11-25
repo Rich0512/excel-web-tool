@@ -15,3 +15,4 @@ paths:
 - **失敗時的處理原則**：保護用的 guard（`guard-roster`、`guard-git`、子代理用的 `agent-readonly`）無法判斷時就阻擋（fail closed）；品質提醒類（`stop-check`）無法判斷時放行，避免卡住對話。
 - Stop hook 要檢查 `stop_hook_active`，已經擋過一次就只提醒，避免無限迴圈。
 - 修改 hook 或 `site-config.mjs` 後執行 `node tools/test-hooks.mjs`。新增攔截規則時，同時在裡面加上「應阻擋」與「應放行」兩種案例，避免誤擋正常操作。測試資料只能用虛構的檔名。
+- 網站測試（`tools/test-site.mjs`、`tools/tests/`、`tools/e2e-check.mjs`）只用虛構資料（`測試生301_05`、王小明等）或 `docs/templates/` 的假資料範本；e2e 的暫存檔（瀏覽器設定檔、下載檔、結果 JSON）一律放在系統暫存資料夾，不可寫進 repo。

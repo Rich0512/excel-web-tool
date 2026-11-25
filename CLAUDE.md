@@ -12,9 +12,11 @@ node tools/serve.mjs              # 本機預覽 http://localhost:8000/excel-web
 node tools/check-site.mjs         # 部署檢查；加 --require-bump=origin/main 會一併確認版本已調升
 node tools/bump-version.mjs [X.Y] # 同步調升快取版本、?v=、sitemap 日期
 node tools/test-hooks.mjs         # hook 回歸測試（修改 .claude/hooks/ 或 tools/site-config.mjs 後）
+node tools/test-site.mjs          # 網站單元測試（tools/tests/*.test.mjs，改了 docs/js 或 service-worker.js 後）；--verbose 列出每項
+node tools/e2e-check.mjs http://localhost:8124/excel-web-tool/ [情境]  # 選用，需要 Chrome 或 Edge；先執行 node tools/serve.mjs 8124
 ```
 
-不需要安裝套件，也沒有建置步驟；網站驗證靠 `check-site.mjs` 加上 `/preview` 實際操作。
+不需要安裝套件，也沒有建置步驟；網站驗證靠 `check-site.mjs`、`test-site.mjs` 加上 `/preview` 實際操作。
 
 ## 結構
 

@@ -127,6 +127,8 @@
 * `template-check.mjs`：讀取範本 xlsx 的姓名欄（由 `check-site.mjs` 呼叫）。
 * `bump-version.mjs`：同步調升快取版本。
 * `test-hooks.mjs`：Claude Code hooks 的回歸測試。
+* `test-site.mjs`：網站單元測試入口，依序執行 `tests/*.test.mjs` 並印出總結（`--verbose` 列出每項檢查）。測試用 `node:vm` 載入 `docs/js` 搭配假的 DOM（`tests/harness.mjs`），涵蓋貼上名單的社團與星期推測（含姓名不可推成社團）、上傳與讀取中狀態、對照表、瀏覽器設定上限、ExcelJS 延遲載入、Service Worker 離線備用頁、錯誤訊息不含名冊內容等；資料全部是虛構的。
+* `e2e-check.mjs`（選用，需要 Chrome 或 Edge）：以 DevTools Protocol 控制無頭瀏覽器實際操作本機預覽（首頁載入、CSP、上傳與下載、貼上、離線、手機寬度、高延遲）。先執行 `node tools/serve.mjs 8124`，再執行 `node tools/e2e-check.mjs http://localhost:8124/excel-web-tool/ [情境]`；只接受 localhost 網址，瀏覽器設定檔與下載檔放在系統暫存資料夾並於結束時刪除。
 * `site-config.mjs`：以上腳本與 hooks 共用的路徑與常數。
 * `subset-fonts.py`：重新裁切中文字型並產生 `subset-chars-ui.txt`、`subset-chars-ext.txt` 與 `fonts.css` 的 Noto Sans TC 宣告（需要 Python + fonttools，見 `/subset-fonts`）。
 
