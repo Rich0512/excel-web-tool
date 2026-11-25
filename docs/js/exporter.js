@@ -56,7 +56,9 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
     if (activeDays.has('週六')) targetWeekdays.push('週六');
     if (activeDays.has('週日')) targetWeekdays.push('週日');
 
-    const outWorkbook = new ExcelJS.Workbook();
+    // ExcelJS 延遲載入，通常在頁面閒置時已經載好；載入失敗時丟出 ExcelJSLoadError，由呼叫端顯示訊息
+    const ExcelJSLib = await loadExcelJS();
+    const outWorkbook = new ExcelJSLib.Workbook();
     
     // 1. 建立週課表總表（標籤名稱設定為「課程與學生清單」）
     const ws = outWorkbook.addWorksheet('課程與學生清單');
@@ -294,7 +296,8 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     
     const outputSuffix = slotMode === 'semester' ? "_學期社團彙整.xlsx" : "_寒暑假社團彙整.xlsx";
-    const outputName = outputBaseName.replace(/\.[^/.]+$/, "") + outputSuffix;
+    // 只去掉 Excel 副檔名：自訂檔名「115.2學期」的「.2學期」不是副檔名
+    const outputName = String(outputBaseName).replace(/\.xlsx?$/i, "") + outputSuffix;
 
     triggerFileDownload(blob, outputName);
 

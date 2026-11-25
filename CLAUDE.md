@@ -23,7 +23,7 @@ docs/                  對外發佈的網站（只有這裡會出現在網站上
   index.html 404.html  主頁與 404（404 用 /excel-web-tool/ 絕對路徑）
   service-worker.js    離線快取；STATIC_ASSETS 要列出所有執行時需要的檔案
   js/                  原生 JS，依序 defer 載入並共用全域函式（順序見 rules/frontend.md）
-  js/libs/             第三方 ExcelJS，不要修改
+  js/libs/             第三方 ExcelJS 4.4.0，不要修改；由 utils.js 的 loadExcelJS() 延遲載入
   css/ fonts/ images/  fonts 中的 Noto Sans TC 已裁切
   templates/           唯一允許的試算表：假資料範本
 tools/                 檢查、版本、預覽、字型裁切腳本；共用常數在 site-config.mjs
@@ -36,7 +36,7 @@ DESIGN.md              設計規範（色彩、字型、版面、元件）；改
 
 - **上層資料夾 `../` 有真實學生名冊**，學生資料不可離開記憶體 → `rules/privacy.md`
 - **改了 `docs/` 就要調升版本**，否則使用者會一直拿到舊快取 → `/release`、`rules/service-worker.md`
-- **CSP 沒有 `'unsafe-inline'`**，不能寫 `style=`、`onclick=` → `rules/frontend.md`
+- **CSP 沒有 `'unsafe-inline'` 也沒有 `'unsafe-eval'`**，不能寫 `style=`、`onclick=`、`eval` → `rules/frontend.md`
 - GitHub Pages 無法設定 HTTP header，安全設定只能寫在 `<meta>` CSP。
 - 介面新增罕見中文字時字型可能缺字 → `/subset-fonts`
 

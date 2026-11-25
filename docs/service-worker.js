@@ -3,37 +3,52 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.13';
+const CACHE_VERSION = 'v3.14';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
+// 網路連得上但很慢時（學校 Wi-Fi 常見），等這麼久就先用快取的頁面
+const NAVIGATION_TIMEOUT_MS = 4000;
+
 // 需要快取的核心靜態資源清單
-// (og-image.jpg 僅供社群分享爬蟲使用，不需離線快取)
+// - index.html 以 ?v=<版本> 引用的檔案，這裡也用完全相同的網址預快取，
+//   頁面的請求第一次比對就會命中，不必再下載一次、存兩份。
+//   ?v= 由 tools/bump-version.mjs 同步，tools/check-site.mjs 會檢查與 index.html 一致。
+// - og-image.jpg 僅供社群分享爬蟲使用，不需離線快取
 const STATIC_ASSETS = [
-    './',
     './index.html',
-    './css/style.css',
+    './css/style.css?v=3.14',
     './images/logo.png',
     './images/logo-192.png',
     './images/logo-512.png',
     './images/logo-maskable-192.png',
     './images/logo-maskable-512.png',
     './manifest.json',
-    './fonts/fonts.css',
-    './fonts/NotoSansTC-Regular.woff2',
-    './fonts/NotoSansTC-Bold.woff2',
+    './fonts/fonts.css?v=3.14',
+    // Noto Sans TC 依 unicode-range 拆成介面用字（ui）與其餘常用字（ext），見 fonts/fonts.css。
+    // 只預快取 ui；ext（每個字重約 0.8 MB）在畫面第一次出現學生姓名等字時才下載，
+    // 由下方 Cache-First 存進快取。從沒在線上顯示過名單就離線時，姓名改用系統字型。
+    './fonts/NotoSansTC-Regular-ui.woff2',
+    './fonts/NotoSansTC-Bold-ui.woff2',
     './fonts/Outfit-Regular.woff2',
     './fonts/Outfit-SemiBold.woff2',
-    './js/libs/exceljs.min.js',
-    './js/utils.js',
-    './js/exporter.js',
-    './js/parser.js',
-    './js/processor.js',
-    './js/mapping-ui.js',
-    './js/app.js',
-    './js/register-sw.js',
-    './css/404.css',
+    // ExcelJS 由 utils.js 的 loadExcelJS() 以 ?v=<版本> 載入；帶版本才不會在升級時拿到舊版 SW 快取的舊檔
+    './js/libs/exceljs.min.js?v=3.14',
+    './js/utils.js?v=3.14',
+    './js/exporter.js?v=3.14',
+    './js/parser.js?v=3.14',
+    './js/processor.js?v=3.14',
+    './js/mapping-ui.js?v=3.14',
+    './js/app.js?v=3.14',
+    './js/register-sw.js?v=3.14',
+    './css/404.css?v=3.14',
     './templates/115學期名冊_範本.xlsx'
 ];
+
+// 首頁（離線或網路太慢時的備用頁面）
+const SHELL_URL = './index.html';
+// 備用頁面必須引用這一版的檔案（?v=），否則離線時會變成新 HTML 配舊 JS
+// 版本號後面不能再接數字或小數點，否則 v3.1 會把引用 ?v=3.14 的 HTML 誤認為同一版
+const ASSET_QUERY_RE = new RegExp(`\\?v=${CACHE_VERSION.slice(1).replace(/\./g, '\\.')}(?![\\d.])`);
 
 // ==========================================
 // 安裝事件：預快取所有靜態資源
@@ -77,9 +92,38 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// 網址是否為首頁本身（忽略查詢參數與 #）：只有首頁會使用與更新備用頁面
+function isShellUrl(url) {
+    const target = new URL(url);
+    target.search = '';
+    target.hash = '';
+    const scope = self.registration.scope;
+    return target.href === scope || target.href === new URL(SHELL_URL, scope).href;
+}
+
+// 首頁的導航：網路先回應就用網路；超過 NAVIGATION_TIMEOUT_MS 且有快取時先用快取；
+// 網路失敗（離線）時用快取。沒有快取時一律等網路的結果。
+function respondToNavigation(networkPromise) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const settle = (response) => {
+            if (settled || !response) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(response);
+        };
+        const timer = setTimeout(() => {
+            caches.match(SHELL_URL).then(settle);
+        }, NAVIGATION_TIMEOUT_MS);
+        networkPromise.then(settle, () => {
+            caches.match(SHELL_URL).then((cached) => settle(cached || Response.error()));
+        });
+    });
+}
+
 // ==========================================
 // 攔截請求策略：
-// 1. HTML 導航頁面：Network-First (確保獲得最新版本，離線時 fallback 快取)
+// 1. HTML 導航頁面：Network-First，加逾時（確保獲得最新版本，離線或太慢時用快取）
 // 2. 靜態資源 (JS/CSS/字型/圖片)：Cache-First (急速載入，節省頻寬)
 // ==========================================
 self.addEventListener('fetch', (event) => {
@@ -91,31 +135,35 @@ self.addEventListener('fetch', (event) => {
     // 忽略 chrome-extension 等非 http(s) 請求
     if (!request.url.startsWith('http')) return;
 
-    // 策略 1：HTML 導航請求採用 Network-First
+    // 策略 1：HTML 導航請求採用 Network-First（含逾時）
     if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
-        event.respondWith(
-            fetch(request)
+        // 首頁以外的路徑（例如打錯的網址）交給瀏覽器直接上網：回應首頁的話，
+        // 頁面的相對路徑會以錯誤的資料夾為基準，整頁破版
+        if (!isShellUrl(request.url)) return;
+
+        const networkPromise = fetch(request);
+        // 首頁的新版本存成備用頁面，但只存引用這一版 ?v= 的 HTML：
+        // 網站已發佈下一版、這個 SW 還沒更新時，不能把新版 HTML 配上這一版快取的檔案
+        event.waitUntil(
+            networkPromise
                 .then((networkResponse) => {
-                    if (networkResponse && networkResponse.status === 200) {
-                        const responseClone = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(request, responseClone);
-                        });
-                    }
-                    return networkResponse;
+                    if (!networkResponse || networkResponse.status !== 200) return undefined;
+                    const toCache = networkResponse.clone();
+                    return networkResponse.clone().text().then((html) => {
+                        if (!ASSET_QUERY_RE.test(html)) return undefined;
+                        return caches.open(CACHE_NAME).then((cache) => cache.put(SHELL_URL, toCache));
+                    });
                 })
-                .catch(() => {
-                    // 斷網或離線時，從快取提供頁面
-                    return caches.match('./index.html');
-                })
+                .catch(() => {})
         );
+        event.respondWith(respondToNavigation(networkPromise));
         return;
     }
 
     // 策略 2：靜態資源採用 Cache-First
     // 先以完整網址（含 ?v=）比對：新版 index.html 引用的 ?v= 在舊版 SW 的快取中一定找不到，
     // 會改從網路取得新檔，不會出現「新 HTML 配舊 JS」。
-    // 只有在離線時才忽略 ?v= 改比對預快取的檔案（預快取網址不含查詢參數）。
+    // 只有在離線時才忽略 ?v= 改比對預快取的檔案。
     event.respondWith(
         caches.match(request)
             .then((cachedResponse) => {
@@ -138,7 +186,7 @@ self.addEventListener('fetch', (event) => {
                         return networkResponse;
                     })
                     .catch(() => {
-                        // 離線：退回比對不含 ?v= 的預快取檔案
+                        // 離線：退回忽略 ?v= 比對預快取的檔案
                         return caches.match(request, { ignoreSearch: true })
                             .then((fallback) => fallback || new Response('', { status: 503, statusText: 'Offline' }));
                     });

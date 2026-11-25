@@ -74,7 +74,7 @@
 | 小按鈕 | `.btn.btn-outline` | 頁首「清除這次的資料」等低頻操作 |
 | 步驟列 | `.stepper` | `<ol>`，目前步驟加 `aria-current="step"`，由 `switchStep()` 更新 |
 | 來源切換 | `.tab-btn` | 兩張並排的選項（標題＋一行說明），選中時 2px 校徽藍外框 |
-| 拖曳區 | `.upload-zone` | 2px 虛線框，hover／拖曳時框線變校徽藍、底色變 `--primary-tint`。框本身不是按鈕：點框任何地方開啟選檔是滑鼠的便利操作，鍵盤用框內真正的「選擇檔案」按鈕；範本連結放在按鈕下方（14px 小字） |
+| 拖曳區 | `.upload-zone` | 2px 虛線框，hover／拖曳時框線變校徽藍、底色變 `--primary-tint`。框本身不是按鈕：點框任何地方開啟選檔是滑鼠的便利操作，鍵盤用框內真正的「選擇檔案」按鈕；範本連結放在按鈕下方（14px 小字）。讀取名冊時加 `.is-busy`（外觀同拖曳中）與 `aria-busy`，「選擇檔案」改為 `aria-disabled`（不用 `disabled`，焦點才不會掉），按鈕下方的 `.upload-status`（`role="status"`，14px、`--primary`）顯示讀取狀態（讀取中又選檔或拖放時，改為「仍在讀取上一個名冊，請稍候；讀完後再重新選擇或拖放新的檔案。」，讀取結束清空）；空白時保留在版面上（螢幕閱讀器才會唸出更新），以負邊距抵掉間距 |
 | 說明段落 | `.tab-intro` | 一般段落文字，不加色條或底色 |
 | 提醒 | `.warning-callout` | 警告色系，左側線條圖示，不用 emoji。衝堂提醒（`.conflict-alert`）也是同一個元件，由 JS 產生內容時同樣要放圖示 |
 | 欄位 | `.club-input`、`.config-select`、`.day-select` | 最小高度 44px，字級 16px（避免 iOS 縮放） |

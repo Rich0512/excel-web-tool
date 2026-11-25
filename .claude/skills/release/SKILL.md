@@ -24,7 +24,7 @@ allowed-tools: Bash(node tools/bump-version.mjs *) Bash(node tools/check-site.mj
 ## 步驟
 
 1. **調升版本**：執行 `node tools/bump-version.mjs $ARGUMENTS`。
-   - 它會同步 `docs/service-worker.js`、`docs/index.html` 的所有 `?v=`、`docs/sitemap.xml` 的日期。
+   - 它會同步 `docs/service-worker.js`（`CACHE_VERSION` 與 `STATIC_ASSETS` 的 `?v=`）、`docs/index.html` 的所有 `?v=`、`docs/sitemap.xml` 的日期。
    - 不帶參數時，它會比對 `origin/main`：尚未調升就次版號 +1，已調升就只同步，所以重複執行是安全的。
    - 使用者指定了版本號才帶參數。
 2. **同步預快取清單**：若這次新增、改名或刪除了 `docs/` 內的檔案，更新 `docs/service-worker.js` 的 `STATIC_ASSETS`（規則見 `.claude/rules/service-worker.md`）。

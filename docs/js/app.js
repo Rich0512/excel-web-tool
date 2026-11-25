@@ -11,6 +11,18 @@ let colNameIdx = -1;
 let slotCols = [];
 // 多工作表模式：工作表名稱 → 學生名單（載入對照表時讀一次）
 let sheetStudents = new Map();
+// 上一次成功建立對照表的彙整模式：在第 2 步切換模式失敗時退回這個模式
+let lastMappingMode = null;
+// 正在讀取名冊（讀取中忽略新的檔案）
+let uploadBusy = false;
+// 每次開始讀取名冊與每次清除名冊狀態都加 1。handleFileSelect 在每個 await 之後比對，
+// 不一致代表讀取途中使用者按了「清除這次的資料」等操作，這次讀取的結果直接丟掉
+let fileLoadToken = 0;
+
+// 上傳檔案大小上限。學校系統匯出的錄取名冊通常不到 1 MB；
+// 太大的檔案會讓舊電腦的瀏覽器分頁記憶體不足而當掉（貼上名單也有 200,000 字元的上限）
+const MAX_UPLOAD_MB = 20;
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
@@ -39,7 +51,7 @@ const fileInput = document.getElementById('file-input');
 // 點到框內的範本連結時不開啟，讓連結照常下載。
 // fileInput 也在框內，它被 click() 時的事件會冒泡回來，這裡略過以免重入。
 dropZone.addEventListener('click', (e) => {
-    if (e.target === fileInput || e.target.closest('a')) return;
+    if (uploadBusy || e.target === fileInput || e.target.closest('a')) return;
     fileInput.click();
 });
 
@@ -53,59 +65,115 @@ fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
 });
 
+// 以 Promise 讀取檔案內容（FileReader 支援的瀏覽器比 File.arrayBuffer() 多）
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => {
+            const err = new Error('FileReader 無法讀取檔案');
+            err.name = 'FileReadError';
+            reject(err);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+// 讀取名冊期間：上傳區標示忙碌、停用選擇檔案，並顯示狀態文字（role="status" 會被螢幕閱讀器唸出）
+// 「選擇檔案」按鈕用 aria-disabled 而不是 disabled：disabled 的按鈕會失去焦點（掉到 body），
+// 鍵盤使用者讀取失敗留在第 1 步時就找不到原本的位置。按下去的 click 會冒泡到 dropZone，由 uploadBusy 擋下
+function setUploadBusy(busy) {
+    uploadBusy = busy;
+    if (busy) dropZone.setAttribute('aria-busy', 'true');
+    else dropZone.removeAttribute('aria-busy');
+    dropZone.classList.toggle('is-busy', busy);
+    const pickBtn = document.getElementById('btn-pick-file');
+    if (pickBtn) {
+        if (busy) pickBtn.setAttribute('aria-disabled', 'true');
+        else pickBtn.removeAttribute('aria-disabled');
+    }
+    fileInput.disabled = busy;
+    const status = document.getElementById('upload-status');
+    if (status) status.textContent = busy ? '正在讀取名冊，請稍候…' : '';
+}
+
 // 讀取 Excel 檔案
 async function handleFileSelect(file) {
     if (!file) return;
-
-    // 檔頭簽章檢查：精準攔截舊版 .xls (BIFF8) 或偽裝格式
-    const formatCheck = await checkExcelFileFormat(file);
-    if (!formatCheck.valid) {
-        alert(formatCheck.reason || "這不是可以讀取的 Excel 檔案。請改選學校系統匯出的 .xlsx 名冊。");
-        if (fileInput) fileInput.value = "";
+    if (uploadBusy) {
+        // 讀取中又拖放或選了檔案：不中斷目前的讀取，但要讓使用者知道新檔案沒有被讀取
+        const status = document.getElementById('upload-status');
+        if (status) status.textContent = '仍在讀取上一個名冊，請稍候；讀完後再重新選擇或拖放新的檔案。';
         return;
     }
 
-    originalFileName = file.name;
-    const reader = new FileReader();
-    
-    reader.onload = async function(e) {
-        const arrayBuffer = e.target.result;
-        const workbook = new ExcelJS.Workbook();
-        
-        try {
-            await workbook.xlsx.load(arrayBuffer);
-            uploadedWorkbook = workbook;
-            
-            // 偵測是否存在「課程與學生清單」或「總表」工作表
-            let hasSingleSheet = false;
-            workbook.eachSheet((ws) => {
-                const n = ws.name.trim();
-                if (n === '課程與學生清單' || n.includes('課程與學生清單') || n === '總表' || n.includes('總表')) {
-                    hasSingleSheet = true;
-                }
-            });
-            
-            // 依有無清單/總表自動切換預設模式
-            const modeSelect = document.getElementById('mode-select');
-            if (modeSelect) modeSelect.value = hasSingleSheet ? 'single' : 'multi';
-            
-            // 分析並渲染對照設定
-            analyzeAndRenderMapping();
-            switchStep('step-mapping');
+    if (file.size > MAX_UPLOAD_BYTES) {
+        const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+        alert(`這個檔案有 ${sizeMb} MB，超過 ${MAX_UPLOAD_MB} MB 的上限，無法讀取。學校系統匯出的錄取名冊通常不到 1 MB，請確認選對了檔案；如果確定是名冊，請用 Excel 刪除不需要的工作表或圖片後另存，再重新選擇。`);
+        fileInput.value = "";
+        return;
+    }
 
-        } catch (err) {
-            console.error("載入 Excel 失敗:", err);
-            alert("無法讀取這個 Excel 檔案，可能已損毀或設有密碼。請用 Excel 開啟後另存成 .xlsx（不設密碼），再重新選擇。\n錯誤內容：" + (err.message || err));
-            if (fileInput) fileInput.value = "";
+    const token = ++fileLoadToken;
+    const isStale = () => token !== fileLoadToken;
+    setUploadBusy(true);
+    try {
+        // 檔頭簽章檢查：精準攔截舊版 .xls (BIFF8) 或偽裝格式
+        const formatCheck = await checkExcelFileFormat(file);
+        if (isStale()) return;
+        if (!formatCheck.valid) {
+            alert(formatCheck.reason || "這不是可以讀取的 Excel 檔案。請改選學校系統匯出的 .xlsx 名冊。");
+            fileInput.value = "";
+            return;
         }
-    };
 
-    reader.onerror = function() {
-        alert("無法讀取這個檔案，可能正被其他程式使用。請關閉正在開啟這個檔案的程式（例如 Excel），再重新選擇。");
-        if (fileInput) fileInput.value = "";
-    };
-    
-    reader.readAsArrayBuffer(file);
+        const ExcelJSLib = await loadExcelJS();
+        if (isStale()) return;
+        const arrayBuffer = await readFileAsArrayBuffer(file);
+        if (isStale()) return;
+        const workbook = new ExcelJSLib.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        if (isStale()) return;
+
+        originalFileName = file.name;
+        uploadedWorkbook = workbook;
+
+        // 偵測是否存在「課程與學生清單」或「總表」工作表
+        let hasSingleSheet = false;
+        workbook.eachSheet((ws) => {
+            const n = ws.name.trim();
+            if (n.includes('課程與學生清單') || n.includes('總表')) {
+                hasSingleSheet = true;
+            }
+        });
+
+        // 依有無清單/總表自動切換預設模式
+        const modeSelect = document.getElementById('mode-select');
+        modeSelect.value = hasSingleSheet ? 'single' : 'multi';
+
+        // 分析並渲染對照設定；名冊無法整理時已用 alert 說明，留在第 1 步並清掉讀進來的名冊
+        if (analyzeAndRenderMapping()) {
+            lastMappingMode = modeSelect.value;
+            switchStep('step-mapping');
+        } else {
+            clearFileModeState();
+        }
+    } catch (err) {
+        // 例外訊息可能含有儲存格內容，只記錄在主控台；alert 只顯示固定說明與例外類型
+        console.error("載入 Excel 失敗:", err);
+        if (isStale()) return; // 使用者已清除，不再提示
+        clearFileModeState();
+        if (err && err.name === 'ExcelJSLoadError') {
+            alert(EXCELJS_LOAD_ERROR_MESSAGE);
+        } else if (err && err.name === 'FileReadError') {
+            alert("無法讀取這個檔案，可能正被其他程式使用。請關閉正在開啟這個檔案的程式（例如 Excel），再重新選擇。");
+        } else {
+            alert("無法讀取這個 Excel 檔案，可能已損毀或設有密碼。請用 Excel 開啟後另存成 .xlsx（不設密碼），再重新選擇。" + errorTypeNote(err));
+        }
+    } finally {
+        // 已被清除時，clearFileModeState() 已經解除讀取中狀態，也可能已有新的讀取在進行
+        if (!isStale()) setUploadBusy(false);
+    }
 }
 
 // ==========================================
@@ -129,8 +197,17 @@ function switchStep(stepId) {
     });
 }
 
+// alert 附上的例外類型（例如「TypeError」）。不放例外訊息：ExcelJS 的例外訊息可能含有儲存格內容
+function errorTypeNote(err) {
+    const name = err && typeof err.name === 'string' && /^[A-Za-z]{1,40}$/.test(err.name) ? err.name : '';
+    return name ? `\n（錯誤類型：${name}）` : '';
+}
+
 // 清除檔案模式讀進記憶體的名冊與對照表狀態
+// 讀取中的名冊也一併作廢：遞增 fileLoadToken 讓進行中的 handleFileSelect 放棄結果，並解除讀取中狀態
 function clearFileModeState() {
+    fileLoadToken++;
+    setUploadBusy(false);
     fileInput.value = "";
     uploadedWorkbook = null;
     sheetData = [];
@@ -140,6 +217,7 @@ function clearFileModeState() {
     colSeatIdx = -1;
     colNameIdx = -1;
     slotCols = [];
+    lastMappingMode = null;
     document.getElementById('excel-filename').value = "";
 
     const mappingTableBody = document.getElementById('mapping-table-body');
@@ -158,18 +236,15 @@ function manualHardResetAll() {
     if (confirm("確定要清除這次的資料嗎？會清除選擇的 Excel 檔案、星期設定、已加入的社團，以及瀏覽器記住的社團星期，畫面會回到第一步。")) {
         clearFileModeState();
 
-        // 清除貼上模式狀態
+        // 清除貼上模式狀態（文字框、待執行的預覽、自動填入的記號）
         pastedClubs = [];
-        document.getElementById('paste-text-area').value = "";
+        resetPasteInput();
         document.getElementById('paste-club-name').value = "";
+        document.getElementById('paste-day-select').value = PASTE_DEFAULT_DAY;
         document.getElementById('paste-excel-filename').value = "";
 
         // 清除瀏覽器記憶的社團對照設定
         clearLocalStorageConfig();
-
-        // 重設 UI
-        const pastePreview = document.getElementById('paste-parse-preview');
-        if (pastePreview) pastePreview.style.display = 'none';
 
         const pasteConflictAlert = document.getElementById('paste-conflict-alert');
         if (pasteConflictAlert) {
@@ -250,7 +325,11 @@ async function processAndDownload() {
 
     } catch (err) {
         console.error("處理或匯出失敗:", err);
-        alert("匯出課表時發生錯誤，課表沒有下載。請重新整理網頁後再試一次；若仍失敗，請確認名冊是學校系統匯出的原始檔。\n錯誤內容：" + (err.message || err));
+        if (err && err.name === 'ExcelJSLoadError') {
+            alert(EXCELJS_LOAD_ERROR_MESSAGE + "\n星期設定都還在，連上網路後再按一次「開始轉換並下載課表」即可，不需要重新整理網頁。");
+            return;
+        }
+        alert("匯出課表時發生錯誤，課表沒有下載。請重新整理網頁後再試一次；若仍失敗，請確認名冊是學校系統匯出的原始檔。" + errorTypeNote(err));
     } finally {
         if (actionBtn) {
             actionBtn.disabled = false;
@@ -259,8 +338,57 @@ async function processAndDownload() {
     }
 }
 
+/**
+ * 在第 2 步切換彙整模式：重建對照表。
+ * 新模式無法整理這份名冊時（analyzeAndRenderMapping 已用 alert 說明原因），退回上一個可用的模式並重建，
+ * 使用者留在第 2 步、名冊不必重選；連原本的模式也失敗（不應發生）才回到第 1 步。
+ */
+function handleModeChange() {
+    if (!uploadedWorkbook) return;
+    const modeSelect = document.getElementById('mode-select');
+    // 重建前記下目前每列修改過的名稱與星期，退回原模式時套回去
+    const previousEdits = snapshotMappingEdits();
+    if (analyzeAndRenderMapping()) {
+        // 切到單一清單但沒有總表時，analyzeAndRenderMapping 會自己改回多工作表並重建，
+        // 結果仍是原本的模式，修改要套回去
+        if (modeSelect.value === lastMappingMode) restoreMappingEdits(previousEdits);
+        lastMappingMode = modeSelect.value;
+        return;
+    }
+    if (lastMappingMode && lastMappingMode !== modeSelect.value) {
+        modeSelect.value = lastMappingMode;
+        if (analyzeAndRenderMapping()) {
+            restoreMappingEdits(previousEdits);
+            return;
+        }
+    }
+    resetToUpload();
+}
+
+// 對照表每列的鍵 → { 社團名稱, 星期 }（只在記憶體中，不寫入瀏覽器儲存空間）
+function snapshotMappingEdits() {
+    const edits = new Map();
+    document.getElementById('mapping-table-body').querySelectorAll('tr').forEach(tr => {
+        const input = tr.querySelector('.club-input');
+        const select = tr.querySelector('.day-select');
+        if (input && select) edits.set(tr.dataset.key, { editedName: input.value, day: select.value });
+    });
+    return edits;
+}
+
+function restoreMappingEdits(edits) {
+    document.getElementById('mapping-table-body').querySelectorAll('tr').forEach(tr => {
+        const saved = edits.get(tr.dataset.key);
+        if (!saved) return;
+        tr.querySelector('.club-input').value = saved.editedName;
+        // 只套用選單裡有的星期
+        if (weekdaysList.includes(saved.day)) tr.querySelector('.day-select').value = saved.day;
+    });
+    updateMappingConflicts();
+}
+
 // 綁定彙整模式切換監聽與衝突偵測監聽
-document.getElementById('mode-select').addEventListener('change', analyzeAndRenderMapping);
+document.getElementById('mode-select').addEventListener('change', handleModeChange);
 // 新生是否納入只影響彙整結果，不重建對照表（否則已修改的名稱與星期會被重設）
 document.getElementById('include-freshmen').addEventListener('change', updateMappingConflicts);
 document.getElementById('slot-mode-select').addEventListener('change', updateMappingConflicts);
@@ -310,6 +438,8 @@ function updatePastePreview() {
     }
     if (!text.trim()) {
         parsePreview.style.display = 'none';
+        // 清空時，仍是自動填入的社團名稱與星期一併還原（推測不出結果時的處理，見 parser.js）
+        guessClubAndDayFromPastedText('');
         return;
     }
     
@@ -337,10 +467,54 @@ function updatePastePreview() {
     }
 }
 
-// 同時監聽 input 與 paste 事件，確保任何編輯都能觸發預覽
-pasteArea.addEventListener('input', updatePastePreview);
-pasteArea.addEventListener('paste', () => {
-    setTimeout(updatePastePreview, 50);
+// 預覽要解析全文（最多 200,000 字元），連續輸入時等停下來才解析一次。
+// 貼上也會觸發 input 事件，不需要另外監聽 paste。
+const PASTE_PREVIEW_DELAY_MS = 250;
+let pastePreviewTimer = null;
+
+function cancelPastePreview() {
+    if (pastePreviewTimer !== null) {
+        clearTimeout(pastePreviewTimer);
+        pastePreviewTimer = null;
+    }
+}
+
+function schedulePastePreview() {
+    cancelPastePreview();
+    // 清空時立刻隱藏預覽，不必等待
+    if (!pasteArea.value.trim()) {
+        updatePastePreview();
+        return;
+    }
+    pastePreviewTimer = setTimeout(() => {
+        pastePreviewTimer = null;
+        updatePastePreview();
+    }, PASTE_PREVIEW_DELAY_MS);
+}
+
+// 還有待執行的預覽時立刻執行（按「加入這個社團」前，讓社團名稱與星期的自動推測用到最新內容）
+function flushPastePreview() {
+    if (pastePreviewTimer !== null) {
+        cancelPastePreview();
+        updatePastePreview();
+    }
+}
+
+// 清空文字框與預覽，並重設自動填入的記號（加入社團、移除全部、下載後、清除資料時使用）
+function resetPasteInput() {
+    cancelPastePreview();
+    pasteArea.value = "";
+    parsePreview.style.display = 'none';
+    resetPasteAutoFill();
+}
+
+pasteArea.addEventListener('input', schedulePastePreview);
+
+// 使用者自己選過星期後，貼上新名單不再自動改星期（見 parser.js 的 guessClubAndDayFromPastedText）
+const pasteDaySelect = document.getElementById('paste-day-select');
+pasteDaySelect.addEventListener('change', () => {
+    pasteDaySelect.dataset.userChosen = 'true';
+    delete pasteDaySelect.dataset.autoFilled;
 });
 
 // 監聽貼上模式的設定變更以即時更新衝突狀態
@@ -352,17 +526,27 @@ function clearAllPastedClubs() {
     if (confirm("確定要移除所有已加入的社團嗎？移除後要重新貼上名單並加入。")) {
         pastedClubs = [];
         renderLoadedClubs();
-        pasteArea.value = "";
-        parsePreview.style.display = 'none';
+        resetPasteInput();
     }
 }
 
+// 正取人數上限（一個社團的正取名額不會超過這個數字，打錯多一個 0 時可以攔下）
+const MAX_PASTE_QUOTA = 500;
+
 function loadPastedClub() {
+    // 防抖中的預覽先跑完，社團名稱與星期的自動推測才會是最新內容
+    flushPastePreview();
+
     const day = document.getElementById('paste-day-select').value;
     const clubNameInput = document.getElementById('paste-club-name').value.trim();
     const pastedText = pasteArea.value.trim();
-    
-    const quota = parseInt(document.getElementById('paste-quota').value, 10) || 12;
+
+    const quotaText = String(document.getElementById('paste-quota').value).trim();
+    const quota = /^\d+$/.test(quotaText) ? Number(quotaText) : NaN;
+    if (!(quota >= 1 && quota <= MAX_PASTE_QUOTA)) {
+        alert(`正取人數要填 1 到 ${MAX_PASTE_QUOTA} 之間的整數，目前是「${quotaText || '空白'}」。請修改正取人數，再按「加入這個社團」。`);
+        return;
+    }
     const gradeStart = document.getElementById('paste-grade-start').value;
     const gradeEnd = document.getElementById('paste-grade-end').value;
     const priority = document.getElementById('paste-priority').value;
@@ -413,10 +597,10 @@ function loadPastedClub() {
     
     pastedClubs.push(newClub);
     
+    // 清空社團名稱與名單，並重設自動填入的記號，下一個社團重新推測名稱與星期
     document.getElementById('paste-club-name').value = "";
-    pasteArea.value = "";
-    parsePreview.style.display = 'none'; // 隱藏解析預覽
-    
+    resetPasteInput();
+
     renderLoadedClubs();
     
     // 自動聚焦回社團名稱輸入框，方便打字下一個社團
@@ -569,14 +753,17 @@ async function processPastedData() {
         
         // 重設狀態（畫面在 finally 還原按鈕後才重繪）
         pastedClubs = [];
-        document.getElementById('paste-text-area').value = "";
         document.getElementById('paste-excel-filename').value = "";
         // 改 value 不會觸發 input 事件，預覽要手動隱藏，否則會留著舊的筆數
-        parsePreview.style.display = 'none';
+        resetPasteInput();
 
     } catch (err) {
         console.error("貼上名單彙整失敗:", err);
-        alert("抽籤或匯出課表時發生錯誤，課表沒有下載。請重新整理網頁後再試一次；若仍失敗，請確認貼上的名單包含班級、座號、姓名。\n錯誤內容：" + (err.message || err));
+        if (err && err.name === 'ExcelJSLoadError') {
+            alert(EXCELJS_LOAD_ERROR_MESSAGE + "\n已加入的社團都還在，連上網路後再按一次「抽籤並下載課表」即可，不需要重新整理網頁。");
+            return;
+        }
+        alert("抽籤或匯出課表時發生錯誤，課表沒有下載。請重新整理網頁後再試一次；若仍失敗，請確認貼上的名單包含班級、座號、姓名。" + errorTypeNote(err));
     } finally {
         if (actionBtn) {
             actionBtn.disabled = false;
@@ -621,7 +808,8 @@ function showConflictAlert(resultData, elementId) {
  */
 function collectMapping() {
     const mode = document.getElementById('mode-select').value;
-    const finalMapping = {};
+    // 多工作表模式的鍵是工作表名稱，用沒有原型的物件，名為「__proto__」的工作表才不會消失
+    const finalMapping = createDict();
     const rows = [];
     const unselectedClubs = [];
     let hasEmptyName = false;
@@ -658,16 +846,27 @@ function collectMapping() {
 /**
  * 記住這次的星期設定（只存社團／工作表名稱 → 星期，不含學生資料）
  * 單一清單模式依時段欄位分開存，避免 A、B 時段的同名社團互相覆蓋
+ * 每學期的社團都會累積：這次用到的鍵移到最後，超過上限時刪除最久沒用到的（見 utils.js 的 setConfigEntry）
  */
 function saveMappingConfig(mode, rows) {
     const savedConfig = loadLocalStorageConfig();
     rows.forEach(row => {
+        // 太長的名稱（超過 CONFIG_MAX_KEY_LENGTH）不存，見 utils.js
+        if (!isStorableConfigKey(row.original)) return;
         if (mode === 'single') {
+            if (!isStorableConfigKey(row.slotCol)) return;
+            // 最上層的鍵可能原本是字串（多工作表模式的工作表、或舊版格式的社團），這裡會改成時段欄位的物件；
+            // 少記一個星期的影響，比無法記住整個時段欄位的社團小
             const slotMap = getSavedSlotMap(savedConfig, row.slotCol);
-            slotMap[row.original] = row.day;
-            savedConfig[row.slotCol] = slotMap;
+            setConfigEntry(slotMap, row.original, row.day, CONFIG_MAX_CLUBS_PER_SLOT);
+            setConfigEntry(savedConfig, row.slotCol, slotMap, CONFIG_MAX_TOP_KEYS);
         } else {
-            savedConfig[row.original] = row.day;
+            // 單一清單模式的時段欄位與多工作表模式的工作表共用最上層的鍵。
+            // 不改儲存格式就無法同時保存兩者，所以同名時保留時段欄位的物件（一整組社團的星期），
+            // 不用一個工作表的星期把它蓋掉；這個工作表這次的星期就不記
+            const existing = savedConfig[row.original];
+            if (existing && typeof existing === 'object') return;
+            setConfigEntry(savedConfig, row.original, row.day, CONFIG_MAX_TOP_KEYS);
         }
     });
     saveLocalStorageConfig(savedConfig);
@@ -708,6 +907,22 @@ document.getElementById('btn-process-mapping').addEventListener('click', process
 document.getElementById('btn-restart').addEventListener('click', resetToUpload);
 
 // ==========================================
+// 預先載入 ExcelJS
+// ==========================================
+// 頁面載入完成後趁閒置時載入，使用者選檔或下載時通常已經載好。
+// 這裡失敗（例如第一次開啟就離線）不打擾使用者，真正要用時 loadExcelJS() 會再試一次並顯示訊息。
+function preloadExcelJS() {
+    loadExcelJS().catch(err => console.warn('[ExcelJS] 預先載入失敗，使用時會再試一次:', err.message));
+}
+window.addEventListener('load', () => {
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(preloadExcelJS, { timeout: 3000 });
+    } else {
+        setTimeout(preloadExcelJS, 1000);
+    }
+});
+
+// ==========================================
 // 網頁防誤關閉與重新整理機制
 // ==========================================
 window.addEventListener('beforeunload', (e) => {
@@ -725,10 +940,12 @@ window.addEventListener('beforeunload', (e) => {
 // ==========================================
 window.addEventListener('unhandledrejection', (event) => {
     console.error('全域非同步例外未捕獲:', event.reason);
-    const msg = event.reason?.message || event.reason || '系統發生未預期的非同步異常';
-    // 若為非取消操作則跳出提示
-    if (!String(msg).includes('abort')) {
-        alert('發生非預期的錯誤，請重新整理網頁後再試一次。\n錯誤內容：' + msg);
+    const reason = event.reason;
+    // 使用者取消的操作（AbortError）不提示
+    const isAbort = (reason && reason.name === 'AbortError') || String((reason && reason.message) || reason || '').includes('abort');
+    if (!isAbort) {
+        // 例外內容可能含有名冊資料，alert 只顯示固定說明與例外類型，完整內容在上面的 console.error
+        alert('發生非預期的錯誤，請重新整理網頁後再試一次。' + errorTypeNote(reason));
     }
 });
 

@@ -16,8 +16,9 @@ function isValidMorningOption(day) {
  * 舊版設定只存「社團 → 星期」，讀取時當作備援
  */
 function getSavedSlotMap(savedConfig, slotCol) {
+    // savedConfig 由 loadLocalStorageConfig() 轉成沒有原型的物件，「__proto__」等名稱也是一般的鍵
     const map = savedConfig[slotCol];
-    return map && typeof map === 'object' ? map : {};
+    return map && typeof map === 'object' ? map : createDict();
 }
 
 /**
@@ -85,8 +86,12 @@ function showSkippedSheets(names) {
     box.hidden = false;
 }
 
+/**
+ * 依彙整模式分析名冊並重建對照表
+ * 成功回傳 true；名冊缺欄位、找不到社團或工作表時已用 alert 說明，回傳 false（呼叫端決定要退回哪一步）
+ */
 function analyzeAndRenderMapping() {
-    if (!uploadedWorkbook) return;
+    if (!uploadedWorkbook) return false;
     const mode = document.getElementById('mode-select').value;
     const tbody = document.getElementById('mapping-table-body');
     tbody.innerHTML = "";
@@ -97,7 +102,7 @@ function analyzeAndRenderMapping() {
 
     const savedConfig = loadLocalStorageConfig();
     // 檔案內的上課時間（1152 課程表、各社團工作表的「上課時間」），找不到時是空物件
-    const excelSchedule = loadScheduleFromExcel(uploadedWorkbook) || {};
+    const excelSchedule = loadScheduleFromExcel(uploadedWorkbook) || createDict();
 
     if (mode === 'single') {
         // --- 單一總表/清單分欄模式 ---
@@ -114,15 +119,14 @@ function analyzeAndRenderMapping() {
         if (!sheet) {
             alert("這個 Excel 沒有「課程與學生清單」或「總表」工作表，已自動改用「多工作表」模式。請確認下方每個社團的星期。");
             document.getElementById('mode-select').value = 'multi';
-            analyzeAndRenderMapping();
-            return;
+            return analyzeAndRenderMapping();
         }
 
         const header = findHeaderRow(sheet);
         headerRowIndex = header.rowIndex;
 
         // 欄位名稱去重（重複的欄位加上 _2、_3）
-        const seenCols = {};
+        const seenCols = createDict();
         detectedHeaders = header.headers.map(col => {
             if (!col) return "";
             seenCols[col] = (seenCols[col] || 0) + 1;
@@ -136,13 +140,15 @@ function analyzeAndRenderMapping() {
 
         if (colClassIdx === -1 || colSeatIdx === -1 || colNameIdx === -1) {
             alert(`工作表「${sheet.name}」缺少必要欄位（班級、座號、學生姓名或姓名），無法整理。請確認選擇的是學校系統匯出的錄取名冊，或把「彙整模式」改成「多工作表」。`);
-            return;
+            return false;
         }
 
         // 尋找時段/課程欄位 (排除類型、狀態、金額等中繼欄位)
         slotCols = [];
         const slotKeywords = ['時段', 'Slot', 'slot', '社團', '課程名稱', '課程', '項目', '節'];
-        const excludeKeywords = ['類型', '類別', '狀態', '金額', '繳費', '費用', '學校', '學號', '單號', '日期'];
+        // 老師、電話、家長等欄位的值不是社團名稱，當成時段欄位會把它們存進瀏覽器設定
+        const excludeKeywords = ['類型', '類別', '狀態', '金額', '繳費', '費用', '學校', '學號', '單號', '日期',
+                                 '老師', '教師', '備註', '姓名', '電話', '家長'];
         headers.forEach((col, idx) => {
             if (idx === colClassIdx || idx === colSeatIdx || idx === colNameIdx) return;
             if (excludeKeywords.some(ek => col.includes(ek))) return;
@@ -153,7 +159,7 @@ function analyzeAndRenderMapping() {
 
         if (slotCols.length === 0) {
             alert(`工作表「${sheet.name}」找不到「課程名稱」、「社團」或「時段」欄位，無法分出社團。請確認選擇的是學校系統匯出的錄取名冊，或把「彙整模式」改成「多工作表」。`);
-            return;
+            return false;
         }
 
         // 讀取學生列。新生（沒有班級）也先讀進來，是否納入由轉換時的勾選決定，
@@ -164,7 +170,7 @@ function analyzeAndRenderMapping() {
             const classVal = getCellValueAsString(row.getCell(colClassIdx + 1));
             if (!nameVal || isTotalRow(nameVal, classVal)) return;
 
-            const rowData = {};
+            const rowData = createDict(); // 鍵是欄位標題（名冊字串）
             headers.forEach((colName, idx) => {
                 if (!colName) return;
                 rowData[colName] = getCellValueAsString(row.getCell(idx + 1));
@@ -263,7 +269,15 @@ function analyzeAndRenderMapping() {
 
         if (candidateCount === 0) {
             alert("這個 Excel 找不到可以彙整的社團名單工作表。請確認選擇的是錄取名冊，或把「彙整模式」改成「單一清單」。");
-            return;
+            return false;
+        }
+        if (sheetStudents.size === 0) {
+            // 每張工作表都找不到姓名欄：對照表會是空的，不進入第 2 步。工作表名稱不是學生資料，可以列出
+            const MAX_LISTED = 10;
+            const listed = skipped.slice(0, MAX_LISTED).map(n => `- ${n}`).join('\n');
+            const more = skipped.length > MAX_LISTED ? `\n…等 ${skipped.length} 張` : '';
+            alert(`這個 Excel 的工作表都找不到「姓名」欄，無法整理：\n${listed}${more}\n\n請確認每張工作表的學生名單上方有「姓名」欄位標題，或把「彙整模式」改成「單一清單」，再重新選擇檔案。`);
+            return false;
         }
         showSkippedSheets(skipped);
     }
@@ -273,4 +287,5 @@ function analyzeAndRenderMapping() {
         el.addEventListener('change', updateMappingConflicts);
     });
     updateMappingConflicts();
+    return true;
 }

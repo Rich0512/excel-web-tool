@@ -8,11 +8,10 @@
 
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, SITE, BASE_PATH, TEMPLATE_DIR, SPREADSHEET_RE, gitList, versionOf, versionAt, isForbiddenSpreadsheet } from './site-config.mjs';
+import { ROOT, SITE, BASE_PATH, TEMPLATE_DIR, SPREADSHEET_RE, git, gitList, versionOf, versionAt, isForbiddenSpreadsheet } from './site-config.mjs';
 import { inspectTemplate } from './template-check.mjs';
 
 const PRECACHE_WARN_BYTES = 5 * 1024 * 1024;
-const CJK_RE = /[　-〿㐀-鿿＀-￯]/;
 
 const errors = [];
 const warnings = [];
@@ -27,22 +26,30 @@ const jsFiles = listSite('js', '.js');
 const cssFiles = [...listSite('css', '.css'), ...listSite('fonts', '.css')];
 
 // ==========================================
-// 1. 版本號一致：service-worker.js 與 index.html 的 ?v=
+// 1. 版本號一致：service-worker.js 與 index.html、404.html 的 ?v=
 // ==========================================
 const sw = read(site('service-worker.js'));
 const swVersion = versionOf(sw);
 const indexHtml = read(site('index.html'));
+// 頁面引用的 JS/CSS（相對 docs/ 的路徑，含查詢參數）；404.html 用 /excel-web-tool/ 開頭的絕對路徑
+const PAGES = { 'index.html': indexHtml, '404.html': read(site('404.html')) };
+// 單、雙引號都認；./js/… 與 /excel-web-tool/js/… 都換成 js/… 再比對
+const pageRefs = (text) => [...text.matchAll(/\b(?:src|href)=(["'])([^"']+\.(?:js|css)(?:\?[^"']*)?)\1/g)]
+    .map(m => m[2].startsWith(BASE_PATH) ? m[2].slice(BASE_PATH.length) : m[2].replace(/^\.\//, ''))
+    .filter(ref => /^(?:js|css|fonts)\//.test(ref));
 if (!swVersion) {
     errors.push('service-worker.js 找不到 CACHE_VERSION');
 } else {
-    const queryVersions = [...indexHtml.matchAll(/\?v=([\d.]+)/g)].map(m => m[1]);
-    const mismatched = [...new Set(queryVersions.filter(v => v !== swVersion))];
-    if (mismatched.length) {
-        errors.push(`index.html 的 ?v= (${mismatched.join(', ')}) 與 CACHE_VERSION (v${swVersion}) 不一致`);
-    }
-    // 自己的 JS/CSS 都要帶版本參數（js/libs/ 的第三方檔案不會改動，不需要）
-    for (const m of indexHtml.matchAll(/(?:src|href)="((?:js|css|fonts)\/[^"]+\.(?:js|css))"/g)) {
-        if (!m[1].startsWith('js/libs/')) errors.push(`index.html 的 ${m[1]} 缺少 ?v= 版本參數`);
+    for (const [name, text] of Object.entries(PAGES)) {
+        const queryVersions = [...text.matchAll(/\?v=([\d.]+)/g)].map(m => m[1]);
+        const mismatched = [...new Set(queryVersions.filter(v => v !== swVersion))];
+        if (mismatched.length) {
+            errors.push(`${name} 的 ?v= (${mismatched.join(', ')}) 與 CACHE_VERSION (v${swVersion}) 不一致`);
+        }
+        // 自己的 JS/CSS 都要帶版本參數，Service Worker 才能以相同網址預快取
+        for (const ref of pageRefs(text)) {
+            if (!/\?v=[\d.]+$/.test(ref)) errors.push(`${name} 的 ${ref} 缺少 ?v= 版本參數`);
+        }
     }
 }
 
@@ -51,20 +58,54 @@ if (!swVersion) {
 // ==========================================
 const assetBlock = (sw.match(/const STATIC_ASSETS = \[([\s\S]*?)\];/) || [])[1] || '';
 const assets = [...assetBlock.matchAll(/'([^']+)'/g)].map(m => m[1]);
+// 預快取網址可能帶 ?v=（與 index.html 相同），檢查檔案時去掉查詢參數
+const assetPath = (asset) => asset.replace(/\?.*$/, '');
+const assetPaths = assets.map(assetPath);
 let precacheBytes = 0;
 for (const asset of assets) {
     if (asset === './') continue;
-    const rel = site(asset.replace(/^\.\//, ''));
+    const rel = site(assetPath(asset).replace(/^\.\//, ''));
     if (!existsSync(join(ROOT, rel))) {
         errors.push(`service-worker.js 預快取的檔案不存在：${asset}`);
         continue;
     }
     precacheBytes += statSync(join(ROOT, rel)).size;
     if (/\.ttf$/i.test(rel)) errors.push(`預快取不應包含 TTF（瀏覽器只會用 woff2）：${asset}`);
+    const v = (asset.match(/\?v=([\d.]+)$/) || [])[1];
+    if (v && swVersion && v !== swVersion) errors.push(`service-worker.js 預快取的 ${asset} 與 CACHE_VERSION (v${swVersion}) 不一致`);
+}
+for (const dup of new Set(assetPaths.filter((p, i) => assetPaths.indexOf(p) !== i))) {
+    errors.push(`service-worker.js 的 STATIC_ASSETS 重複列出 ${dup}（帶與不帶 ?v= 各一次會下載兩次）`);
 }
 for (const file of [...jsFiles, ...cssFiles]) {
     const asset = `./${file.slice(SITE.length + 1)}`;
-    if (!assets.includes(asset)) errors.push(`${file} 不在 service-worker.js 的 STATIC_ASSETS，離線時會載不到`);
+    if (!assetPaths.includes(asset)) errors.push(`${file} 不在 service-worker.js 的 STATIC_ASSETS，離線時會載不到`);
+}
+// 頁面以 ?v= 引用的檔案，預快取網址要完全相同，否則第一次比對不到、會再下載一份
+for (const [name, text] of Object.entries(PAGES)) {
+    for (const ref of pageRefs(text).filter(r => /\?v=[\d.]+$/.test(r))) {
+        if (!assets.includes(`./${ref}`)) {
+            errors.push(`${name} 引用 ${ref}，但 STATIC_ASSETS 沒有完全相同的網址（請把 ?v= 也寫進預快取清單）`);
+        }
+    }
+}
+// ExcelJS 由 utils.js 以 ?v=<版本> 動態載入，預快取也要帶同一個版本，升級時才不會拿到舊版 SW 快取的舊檔
+if (swVersion && !assets.includes(`./js/libs/exceljs.min.js?v=${swVersion}`)) {
+    errors.push(`STATIC_ASSETS 缺少 ./js/libs/exceljs.min.js?v=${swVersion}（離線時無法讀取 Excel）`);
+}
+// 字型：介面檔與 Outfit 要預快取（首屏就用到）；常用字檔（-ext）不可預快取，畫面用到才下載
+for (const font of readdirSync(join(ROOT, SITE, 'fonts')).filter(f => f.endsWith('.woff2'))) {
+    const asset = `./fonts/${font}`;
+    const isExt = /-ext\.woff2$/.test(font);
+    if (isExt && assetPaths.includes(asset)) errors.push(`STATIC_ASSETS 不應包含常用字檔 ${asset}（約 0.8 MB，畫面用到才下載）`);
+    if (!isExt && !assetPaths.includes(asset)) errors.push(`${asset} 不在 STATIC_ASSETS，離線時介面會改用系統字型`);
+}
+// preload 的檔案要存在且已預快取
+for (const m of indexHtml.matchAll(/<link\b[^>]*\brel="preload"[^>]*>/g)) {
+    const href = (m[0].match(/\bhref="([^"]+)"/) || [])[1];
+    if (!href) continue;
+    if (!existsSync(join(ROOT, site(href.replace(/\?.*$/, ''))))) errors.push(`index.html 預載的檔案不存在：${href}`);
+    else if (!assets.includes(`./${href}`)) errors.push(`index.html 預載的 ${href} 不在 STATIC_ASSETS（網址要完全相同）`);
 }
 if (precacheBytes > PRECACHE_WARN_BYTES) {
     warnings.push(`預快取總量 ${(precacheBytes / 1048576).toFixed(1)} MB，超過 ${PRECACHE_WARN_BYTES / 1048576} MB，手機首次開啟會很慢`);
@@ -101,7 +142,40 @@ for (const file of ownJsFiles) {
         if (/<[a-z][^>]*\s(style|on[a-z]+)\s*=/i.test(line) || /setAttribute\(\s*['"](style|on[a-z]+)['"]/i.test(line)) {
             errors.push(`${file}:${i + 1} 產生 inline style／事件屬性，會被 CSP 擋下，請改用 class 或 addEventListener`);
         }
+        // CSP 也沒有開放 'unsafe-eval'（註解行略過）
+        if (!/^\s*(\/\/|\*|\/\*)/.test(line) && /\beval\s*\(|\bnew\s+Function\s*\(|\bFunction\s*\(\s*['"`]|\bset(Timeout|Interval)\s*\(\s*['"`]/.test(line)) {
+            errors.push(`${file}:${i + 1} 從字串產生程式碼（eval／new Function／字串形式的 setTimeout），會被 CSP 擋下`);
+        }
     });
+}
+// CSP 必須與預期的政策完全相同（任何放寬，例如 'unsafe-eval'、https:、*、data: 都會被抓到）；
+// 要調整政策時，先確認理由，再同步修改這裡的預期值。
+// ExcelJS 由 loadExcelJS() 延遲載入，不可用 <script> 標籤。
+const EXPECTED_CSP = {
+    'index.html': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'",
+    '404.html': "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'",
+};
+const cspDirectives = (csp) => new Set(csp.split(';').map(d => d.trim().replace(/\s+/g, ' ')).filter(Boolean));
+for (const file of htmlFiles) {
+    const text = read(file);
+    const name = file.slice(SITE.length + 1);
+    const csp = (text.match(/http-equiv="Content-Security-Policy"\s+content="([^"]*)"/i) || [])[1];
+    if (csp === undefined) {
+        errors.push(`${file} 沒有 Content-Security-Policy <meta>`);
+    } else if (!EXPECTED_CSP[name]) {
+        errors.push(`${file} 沒有預期的 CSP，請在 check-site.mjs 的 EXPECTED_CSP 加入`);
+    } else {
+        const actual = cspDirectives(csp);
+        const expected = cspDirectives(EXPECTED_CSP[name]);
+        const added = [...actual].filter(d => !expected.has(d));
+        const removed = [...expected].filter(d => !actual.has(d));
+        if (added.length || removed.length) {
+            errors.push(`${file} 的 CSP 與預期不同：${[...added.map(d => `多了「${d}」`), ...removed.map(d => `少了「${d}」`)].join('；')}`);
+        }
+    }
+    if (/<script\b[^>]*\bsrc=["'][^"']*js\/libs\/exceljs/i.test(text)) {
+        errors.push(`${file} 用 <script> 載入 ExcelJS，會擋住後面的程式；請改用 utils.js 的 loadExcelJS()`);
+    }
 }
 
 // ==========================================
@@ -127,22 +201,90 @@ for (const file of candidates) {
 }
 
 // ==========================================
-// 7. 介面用到的中文字都在裁切後的字型內
+// 7. 介面用字都在 Noto Sans TC 的介面檔（-ui）內，且 fonts.css 的 unicode-range 與字元清單相符
+//    每個字重拆成 -ui（首屏）與 -ext（其餘常用字，畫面出現才下載），清單由 tools/subset-fonts.py 產生
 // ==========================================
-const charsFile = 'tools/subset-chars.txt';
-if (existsSync(join(ROOT, charsFile))) {
-    const covered = new Set(read(charsFile));
+const fontLists = { ui: 'tools/subset-chars-ui.txt', ext: 'tools/subset-chars-ext.txt' };
+const FONT_WEIGHTS = { Regular: '400', Bold: '700' };
+// 與 subset-fonts.py 收字的條件相同（Python 的 str.isprintable()）；ASCII 一律在介面檔內
+const isUiChar = (ch) => ch > '~' && /^[^\p{C}\p{Z}]$/u.test(ch);
+const parseUnicodeRange = (value) => {
+    const chars = new Set();
+    for (const token of value.split(',').map(s => s.trim())) {
+        const m = token.match(/^U\+([0-9A-F]{1,6})(?:-([0-9A-F]{1,6}))?$/i);
+        if (!m) return null;
+        const end = parseInt(m[2] ?? m[1], 16);
+        for (let cp = parseInt(m[1], 16); cp <= end; cp++) chars.add(String.fromCodePoint(cp));
+    }
+    return chars;
+};
+const missingLists = Object.values(fontLists).filter(f => !existsSync(join(ROOT, f)));
+if (missingLists.length) {
+    errors.push(`${missingLists.join('、')} 不存在，無法檢查字型涵蓋（請執行 /subset-fonts）`);
+} else {
+    const listed = { ui: new Set(read(fontLists.ui)), ext: new Set(read(fontLists.ext)) };
+    const overlap = [...listed.ui].filter(ch => listed.ext.has(ch));
+    if (overlap.length) errors.push(`字元清單 ui 與 ext 有 ${overlap.length} 個重複字，unicode-range 會互相衝突（請執行 /subset-fonts）`);
+
+    // (1) 介面用字：在 ext 會讓首屏多下載常用字檔；兩邊都沒有則會用系統字型顯示
+    const inExt = new Set();
     const missing = new Set();
-    for (const file of [...htmlFiles, site('manifest.json'), ...ownJsFiles]) {
-        for (const ch of read(file)) {
-            if (CJK_RE.test(ch) && !covered.has(ch)) missing.add(ch);
+    // CSS 只看 content: 字串（畫面上會顯示的字），註解不算；規則與 subset-fonts.py 相同
+    const cssContentText = cssFiles.map(f => [...read(f).matchAll(/\bcontent:\s*(["'])(.*?)\1/g)].map(m => m[2]).join('')).join('');
+    for (const text of [...[...htmlFiles, site('manifest.json'), ...ownJsFiles].map(read), cssContentText]) {
+        for (const ch of text) {
+            if (isUiChar(ch) && !listed.ui.has(ch)) (listed.ext.has(ch) ? inExt : missing).add(ch);
         }
     }
-    if (missing.size) {
-        errors.push(`字型未涵蓋 ${missing.size} 個介面用字：${[...missing].join('')}（請執行 /subset-fonts）`);
+    if (inExt.size) {
+        errors.push(`${inExt.size} 個介面用字不在字型介面檔、只在常用字檔，首屏會多下載常用字檔：${[...inExt].join('')}（請執行 /subset-fonts）`);
     }
-} else {
-    warnings.push(`${charsFile} 不存在，略過字型涵蓋檢查`);
+    if (missing.size) {
+        errors.push(`字型未涵蓋 ${missing.size} 個介面用字：${[...missing].join('')}（請執行 /subset-fonts；重新裁切後仍缺的字是原始字型沒有，請改用其他字）`);
+    }
+
+    // (2) fonts.css：Noto Sans TC 的每個 @font-face 都要是拆分後的檔案；
+    //     ui 的 unicode-range 等於 ui 清單，ext 的涵蓋 ext 清單且不含 ui 字
+    const fontsCss = site('fonts/fonts.css');
+    const seen = new Set();
+    for (const [, body] of read(fontsCss).matchAll(/@font-face\s*\{([^}]*)\}/g)) {
+        if (!/font-family:\s*['"]Noto Sans TC['"]/.test(body)) continue;
+        const url = (body.match(/url\(\s*['"]?([^'")]+)['"]?\s*\)/) || [])[1] || '';
+        const m = url.match(/^NotoSansTC-(Regular|Bold)-(ui|ext)\.woff2$/);
+        if (!m) {
+            errors.push(`${fontsCss} 的 Noto Sans TC 使用未拆分的字型檔：${url || '（沒有 src）'}（請執行 /subset-fonts）`);
+            continue;
+        }
+        const [, weight, part] = m;
+        seen.add(`${weight}-${part}`);
+        if (!existsSync(join(ROOT, site(`fonts/${url}`)))) errors.push(`${fontsCss} 引用的字型檔不存在：${url}`);
+        const declaredWeight = (body.match(/font-weight:\s*(\d+)/) || [])[1];
+        if (declaredWeight !== FONT_WEIGHTS[weight]) errors.push(`${fontsCss} 的 ${url} font-weight 應為 ${FONT_WEIGHTS[weight]}`);
+        const rangeValue = (body.match(/unicode-range:\s*([^;]+)/) || [])[1];
+        const range = rangeValue && parseUnicodeRange(rangeValue);
+        if (!range) {
+            errors.push(`${fontsCss} 的 ${url} 缺少 unicode-range 或格式無法解析（請執行 /subset-fonts）`);
+            continue;
+        }
+        const lacking = [...listed[part]].filter(ch => !range.has(ch)).length;
+        if (part === 'ui') {
+            // ui 範圍要精確：多出的字會在介面檔裡找不到字形
+            const extra = [...range].filter(ch => !listed.ui.has(ch)).length;
+            if (extra || lacking) {
+                errors.push(`${fontsCss} 的 ${url} unicode-range 與 ${fontLists.ui} 不一致（多 ${extra} 字、少 ${lacking} 字），請執行 /subset-fonts`);
+            }
+        } else {
+            // ext 是粗範圍：可以多含碼位，但要涵蓋 ext 清單，且不可含 ui 字（否則介面字會觸發下載 ext）
+            const uiInRange = [...listed.ui].filter(ch => range.has(ch)).length;
+            if (lacking) errors.push(`${fontsCss} 的 ${url} unicode-range 少了 ${fontLists.ext} 的 ${lacking} 個字，這些字會改用系統字型（請執行 /subset-fonts）`);
+            if (uiInRange) errors.push(`${fontsCss} 的 ${url} unicode-range 含 ${uiInRange} 個介面檔的字，首屏會多下載常用字檔（請執行 /subset-fonts）`);
+        }
+    }
+    for (const weight of Object.keys(FONT_WEIGHTS)) {
+        for (const part of Object.keys(fontLists)) {
+            if (!seen.has(`${weight}-${part}`)) errors.push(`${fontsCss} 缺少 NotoSansTC-${weight}-${part}.woff2 的 @font-face（請執行 /subset-fonts）`);
+        }
+    }
 }
 
 // ==========================================
@@ -198,6 +340,12 @@ if (bumpArg && swVersion) {
     ];
     if (changed.length && versionAt(baseRef) === swVersion) {
         errors.push(`網站檔案已變更（${changed.slice(0, 5).join(', ')}${changed.length > 5 ? '…' : ''}）但 CACHE_VERSION 仍為 v${swVersion}，請執行 /release 調升版本`);
+    }
+    // sitemap 的 lastmod 也要一起更新（bump-version 會改成今天）
+    const lastmodOf = (xml) => ((xml || '').match(/<lastmod>([^<]*)<\/lastmod>/) || [])[1];
+    const baseLastmod = lastmodOf(git(['show', `${baseRef}:${SITE}/sitemap.xml`]));
+    if (changed.some(f => f !== site('sitemap.xml')) && baseLastmod && baseLastmod === lastmodOf(read(site('sitemap.xml')))) {
+        errors.push(`網站檔案已變更但 sitemap.xml 的 lastmod 仍為 ${baseLastmod}，請執行 /release`);
     }
 }
 

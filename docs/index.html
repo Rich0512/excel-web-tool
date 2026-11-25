@@ -30,9 +30,10 @@
 
     <!-- 安全性：Content Security Policy
          - 全站無 inline script / style / 事件屬性，因此不需要 'unsafe-inline'
-         - ExcelJS 內部計算需要 'unsafe-eval'
+         - 不開放 'unsafe-eval'：ExcelJS 由 utils.js 的 loadExcelJS() 載入，載入前先宣告 regeneratorRuntime，
+           它就不會退回 Function()（見該函式的註解）
          - GitHub Pages 無法設定 HTTP header，frame-ancestors 等指令只能靠 header，這裡無法使用 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 
     <!-- 設置網站圖示，防止瀏覽器請求根目錄 favicon 產生 404 錯誤 -->
     <link rel="icon" href="images/logo.png" type="image/png">
@@ -46,15 +47,16 @@
     <link rel="apple-touch-icon" href="images/logo-192.png">
 
     <!-- 預載入首頁核心字型 (提升首屏載入速度與渲染效能) -->
-    <link rel="preload" href="fonts/NotoSansTC-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- 只預載介面用字（ui）；其餘常用字（ext）在畫面出現學生姓名等字時才由 unicode-range 觸發下載 -->
+    <link rel="preload" href="fonts/NotoSansTC-Regular-ui.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="fonts/Outfit-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.13">
-    <!-- 引入 ExcelJS (前端處理 Excel 格式與樣式的核心庫 - 已本地化以維護個資安全與支援離線使用) -->
-    <script src="js/libs/exceljs.min.js" defer></script>
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.14">
+    <!-- ExcelJS（已本地化，約 0.9 MB）不在這裡載入：由 utils.js 的 loadExcelJS() 在頁面閒置或需要時才載入，
+         避免它排在所有程式前面，讓按鈕要等它下載完才有反應 -->
     <!-- 引入外部樣式表 (使用版本參數防止瀏覽器快取舊樣式) -->
-    <link rel="stylesheet" href="css/style.css?v=3.13">
+    <link rel="stylesheet" href="css/style.css?v=3.14">
 </head>
 <body>
 
@@ -108,8 +110,9 @@
                         <div class="upload-zone" id="drop-zone">
                             <svg class="upload-icon" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h8M12 11v8"/></svg>
                             <div class="upload-text">把名冊 Excel 拖到這裡，或點這裡選擇檔案</div>
-                            <div class="upload-hint">支援學校匯出的 .xlsx 檔。檔案不會上傳到任何伺服器。</div>
+                            <div class="upload-hint">支援學校匯出的 .xlsx 檔（20 MB 以內）。檔案不會上傳到任何伺服器。</div>
                             <button type="button" class="btn btn-primary upload-btn" id="btn-pick-file">選擇檔案</button>
+                            <p class="upload-status" id="upload-status" role="status"></p>
                             <input type="file" id="file-input" accept=".xlsx, .xls" aria-label="選擇錄取名冊 Excel 檔案">
                             <p class="template-link">
                                 <a href="templates/115學期名冊_範本.xlsx" download>沒有檔案？下載測試用的範本 Excel</a>
@@ -141,7 +144,7 @@
                                 </div>
                                 <div class="field">
                                     <label class="field-label" for="paste-quota">正取人數</label>
-                                    <input type="number" id="paste-quota" class="club-input" value="12" min="1" inputmode="numeric">
+                                    <input type="number" id="paste-quota" class="club-input" value="12" min="1" max="500" step="1" inputmode="numeric">
                                 </div>
                                 <div class="field field-wide">
                                     <span class="field-label" id="paste-grade-label">招收年級</span>
@@ -352,13 +355,13 @@
     </footer>
 
     <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼；依相依順序載入) -->
-    <script src="js/utils.js?v=3.13" defer></script>
-    <script src="js/exporter.js?v=3.13" defer></script>
-    <script src="js/parser.js?v=3.13" defer></script>
-    <script src="js/processor.js?v=3.13" defer></script>
-    <script src="js/mapping-ui.js?v=3.13" defer></script>
-    <script src="js/app.js?v=3.13" defer></script>
+    <script src="js/utils.js?v=3.14" defer></script>
+    <script src="js/exporter.js?v=3.14" defer></script>
+    <script src="js/parser.js?v=3.14" defer></script>
+    <script src="js/processor.js?v=3.14" defer></script>
+    <script src="js/mapping-ui.js?v=3.14" defer></script>
+    <script src="js/app.js?v=3.14" defer></script>
     <!-- 註冊 Service Worker (離線快取) -->
-    <script src="js/register-sw.js?v=3.13" defer></script>
+    <script src="js/register-sw.js?v=3.14" defer></script>
 </body>
 </html>

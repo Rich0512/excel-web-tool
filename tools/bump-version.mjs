@@ -2,7 +2,7 @@
 // ============================================
 // 同步調升網站快取版本
 // 用法：node tools/bump-version.mjs [X.Y]
-//   - 同步更新 docs/service-worker.js 的 CACHE_VERSION、docs/index.html 的所有 ?v=、
+//   - 同步更新 docs/service-worker.js 的 CACHE_VERSION 與 STATIC_ASSETS 的 ?v=、docs/index.html 與 404.html 的所有 ?v=、
 //     docs/sitemap.xml 的 <lastmod>（今天）
 //   - 省略版本號時：若相對 origin/main 尚未調升，次版號 +1；已調升則只同步各處並更新日期
 // ============================================
@@ -14,6 +14,7 @@ import { SITE_DIR, VERSION_RE, versionOf, versionAt } from './site-config.mjs';
 const FILES = {
     sw: join(SITE_DIR, 'service-worker.js'),
     index: join(SITE_DIR, 'index.html'),
+    notFound: join(SITE_DIR, '404.html'),
     sitemap: join(SITE_DIR, 'sitemap.xml'),
 };
 
@@ -41,8 +42,11 @@ if (!next) {
 }
 
 const today = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD（本地時區）
-writeFileSync(FILES.sw, sw.replace(VERSION_RE, `const CACHE_VERSION = 'v${next}';`));
-writeFileSync(FILES.index, readFileSync(FILES.index, 'utf8').replace(/\?v=[\d.]+/g, `?v=${next}`));
+// STATIC_ASSETS 以與 index.html 相同的 ?v= 預快取，兩邊要一起改
+writeFileSync(FILES.sw, sw.replace(VERSION_RE, `const CACHE_VERSION = 'v${next}';`).replace(/\?v=[\d.]+/g, `?v=${next}`));
+for (const file of [FILES.index, FILES.notFound]) {
+    writeFileSync(file, readFileSync(file, 'utf8').replace(/\?v=[\d.]+/g, `?v=${next}`));
+}
 writeFileSync(FILES.sitemap, readFileSync(FILES.sitemap, 'utf8').replace(/<lastmod>[^<]*<\/lastmod>/, `<lastmod>${today}</lastmod>`));
 
 console.log(`✓ v${current} → v${next}（sitemap lastmod：${today}）`);

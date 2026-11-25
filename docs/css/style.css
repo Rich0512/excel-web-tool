@@ -337,6 +337,25 @@ strong {
     margin-top: 6px;
 }
 
+/* 讀取名冊中（app.js 的 setUploadBusy()）：框線與底色同拖曳中的樣子，表示正在處理 */
+.upload-zone.is-busy {
+    cursor: progress;
+    border-color: var(--primary);
+    background: var(--primary-tint);
+}
+
+/* 讀取狀態文字（role="status"）。live region 要一直在版面上，螢幕閱讀器才會唸出內容變化，
+   所以空白時不隱藏，只用負邊距抵掉拖曳區的 gap，避免多出一段空白 */
+.upload-status {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.upload-status:empty {
+    margin-top: -10px;
+}
+
 #file-input {
     display: none;
 }
@@ -690,7 +709,9 @@ strong {
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.btn:disabled {
+/* 讀取名冊中的「選擇檔案」用 aria-disabled（保留鍵盤焦點，見 app.js 的 setUploadBusy），外觀與 disabled 相同 */
+.btn:disabled,
+.btn[aria-disabled="true"] {
     cursor: wait;
     opacity: 0.7;
 }
@@ -700,7 +721,7 @@ strong {
     color: var(--on-primary);
 }
 
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled):not([aria-disabled="true"]) {
     background: var(--primary-hover);
 }
 
@@ -710,7 +731,7 @@ strong {
     border: 2px solid var(--primary);
 }
 
-.btn-secondary:hover:not(:disabled) {
+.btn-secondary:hover:not(:disabled):not([aria-disabled="true"]) {
     background: var(--primary-tint);
 }
 
@@ -721,7 +742,7 @@ strong {
     font-weight: 400;
 }
 
-.btn-outline:hover:not(:disabled) {
+.btn-outline:hover:not(:disabled):not([aria-disabled="true"]) {
     border-color: var(--primary);
     color: var(--primary);
 }

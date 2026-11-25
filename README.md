@@ -78,10 +78,10 @@
    * 受限於瀏覽器沙箱機制，網頁程式**無權讀取**您電腦硬碟中的其他檔案，亦無法修改作業系統設定，確保本機主機的實體安全。
 
  2. **📦 第三方套件完全本地化 (Zero External Connections)**
-    * 本專案已將核心解析庫 `ExcelJS` **完整下載並本地化儲存**在 `docs/js/libs/exceljs.min.js` 中。
+    * 本專案已將核心解析庫 `ExcelJS`（4.4.0）**完整下載並本地化儲存**在 `docs/js/libs/exceljs.min.js` 中，頁面閒置或需要時才載入，不會拖慢首頁。
     * 網頁字型 `Noto Sans TC` 與 `Outfit` 亦已從 Google Fonts **下載至本機** `docs/fonts/` 目錄，**完全不連接 Google 伺服器**，杜絕 IP 追蹤與瀏覽行為紀錄。
     * 系統運作時**完全不請求外部 CDN 網路**，有效防範第三方供應鏈被劫持（Supply Chain Attack）的個資外洩風險，並支援**100% 離線（斷網）使用**。
-    * 已啟用 `Content-Security-Policy` (CSP) 安全策略，限制所有資源來源為 `'self'`，從瀏覽器層級封鎖任何向外部伺服器的非預期連線。
+    * 已啟用 `Content-Security-Policy` (CSP) 安全策略，限制所有資源來源為 `'self'`，且不開放 `'unsafe-inline'` 與 `'unsafe-eval'`，從瀏覽器層級封鎖任何向外部伺服器的非預期連線與字串形式的程式碼執行。
 
  3. **🧹 關閉即抹除 (Zero Footprint)**
     * 當行政同仁關閉瀏覽器分頁或點擊「繼續轉換新檔案」時，記憶體中暫存的所有學生名冊與設定將會被瀏覽器**自動資源回收並徹底抹除**，絕不殘留於本機系統。
@@ -117,18 +117,18 @@
 * `js/exporter.js`：Excel 檔案樣式、自動欄寬與斑馬紋樣式包裝。
 * `js/app.js`：主要頁面控制器、按鈕事件綁定與生命週期管理（包括 beforeunload 安全保護）。
 * `js/register-sw.js`：註冊 Service Worker。
-* `service-worker.js`：PWA 離線快取管理（HTML 採 Network-First，靜態資源採 Cache-First）。
-* `fonts/`：本地化字型檔（Noto Sans TC + Outfit，僅 WOFF2）。Noto Sans TC 已裁切為常用字 + 介面用字，罕用字由系統字型補字。
+* `service-worker.js`：PWA 離線快取管理（HTML 採 Network-First，4 秒沒有回應或離線時改用快取；靜態資源採 Cache-First，預快取網址與頁面的 `?v=` 相同）。
+* `fonts/`：本地化字型檔（Noto Sans TC + Outfit，僅 WOFF2）。Noto Sans TC 已裁切，每個字重拆成介面用字檔（`-ui`，約 130 KB，首屏只需要它）與其餘常用字檔（`-ext`，約 0.8 MB，畫面出現學生姓名等字時才下載），由 `fonts.css` 的 `unicode-range` 分流；罕用字由系統字型補字。
 * `templates/`：測試用的假資料範本。
 
 **開發工具（`tools/`，需要 Node.js）**
 * `serve.mjs`：本機預覽，模擬 GitHub Pages 的子路徑與 404（`node tools/serve.mjs` → http://localhost:8000/excel-web-tool/）。
-* `check-site.mjs`：部署前檢查（版本號一致、預快取檔案、外部資源、inline 程式碼、404 路徑、試算表外洩、範本只含「測試生」假姓名、manifest 圖示尺寸、字型缺字）。
+* `check-site.mjs`：部署前檢查（版本號一致、預快取檔案、外部資源、inline 程式碼、CSP 未放寬、404 路徑、試算表外洩、範本只含「測試生」假姓名、manifest 圖示尺寸、介面用字都在字型介面檔內且 `unicode-range` 與字元清單相符）。
 * `template-check.mjs`：讀取範本 xlsx 的姓名欄（由 `check-site.mjs` 呼叫）。
 * `bump-version.mjs`：同步調升快取版本。
 * `test-hooks.mjs`：Claude Code hooks 的回歸測試。
 * `site-config.mjs`：以上腳本與 hooks 共用的路徑與常數。
-* `subset-fonts.py`：重新裁切中文字型（需要 Python + fonttools）。
+* `subset-fonts.py`：重新裁切中文字型並產生 `subset-chars-ui.txt`、`subset-chars-ext.txt` 與 `fonts.css` 的 Noto Sans TC 宣告（需要 Python + fonttools，見 `/subset-fonts`）。
 
 **Claude Code 設定**：`CLAUDE.md` 與 `.claude/`，只在以 `web_demo/` 為工作目錄啟動 Claude Code 時生效。
 

@@ -1,5 +1,24 @@
 // 全域狀態（uploadedWorkbook、sheetData 等）宣告在 app.js
 
+/**
+ * ExcelJS 的網址（loadExcelJS() 使用），帶上與這個檔案相同的 ?v=。
+ * Service Worker 的靜態資源走 Cache-First 並以完整網址比對：不帶版本時，升級後第一次載入
+ * 仍會被舊版 Service Worker 用快取裡的舊版 ExcelJS 回應。從 document.currentScript 取出
+ * utils.js 自己的 ?v=（index.html 以 js/utils.js?v=X.Y 載入），bump-version 就不必改這裡。
+ * 必須在最上層執行：currentScript 只在這個檔案執行期間有值。
+ * 取不到版本（例如直接開啟檔案或測試環境）時退回不帶參數的網址。
+ */
+const EXCELJS_SRC = (() => {
+    const base = 'js/libs/exceljs.min.js';
+    try {
+        const src = document.currentScript && document.currentScript.src;
+        const version = src ? new URL(src, document.baseURI).searchParams.get('v') : null;
+        return version ? `${base}?v=${encodeURIComponent(version)}` : base;
+    } catch (e) {
+        return base;
+    }
+})();
+
 const WEEKDAY_REGEX = /(星期|週|周)([一二三四五六日1-7])/;
 
 // 星期字元 → 標準名稱（一 / 1 → 週一）
@@ -38,9 +57,10 @@ const WARNING_ICON_SVG = '<svg class="icon" viewBox="0 0 24 24" width="20" heigh
 
 /**
  * XSS HTML 特殊字元安全跳脫防護
+ * 只有 null / undefined 視為空字串；數字 0、false 照常轉成文字
  */
 function escapeHtml(str) {
-    if (!str) return "";
+    if (str === null || str === undefined) return "";
     return String(str)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -331,18 +351,79 @@ function parseSheetName(name) {
     };
 }
 
+/**
+ * 以名冊字串（工作表、社團、欄位名稱）當鍵的物件一律用沒有原型的物件：
+ * 一般物件遇到「__proto__」會改到原型而不是新增鍵（社團默默消失），
+ * 查詢「constructor」「toString」等名稱也會拿到 Object.prototype 的成員
+ */
+function createDict() {
+    return Object.create(null);
+}
+
 // LocalStorage 管理對照設定
 // (無痕模式、封鎖網站資料或內容損毀時存取會失敗，一律視為沒有記憶設定)
+// 格式（隱私規則：只存欄位標題、社團或工作表名稱、星期）：
+//   單一清單模式：時段欄位名稱 → { 社團名稱 → 星期 }
+//   多工作表模式：工作表名稱 → 星期（舊版的「社團名稱 → 星期」也是這個形狀）
 const CONFIG_STORAGE_KEY = 'yenping_club_config';
+// 每學期的社團都會累積，設上限避免無限成長；以物件鍵的插入順序當作新舊順序，
+// 更新時把鍵移到最後，超過上限從最前面（最久沒更新）刪除
+const CONFIG_MAX_TOP_KEYS = 100;
+const CONFIG_MAX_CLUBS_PER_SLOT = 200;
+// 鍵（欄位標題、社團或工作表名稱）的長度上限。正常的名稱遠短於此；
+// 太長的通常是把整段說明或資料誤當成標題，不值得記，也避免單筆設定佔用大量空間
+const CONFIG_MAX_KEY_LENGTH = 60;
+
+function isStorableConfigKey(key) {
+    return typeof key === 'string' && key.length > 0 && key.length <= CONFIG_MAX_KEY_LENGTH;
+}
+
+/**
+ * 把讀到的設定轉成沒有原型的物件，並略過格式不符的值（只接受星期字串或一層「名稱 → 星期字串」）
+ * 與太長的鍵
+ */
+function toSafeConfig(raw) {
+    const config = createDict();
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return config;
+    Object.keys(raw).forEach(key => {
+        if (!isStorableConfigKey(key)) return;
+        const value = raw[key];
+        if (typeof value === 'string') {
+            config[key] = value;
+        } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+            const slotMap = createDict();
+            Object.keys(value).forEach(club => {
+                if (isStorableConfigKey(club) && typeof value[club] === 'string') slotMap[club] = value[club];
+            });
+            config[key] = slotMap;
+        }
+    });
+    return config;
+}
+
+/**
+ * 設定一個鍵並移到最後（最新），超過 maxKeys 時從最舊的刪除；鍵太長時不存，回傳 false
+ * 純數字的鍵（例如「101」）在 JavaScript 物件中一律排在最前面，看不出新舊，淘汰時會先被刪；
+ * 不改儲存格式就無法記住它們的先後，所以只保證剛設定的鍵本身不會被淘汰
+ */
+function setConfigEntry(obj, key, value, maxKeys) {
+    if (!isStorableConfigKey(key)) return false;
+    delete obj[key];
+    obj[key] = value;
+    const keys = Object.keys(obj).filter(k => k !== key);
+    for (let i = 0; i < keys.length + 1 - maxKeys; i++) {
+        delete obj[keys[i]];
+    }
+    return true;
+}
 
 function loadLocalStorageConfig() {
     try {
         const data = localStorage.getItem(CONFIG_STORAGE_KEY);
-        const config = data ? JSON.parse(data) : {};
-        return config && typeof config === 'object' ? config : {};
+        return toSafeConfig(data ? JSON.parse(data) : null);
     } catch (e) {
         console.warn('[設定] 無法讀取瀏覽器記憶設定，改用預設值:', e);
-        return {};
+        return createDict();
     }
 }
 
@@ -360,6 +441,47 @@ function clearLocalStorageConfig() {
     } catch (e) {
         console.warn('[設定] 無法清除瀏覽器記憶設定:', e);
     }
+}
+
+/**
+ * 延遲載入 ExcelJS（約 0.9 MB）：不放在 index.html 的 <script>，避免按鈕要等它下載完才有反應。
+ * 頁面閒置時由 app.js 預先載入；讀取或匯出 Excel 前一律 await 這個函式。
+ * 回傳快取的 Promise；載入失敗時 reject，並清掉快取讓下次可以重試。
+ */
+const EXCELJS_LOAD_ERROR_MESSAGE = '無法載入讀寫 Excel 所需的程式，可能是網路中斷。請確認網路連線後再試一次；第一次開啟這個工具時需要連上網路，之後才能離線使用。';
+let excelJSPromise = null;
+
+function loadExcelJS() {
+    if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+    if (excelJSPromise) return excelJSPromise;
+
+    excelJSPromise = new Promise((resolve, reject) => {
+        // ExcelJS 內附的 regenerator-runtime 在 strict mode 下執行 `regeneratorRuntime = runtime`，
+        // 全域變數沒有宣告時會丟例外，接著改寫 globalThis，沒有 globalThis 的舊瀏覽器則退回
+        // Function("r", "regeneratorRuntime = r")，那需要 CSP 'unsafe-eval'。
+        // 先在 window 上宣告這個變數，賦值就會直接成功，不會走到 Function()。
+        if (!('regeneratorRuntime' in window)) {
+            window.regeneratorRuntime = undefined;
+        }
+
+        const script = document.createElement('script');
+        const fail = () => {
+            script.remove();
+            excelJSPromise = null; // 下次呼叫重新載入
+            const err = new Error(EXCELJS_LOAD_ERROR_MESSAGE);
+            err.name = 'ExcelJSLoadError';
+            reject(err);
+        };
+        script.src = EXCELJS_SRC;
+        script.async = true;
+        script.addEventListener('load', () => {
+            if (window.ExcelJS) resolve(window.ExcelJS);
+            else fail();
+        });
+        script.addEventListener('error', fail);
+        document.head.appendChild(script);
+    });
+    return excelJSPromise;
 }
 
 /**
@@ -434,12 +556,14 @@ function sanitizeSheetName(name, fallback = '工作表') {
 
 /**
  * 不可見字元淨化器
- * 清理剪貼簿常夾帶的零寬空格 (\u200B-\u200D, \uFEFF)、全形空白 (\u3000) 與 &nbsp; (\u00A0)
+ * 清理剪貼簿常夾帶的看不見的字元（零寬空格、零寬連接字元、文字左右排列的控制字元、
+ * 斷行用的連字號，以及 BOM），這些字元看不見，卻會讓同一個姓名或社團比對不到；
+ * 另外把全形空白 (\u3000) 與 &nbsp; (\u00A0) 轉成一般空白
  */
 function cleanInvisibleChars(str) {
     if (str === null || str === undefined) return "";
     return String(str)
-        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/[\u200B-\u200F\u2060\uFEFF\u00AD\u202A-\u202E\u2066-\u2069]/g, '')
         .replace(/\u00A0/g, ' ')
         .replace(/\u3000/g, ' ')
         .trim();

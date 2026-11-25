@@ -13,11 +13,12 @@ paths:
 ## 程式結構
 
 - 原生 JavaScript，沒有 bundler 也沒有模組系統。`docs/js/*.js` 以 `defer` 依序載入並共用全域函式：utils → exporter → parser → processor → mapping-ui → app → register-sw。新增檔案要放進這個順序，並同步加入 `service-worker.js` 的 `STATIC_ASSETS` 與 `index.html` 的 `?v=`。
-- `docs/js/libs/` 是第三方函式庫（ExcelJS），不要修改。
+- `docs/js/libs/` 是第三方函式庫（ExcelJS 4.4.0，npm 官方 tarball 的 `dist/exceljs.min.js`），不要修改內容；升級時整檔替換，並確認 npm 公布的 integrity 雜湊一致。
+- ExcelJS 不用 `<script>` 標籤載入，一律透過 `utils.js` 的 `loadExcelJS()`（頁面閒置時預先載入，使用前 `await`）。不要在 `index.html` 加回標籤：它約 0.9 MB，排在前面會讓按鈕要等它下載完才有反應。
 
 ## CSP 相容（`tools/check-site.mjs` 會檢查）
 
-CSP 沒有開放 `'unsafe-inline'`，所以：
+CSP 沒有開放 `'unsafe-inline'`，也沒有 `'unsafe-eval'`（不可用 `eval`、`new Function`、字串形式的 `setTimeout`）。ExcelJS 內附的 regenerator-runtime 會在全域變數未宣告時退回 `Function()`，`loadExcelJS()` 載入前會先宣告 `regeneratorRuntime`，不要移除。另外：
 - HTML 不可有 `style="…"`、`onclick="…"` 等屬性、inline `<script>`、`<style>` 區塊。
 - JS 產生的 HTML 字串同樣不可含 `style=` 或 `on*=`。改用 class；事件用 `addEventListener`。
 - 用 JS 設定 `element.style.display` 或 `element.hidden` 是允許的（CSSOM 不受 CSP 限制），適合單純的顯示／隱藏。
