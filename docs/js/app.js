@@ -534,7 +534,7 @@ document.getElementById('paste-include-freshmen').addEventListener('change', ren
 
 // 移除所有已加入的社團
 function clearAllPastedClubs() {
-    if (confirm("確定要移除所有已加入的社團嗎？移除後要重新貼上名單並加入。")) {
+    if (confirm("確定要移除所有已加入的社團嗎？抽籤結果會一起清除。移除後要重新貼上名單並加入，加入時會重新抽籤，並記錄抽籤次數。")) {
         // 抽籤次數 clubDrawCounts 刻意不重設，重新加入同名社團仍會累加
         pastedClubs = [];
         renderLoadedClubs();
@@ -665,7 +665,7 @@ function lotteryNoticeMessage(duplicateCount, unrecognizedCount) {
     if (duplicateCount > 0) parts.push(`${duplicateCount} 筆重複報名（班級、姓名相同），重複的只保留一筆，已用去除重複後的名單抽籤`);
     if (unrecognizedCount > 0) parts.push(`${parts.length ? '另有 ' : ''}${unrecognizedCount} 筆班級無法辨識，沒有參加抽籤，名單中標示為「${UNRECOGNIZED_CLASS_LABEL}」`);
     if (parts.length === 0) return "";
-    return `名單裡有 ${parts.join('；')}。請確認貼上的內容，需要時移除這個社團後重新貼上。`;
+    return `名單裡有 ${parts.join('；')}。請確認貼上的內容，需要時移除這個社團後重新貼上並加入（會重新抽籤）。`;
 }
 
 // 已加入社團那一行後面的說明：略過重複、班級無法辨識的筆數、抽籤時間，以及重抽時的第幾次抽籤
@@ -784,13 +784,13 @@ async function processPastedData() {
 
     try {
         if (pastedClubs.length === 0) {
-            alert("還沒有加入任何社團。請先貼上名單並按「加入這個社團」，再下載課表。");
+            alert("還沒有加入任何社團。請先貼上名單並按「加入這個社團」，再按「下載課表與抽籤結果」。");
             return;
         }
         
         if (actionBtn) {
             actionBtn.disabled = true;
-            actionBtn.textContent = '正在抽籤並下載課表…';
+            actionBtn.textContent = '正在下載課表與抽籤結果…';
         }
 
         const slotMode = document.getElementById('paste-slot-mode-select').value;
@@ -830,10 +830,11 @@ async function processPastedData() {
     } catch (err) {
         console.error("貼上名單彙整失敗:", err);
         if (err && err.name === 'ExcelJSLoadError') {
-            alert(EXCELJS_LOAD_ERROR_MESSAGE + "\n已加入的社團都還在，連上網路後再按一次「抽籤並下載課表」即可，不需要重新整理網頁。");
+            alert(EXCELJS_LOAD_ERROR_MESSAGE + "\n已加入的社團與抽籤結果都還在，連上網路後再按一次「下載課表與抽籤結果」即可，不需要重新整理網頁。");
             return;
         }
-        alert("抽籤或匯出課表時發生錯誤，課表沒有下載。請重新整理網頁後再試一次；若仍失敗，請確認貼上的名單包含班級、座號、姓名。" + errorTypeNote(err));
+        // 下載不會抽籤（抽籤在 loadPastedClub），失敗時已加入的社團與抽籤結果都還在；重新整理網頁會清掉結果，所以先請使用者再按一次
+        alert("匯出課表時發生錯誤，課表沒有下載。已加入的社團與抽籤結果都還在，請再按一次「下載課表與抽籤結果」。若仍失敗，請確認貼上的名單包含班級、座號、姓名；重新整理網頁會清除抽籤結果，要重新加入社團並重新抽籤。" + errorTypeNote(err));
     } finally {
         if (actionBtn) {
             actionBtn.disabled = false;
@@ -998,7 +999,10 @@ window.addEventListener('load', () => {
 window.addEventListener('beforeunload', (e) => {
     // 只要有讀取 Excel 檔案或加入了社團，即進行警告
     if (uploadedWorkbook !== null || (pastedClubs && pastedClubs.length > 0)) {
-        const message = '星期設定或已加入的社團還沒下載成課表，離開後要重新開始。確定要離開嗎？';
+        // 新版瀏覽器大多只顯示內建文字，這段訊息只在支援自訂文字的瀏覽器出現
+        const message = (pastedClubs && pastedClubs.length > 0)
+            ? '已加入的社團還沒下載成課表，離開後抽籤結果會消失，要重新加入並重新抽籤。確定要離開嗎？'
+            : '星期設定還沒下載成課表，離開後要重新開始。確定要離開嗎？';
         e.preventDefault();
         e.returnValue = message;
         return message;
@@ -1015,7 +1019,11 @@ window.addEventListener('unhandledrejection', (event) => {
     const isAbort = (reason && reason.name === 'AbortError') || String((reason && reason.message) || reason || '').includes('abort');
     if (!isAbort) {
         // 例外內容可能含有名冊資料，alert 只顯示固定說明與例外類型，完整內容在上面的 console.error
-        alert('發生非預期的錯誤，請重新整理網頁後再試一次。' + errorTypeNote(reason));
+        // 已加入社團時不要先叫使用者重新整理：重新整理會清除抽籤結果，等於要重新抽籤
+        const hint = (pastedClubs && pastedClubs.length > 0)
+            ? '已加入的社團與抽籤結果應該還在，請先再試一次剛才的操作；仍然失敗才重新整理網頁，但重新整理會清除抽籤結果，要重新加入社團並重新抽籤。'
+            : '請重新整理網頁後再試一次。';
+        alert('發生非預期的錯誤。' + hint + errorTypeNote(reason));
     }
 });
 

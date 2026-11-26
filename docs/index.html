@@ -52,11 +52,11 @@
     <link rel="preload" href="fonts/Outfit-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.16">
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.17">
     <!-- ExcelJS（已本地化，約 0.9 MB）不在這裡載入：由 utils.js 的 loadExcelJS() 在頁面閒置或需要時才載入，
          避免它排在所有程式前面，讓按鈕要等它下載完才有反應 -->
     <!-- 引入外部樣式表 (使用版本參數防止瀏覽器快取舊樣式) -->
-    <link rel="stylesheet" href="css/style.css?v=3.16">
+    <link rel="stylesheet" href="css/style.css?v=3.17">
 </head>
 <body>
 
@@ -122,7 +122,7 @@
 
                     <!-- 文字貼上區 -->
                     <div id="tab-paste-content" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-paste">
-                        <p class="tab-intro">每貼上一個社團的名單，就按一次「加入這個社團」。所有社團都加入後，再到下方一起抽籤並下載課表，這樣才能檢查跨社團的衝堂。</p>
+                        <p class="tab-intro">每貼上一個社團的名單，就按一次「加入這個社團」，加入時就會抽籤，正取、備取會立刻列在下方。所有社團都加入後，再下載課表與抽籤結果，這樣才能檢查跨社團的衝堂。</p>
 
                         <div class="paste-zone">
                             <div class="form-grid">
@@ -186,7 +186,10 @@
                                 </div>
                             </div>
 
-                            <button type="button" class="btn btn-secondary btn-block" id="btn-load-club">加入這個社團</button>
+                            <div class="field">
+                                <button type="button" class="btn btn-secondary btn-block" id="btn-load-club" aria-describedby="load-club-tip">加入這個社團</button>
+                                <p class="field-tip" id="load-club-tip">加入時就會抽籤，結果列在下方「已加入的社團」。要重新抽籤，請先移除這個社團再加入，系統會記錄抽籤次數。</p>
+                            </div>
                         </div>
 
                         <!-- 已加入的社團列表 -->
@@ -222,13 +225,13 @@
 
                             <div class="warning-callout">
                                 <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
-                                <div>按下載後，已加入的社團會一起抽籤並匯出，之後要重新貼上。請先確認<strong>所有要整理的社團都已加入</strong>，否則無法檢查跨社團的衝堂。</div>
+                                <div>下載只會匯出清單上已抽好的結果，不會重新抽籤；下載後清單會清空。請先確認<strong>所有要整理的社團都已加入</strong>，否則無法檢查跨社團的衝堂。</div>
                             </div>
 
                             <div id="paste-conflict-alert" class="warning-callout conflict-alert" role="alert"></div>
 
                             <button type="button" class="btn btn-primary btn-block btn-large" id="btn-process-paste">
-                                抽籤並下載課表（共 <span id="total-pasted-students">0</span> 筆錄取資料）
+                                下載課表與抽籤結果（共 <span id="total-pasted-students">0</span> 筆錄取資料）
                             </button>
                         </div>
                     </div>
@@ -249,7 +252,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="sample-note">同一位學生的社團合併成一列；晨間社團會填入每一個上課日。範例姓名為虛構。</p>
+                    <p class="sample-note">同一位學生的社團合併成一列；一週上好幾天的社團會填入每一個上課日，晨間社團預設另外列在「晨間(週一、週四)」這類晨間欄位。範例姓名為虛構。</p>
 
                     <div class="after-use">
                         <h3 class="after-use-title">用完之後</h3>
@@ -355,13 +358,13 @@
     </footer>
 
     <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼；依相依順序載入) -->
-    <script src="js/utils.js?v=3.16" defer></script>
-    <script src="js/exporter.js?v=3.16" defer></script>
-    <script src="js/parser.js?v=3.16" defer></script>
-    <script src="js/processor.js?v=3.16" defer></script>
-    <script src="js/mapping-ui.js?v=3.16" defer></script>
-    <script src="js/app.js?v=3.16" defer></script>
+    <script src="js/utils.js?v=3.17" defer></script>
+    <script src="js/exporter.js?v=3.17" defer></script>
+    <script src="js/parser.js?v=3.17" defer></script>
+    <script src="js/processor.js?v=3.17" defer></script>
+    <script src="js/mapping-ui.js?v=3.17" defer></script>
+    <script src="js/app.js?v=3.17" defer></script>
     <!-- 註冊 Service Worker (離線快取) -->
-    <script src="js/register-sw.js?v=3.16" defer></script>
+    <script src="js/register-sw.js?v=3.17" defer></script>
 </body>
 </html>

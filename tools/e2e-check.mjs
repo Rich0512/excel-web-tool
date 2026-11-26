@@ -692,7 +692,7 @@ const scenarios = {
         await realClick(page, '#btn-process-paste');
         const dl = await waitForDownload(ctx, since);
         res.metrics.pasteProcessToDownloadMs = dl.ok ? Math.round(performance.now() - t1) : null;
-        check(res, '按「抽籤並下載課表」後下載 .xlsx', dl.ok && /\.xlsx$/i.test(dl.suggestedFilename || ''), dl.ok ? `${dl.size} bytes，${res.metrics.pasteProcessToDownloadMs} ms` : dl.reason + (page.dialogs.length > d1 ? '，對話框：' + page.dialogs.slice(d1).map(d => d.message).join(' / ') : ''));
+        check(res, '按「下載課表與抽籤結果」後下載 .xlsx', dl.ok && /\.xlsx$/i.test(dl.suggestedFilename || ''), dl.ok ? `${dl.size} bytes，${res.metrics.pasteProcessToDownloadMs} ms` : dl.reason + (page.dialogs.length > d1 ? '，對話框：' + page.dialogs.slice(d1).map(d => d.message).join(' / ') : ''));
         if (dl.ok) check(res, '下載檔檔頭為 PK', dl.magic === 'PK', `檔頭 ${js(dl.magic)}`);
         await harvestCsp(page);
         commonChecks(res, page);
