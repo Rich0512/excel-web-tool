@@ -304,6 +304,17 @@ export function paste(site, text) {
 }
 
 /**
+ * 換掉頁面的 confirm()：記下每則訊息，回傳值可以隨時改。loadSite() 預設的 confirm 一律回傳 true 且不記錄；
+ * 需要檢查訊息或模擬「取消」時才呼叫。
+ * 回傳 { messages, answer }：messages 是依序跳出的訊息，answer 設成 false 時模擬按「取消」
+ */
+export function stubConfirm(site, answer = true) {
+    const stub = { messages: [], answer };
+    site.ctx.confirm = (m) => { stub.messages.push(String(m)); return stub.answer; };
+    return stub;
+}
+
+/**
  * 檢查 guessClubAndDay(text) 的結果。club、day 傳 undefined 表示不檢查該項，null 表示必須推不出來。
  * 回傳 (說明, 貼上內容, 社團, 星期) => void
  */

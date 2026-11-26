@@ -236,7 +236,7 @@ function manualHardResetAll() {
     if (confirm("確定要清除這次的資料嗎？會清除選擇的 Excel 檔案、星期設定、已加入的社團，以及瀏覽器記住的社團星期，畫面會回到第一步。")) {
         clearFileModeState();
 
-        // 清除貼上模式狀態（文字框、待執行的預覽、自動填入的記號）
+        // 清除貼上模式狀態（文字框、待執行的預覽、自動填入的記號）；抽籤次數 clubDrawCounts 刻意不重設
         pastedClubs = [];
         resetPasteInput();
         document.getElementById('paste-club-name').value = "";
@@ -399,6 +399,17 @@ document.getElementById('slot-mode-select').addEventListener('change', updateMap
 
 let pastedClubs = [];
 
+// 本次開啟網頁後，每個社團名稱已經抽過幾次籤（社團名稱 → 次數），寫進匯出檔的「抽籤資訊」，看得出是否重抽過。
+// 只放在記憶體，重新載入頁面才重設：「全部清除」、清除這次的資料、下載後清空社團都不重設，
+// 否則移除後重新加入就能不留記錄地一直重抽。不可寫進 localStorage 等任何 storage。
+const clubDrawCounts = new Map();
+
+// 計數用的鍵：只要看起來是同一個名稱就算同一個社團，避免改一點寫法就能重抽而不被記下次數。
+// 去掉不可見字元與所有空白（「桌遊 社」）、全形英數當成一般英數（NFKC，「ＡＩ社」）、英文不分大小寫（「LEGO社」）
+function clubDrawKey(clubName) {
+    return cleanInvisibleChars(clubName).normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+}
+
 function switchInputTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -524,6 +535,7 @@ document.getElementById('paste-include-freshmen').addEventListener('change', ren
 // 移除所有已加入的社團
 function clearAllPastedClubs() {
     if (confirm("確定要移除所有已加入的社團嗎？移除後要重新貼上名單並加入。")) {
+        // 抽籤次數 clubDrawCounts 刻意不重設，重新加入同名社團仍會累加
         pastedClubs = [];
         renderLoadedClubs();
         resetPasteInput();
@@ -544,7 +556,8 @@ function loadPastedClub() {
     flushPastePreview();
 
     const day = document.getElementById('paste-day-select').value;
-    const clubNameInput = document.getElementById('paste-club-name').value.trim();
+    // trim() 不會去掉零寬空格等不可見字元，只貼了這些字元時也要當成「還沒有填社團名稱」
+    const clubNameInput = cleanInvisibleChars(document.getElementById('paste-club-name').value);
     const pastedText = pasteArea.value.trim();
 
     const quotaText = String(document.getElementById('paste-quota').value).trim();
@@ -585,14 +598,28 @@ function loadPastedClub() {
         return;
     }
     
+    // 同名社團這次開啟網頁後已經抽過籤：先確認是否重抽。放在所有輸入檢查之後，取消時不加入也不計次。
+    // 訊息只寫次數，不寫社團名稱（使用者輸入的內容）
+    const drawKey = clubDrawKey(clubNameInput);
+    const previousDraws = clubDrawCounts.get(drawKey) || 0;
+    // 同名社團還在清單裡時一併提醒：兩份都會匯出（工作表名稱會加上編號），課表也會兩份都算
+    const stillListed = pastedClubs.some(c => clubDrawKey(c.clubName) === drawKey);
+    const listedNote = stillListed ? "清單裡已經有同名的社團，兩份抽籤結果都會匯出；只要保留新的結果，請先移除舊的那一個。" : "";
+    if (previousDraws > 0 && !confirm(`這個社團在這次開啟網頁後已經抽過 ${previousDraws} 次籤。再加入會重新抽籤，匯出檔的抽籤資訊會記錄為第 ${previousDraws + 1} 次抽籤。${listedNote}確定要重新抽籤嗎？`)) {
+        return;
+    }
+
     // 重複報名先去重（彙整課表時也會被併成同一位），再執行抽籤演算法
     const { students: applicants, duplicateCount } = dedupeApplicants(rawStudents);
     const finalStudentsList = runClubLottery(applicants, quota, gradeStart, gradeEnd, priority);
+    // 抽籤完成才計次；抽籤丟出例外時不會走到這裡
+    const drawRound = previousDraws + 1;
+    clubDrawCounts.set(drawKey, drawRound);
     const drawnAt = new Date();
     const selectedCount = finalStudentsList.filter(s => s.selected).length;
     const unrecognizedCount = finalStudentsList.filter(s => s.drawSequence === UNRECOGNIZED_CLASS_LABEL).length;
 
-    // 抽籤時間（drawnAt）與各項筆數不是學生資料，只放在記憶體，下載時寫進匯出檔的「抽籤資訊」
+    // 抽籤時間（drawnAt）、第幾次抽籤（drawRound）與各項筆數不是學生資料，只放在記憶體，下載時寫進匯出檔的「抽籤資訊」
     const newClub = {
         id: Date.now(),
         day: day,
@@ -606,7 +633,8 @@ function loadPastedClub() {
         applicantCount: rawStudents.length,
         duplicateCount: duplicateCount,
         unrecognizedCount: unrecognizedCount,
-        drawnAt: drawnAt
+        drawnAt: drawnAt,
+        drawRound: drawRound
     };
 
     pastedClubs.push(newClub);
@@ -640,13 +668,14 @@ function lotteryNoticeMessage(duplicateCount, unrecognizedCount) {
     return `名單裡有 ${parts.join('；')}。請確認貼上的內容，需要時移除這個社團後重新貼上。`;
 }
 
-// 已加入社團那一行後面的說明：略過重複、班級無法辨識的筆數與抽籤時間
+// 已加入社團那一行後面的說明：略過重複、班級無法辨識的筆數、抽籤時間，以及重抽時的第幾次抽籤
 function loadedClubExtraMeta(club) {
     const extra = [];
     if (club.duplicateCount > 0) extra.push(`略過重複 ${club.duplicateCount} 筆`);
     if (club.unrecognizedCount > 0) extra.push(`班級無法辨識 ${club.unrecognizedCount} 筆`);
     const time = formatDrawTime(club.drawnAt);
     if (time) extra.push(`${time} 抽籤`);
+    if (club.drawRound > 1) extra.push(`第 ${club.drawRound} 次抽籤`);
     return extra.map(t => `，${t}`).join('');
 }
 
@@ -792,7 +821,7 @@ async function processPastedData() {
         const finalFilename = customFilename || "直接貼上名單彙整";
         await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, pastedClubs);
         
-        // 重設狀態（畫面在 finally 還原按鈕後才重繪）
+        // 重設狀態（畫面在 finally 還原按鈕後才重繪）；抽籤次數 clubDrawCounts 刻意不重設
         pastedClubs = [];
         document.getElementById('paste-excel-filename').value = "";
         // 改 value 不會觸發 input 事件，預覽要手動隱藏，否則會留著舊的筆數

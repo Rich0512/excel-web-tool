@@ -1,10 +1,11 @@
 // 貼上模式的抽籤：正取名額與籤序、年級範圍與優先順序、新生排最後、備取順序、班級無法辨識、parseGrade、
-// 重複報名去重、只用密碼學亂數（拒絕取樣、分布、沒有 crypto 時不抽籤）、加入社團後的提醒，以及匯出檔的「抽籤資訊」。
+// 重複報名去重、只用密碼學亂數（拒絕取樣、分布、沒有 crypto 時不抽籤）、加入社團後的提醒、匯出檔的「抽籤資訊」，
+// 以及同名社團重抽的計數與確認（第 16 節）。
 // 測試資料的姓名全部是虛構的（測試生<班級>_<座號>）。
 // 舊版沒有 dedupeApplicants() 等函式時，個別檢查記成 FAIL，不會讓整個檔案中斷。
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { loadSite, makeReporter, readSiteFile, EXCELJS_PATH } from './harness.mjs';
+import { loadSite, makeReporter, readSiteFile, stubConfirm, EXCELJS_PATH } from './harness.mjs';
 const R = makeReporter('抽籤：名額、順序、去重與亂數');
 
 const mk = (cls, seat, name) => ({ class: cls, seat, name: name ?? `測試生${cls || '新生'}_${seat || '00'}` });
@@ -291,6 +292,7 @@ function roster(grades = [1, 2, 3, 4, 5, 6], count = 4) {
     s.run('Math.random = () => __countMath()');
     addClub(s, '班級\t座號\t姓名\n301\t05\t測試生301_05\n302\t11\t測試生302_11', { quota: '1', start: '1', end: '6' });
     R.check('沒有 crypto：不加入社團', s.run('pastedClubs.length') === 0, `社團 ${s.run('pastedClubs.length')} 個`);
+    R.test('重抽：沒有 crypto 被擋下時不計抽籤次數', () => [s.run('clubDrawCounts.size') === 0, `計數表 ${s.run('clubDrawCounts.size')} 筆`]);
     R.check('沒有 crypto：跳出 1 則說明（不支援安全的亂數、改用最新版 Chrome、Edge 或 Safari）',
         s.alerts.length === 1 && /不支援安全的亂數/.test(s.alerts[0]) && /Chrome、Edge 或 Safari/.test(s.alerts[0]), s.alerts.join(' / '));
     R.test('沒有 crypto：runClubLottery 丟出例外，不退回 Math.random', () => {
@@ -405,6 +407,10 @@ async function pump(s, promise) {
         R.check('G1 是「抽籤資訊」標題，合併 G1:H1，表頭樣式（粗體白字、校徽藍底）',
             v(1, 7) === '抽籤資訊' && ws.model.merges.includes('G1:H1') && ws.getCell(1, 7).font?.bold && ws.getCell(1, 7).fill?.fgColor?.argb === 'FF0F3B6D',
             `G1=${v(1, 7)}，merges=${ws.model.merges.join(',')}`);
+        // 抽籤資訊從 G2 往下讀到空白為止；各項依標題找列號，新增項目時不必改每個斷言
+        const info = [];
+        for (let r = 2; r <= ws.rowCount && v(r, 7); r++) info.push({ row: r, label: v(r, 7), value: v(r, 8) });
+        const item = (label) => info.find(x => x.label === label) || { row: 0, label: '', value: undefined };
         const expect = [
             ['抽籤時間', expectTime],
             ['正取人數', '2 人（名額 2 人）'],
@@ -414,17 +420,28 @@ async function pump(s, promise) {
             ['重複略過筆數', '2 筆'],
             ['班級無法辨識筆數', '1 筆'],
         ];
-        expect.forEach(([label, value], i) => {
-            R.check(`抽籤資訊第 ${i + 2} 列：${label} = ${value || '（本地時間）'}`, v(i + 2, 7) === label && v(i + 2, 8) === value && value !== '', `${v(i + 2, 7)} = ${v(i + 2, 8)}`);
+        expect.forEach(([label, value]) => {
+            const it = item(label);
+            R.check(`抽籤資訊：${label} = ${value || '（本地時間）'}`, it.row > 0 && it.value === value && value !== '', `第 ${it.row} 列：${it.label} = ${it.value}`);
         });
-        R.check('抽籤時間格式是 YYYY/MM/DD HH:mm:ss', /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(String(v(2, 8))), String(v(2, 8)));
-        R.check('抽籤資訊第 9 列：亂數來源是瀏覽器內建的安全亂數', v(9, 7) === '亂數來源' && /^瀏覽器內建的安全亂數/.test(String(v(9, 8))), `${v(9, 7)} = ${v(9, 8)}`);
-        R.check('抽籤資訊的「報名人數」與畫面上的「報名 N 人」相同', String(v(6, 8)).startsWith(`${club.students.length} 人`) && metaHtml.includes(`報名 ${club.students.length} 人`), `${v(6, 8)}；畫面：${metaHtml.replace(/<[^>]+>/g, ' ').replace(/測試生\S*/g, '').slice(0, 80)}`);
+        const ORDER = [...expect.map(([l]) => l), '亂數來源'];
+        R.check('抽籤資訊的既有項目依序排列：抽籤時間在最前、亂數來源在最後', info.map(x => x.label).filter(l => ORDER.includes(l)).join(',') === ORDER.join(',') && info[0]?.label === '抽籤時間' && info.at(-1)?.label === '亂數來源',
+            info.map(x => x.label).join(','));
+        R.check('抽籤時間格式是 YYYY/MM/DD HH:mm:ss', /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(String(item('抽籤時間').value)), String(item('抽籤時間').value));
+        R.check('抽籤資訊：亂數來源是瀏覽器內建的安全亂數', /^瀏覽器內建的安全亂數/.test(String(item('亂數來源').value)), `第 ${item('亂數來源').row} 列：${item('亂數來源').value}`);
+        R.check('抽籤資訊的「報名人數」與畫面上的「報名 N 人」相同', String(item('報名人數').value).startsWith(`${club.students.length} 人`) && metaHtml.includes(`報名 ${club.students.length} 人`), `${item('報名人數').value}；畫面：${metaHtml.replace(/<[^>]+>/g, ' ').replace(/測試生\S*/g, '').slice(0, 80)}`);
         R.check('F 欄（資料表與抽籤資訊之間）是空的', Array.from({ length: ws.rowCount }, (_, i) => v(i + 1, 6)).every(x => x === null || x === undefined || x === ''));
-        R.check('抽籤資訊沒有被套成資料列樣式（項目粗體、靠左、微軟正黑體、細框線）', [2, 5, 9].every(r => {
-            const c = ws.getCell(r, 7);
-            return c.font?.bold && c.font?.name === 'Microsoft JhengHei' && c.alignment?.horizontal === 'left' && c.border?.top?.style === 'thin';
-        }));
+        R.check('抽籤資訊每一列都沒有被套成資料列樣式（項目粗體、靠左、微軟正黑體、細框線；內容微軟正黑體、細框線）', info.length >= 8 && info.every(({ row }) => {
+            const c = ws.getCell(row, 7);
+            const d = ws.getCell(row, 8);
+            return c.font?.bold && c.font?.name === 'Microsoft JhengHei' && c.alignment?.horizontal === 'left' && c.border?.top?.style === 'thin' &&
+                !d.font?.bold && d.font?.name === 'Microsoft JhengHei' && d.alignment?.horizontal === 'left' && d.border?.top?.style === 'thin';
+        }), `共 ${info.length} 列`);
+        // 重抽紀錄：抽籤次數緊接在抽籤時間之後（第 3 列），格式與其他項目相同
+        R.check('抽籤資訊第 3 列是「抽籤次數 = 第 1 次（本次開啟網頁後，同名社團的抽籤次數）」，其餘項目依序往下移一列',
+            v(3, 7) === '抽籤次數' && v(3, 8) === '第 1 次（本次開啟網頁後，同名社團的抽籤次數）' &&
+            info.map(x => x.label).join(',') === ['抽籤時間', '抽籤次數', ...ORDER.slice(1)].join(','),
+            `第 3 列：${v(3, 7)} = ${v(3, 8)}；${info.map(x => x.label).join(',')}`);
         // 資料表：D 欄的順序與錄取人數合併
         const rows = Array.from({ length: club.students.length }, (_, i) => String(v(i + 2, 4)));
         const kinds = rows.map(t => /^\d+$/.test(t) ? 'S' : /^備取 /.test(t) ? 'B' : t === '班級無法辨識' ? 'U' : t === '不符限制' ? 'D' : '?').join('');
@@ -494,6 +511,193 @@ async function pump(s, promise) {
         const bad = opts.filter(([k, t]) => f(k) !== t);
         return [opts.length === 7 && bad.length === 0, bad.map(([k, t]) => `${k}：${f(k)} ≠ ${t}`).join('；')];
     });
+}
+
+// ---- 16. 重抽紀錄：同名社團在本次開啟網頁後的抽籤次數（clubDrawCounts → club.drawRound）
+// 只有重新載入頁面才歸零；「全部清除」、清除這次的資料、下載後清空都不歸零，否則等於提供了不留紀錄的重抽方法。
+{
+    const TWO = '班級\t座號\t姓名\n301\t05\t測試生301_05\n302\t11\t測試生302_11';
+    const LISTED_NOTE = '清單裡已經有同名的社團，兩份抽籤結果都會匯出；只要保留新的結果，請先移除舊的那一個。';
+    const REDRAW_MSG = (n, listed = false) => `這個社團在這次開啟網頁後已經抽過 ${n} 次籤。再加入會重新抽籤，匯出檔的抽籤資訊會記錄為第 ${n + 1} 次抽籤。${listed ? LISTED_NOTE : ''}確定要重新抽籤嗎？`;
+    const ROUND_VALUE = (n) => `第 ${n} 次（本次開啟網頁後，同名社團的抽籤次數）`;
+    // 舊版沒有 clubDrawCounts 時回傳 undefined，讓個別檢查記成 FAIL
+    const safe = (s, code) => { try { return s.run(code); } catch (e) { return undefined; } };
+    const clubs = (s) => s.run('pastedClubs');
+    const lastClub = (s) => clubs(s).at(-1);
+    const rounds = (s) => clubs(s).map(c => c.drawRound).join(',');
+    const metaAt = (s, i) => (s.el('loaded-clubs-list').descendants().filter(el => el.classList.contains('loaded-club-info'))[i]?.innerHTML || '');
+    const removeAt = (s, i) => s.el('loaded-clubs-list').descendants().filter(el => el.classList.contains('loaded-club-delete'))[i].dispatch('click');
+    const redraws = (c) => c.messages.filter(m => /抽過/.test(m));
+    const noRoster = (m) => !/測試生|桌遊社|圍棋社|301|302/.test(m);
+
+    // 第一次加入 → 移除 → 再加入（確定）→ 移除 → 再加入（取消）
+    {
+        const s = loadSite();
+        const c = stubConfirm(s);
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：第一次加入時 drawRound 是 1、不跳 confirm', clubs(s).length === 1 && lastClub(s).drawRound === 1 && c.messages.length === 0,
+            `社團 ${clubs(s).length} 個，drawRound=${lastClub(s)?.drawRound}，confirm ${c.messages.length} 則`);
+        R.check('重抽：第一次抽籤時 meta 行不顯示「第 N 次抽籤」', clubs(s).length === 1 && !/次抽籤/.test(metaAt(s, 0)), metaAt(s, 0).replace(/<[^>]+>/g, ' ').replace(/測試生\S*/g, '').slice(0, 120));
+
+        removeAt(s, 0);
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：移除後再加入同名社團，跳出 1 則 confirm，文字只寫次數', redraws(c).length === 1 && redraws(c)[0] === REDRAW_MSG(1), redraws(c).join(' / '));
+        R.check('重抽：confirm 訊息不含社團名稱、測試姓名或班級', redraws(c).length === 1 && redraws(c).every(noRoster), redraws(c).join(' / '));
+        R.check('重抽：按確定後加入社團，drawRound 是 2', clubs(s).length === 1 && lastClub(s).drawRound === 2, `社團 ${clubs(s).length} 個，drawRound=${rounds(s)}`);
+        R.check('重抽：meta 行顯示「第 2 次抽籤」', /，第 2 次抽籤</.test(metaAt(s, 0)), metaAt(s, 0).replace(/<[^>]+>/g, ' ').replace(/測試生\S*/g, '').slice(0, 160));
+
+        removeAt(s, 0);
+        c.answer = false;
+        let lotteryCalls = 0;
+        const realLottery = s.ctx.runClubLottery;
+        s.ctx.runClubLottery = (...a) => { lotteryCalls++; return realLottery(...a); };
+        const alertsBefore = s.alerts.length;
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：confirm 按取消時不加入、不抽籤、不跳其他提醒', clubs(s).length === 0 && lotteryCalls === 0 && s.alerts.length === alertsBefore && redraws(c).length === 2 && redraws(c)[1] === REDRAW_MSG(2),
+            `社團 ${clubs(s).length} 個，抽籤 ${lotteryCalls} 次，confirm：${redraws(c).at(-1)}`);
+        R.check('重抽：按取消時保留輸入的社團名稱與名單，可以直接再按一次', s.el('paste-club-name').value === '桌遊社' && s.el('paste-text-area').value === TWO);
+        R.check('重抽：按取消不計次（計數仍是 2）', safe(s, 'clubDrawCounts.get("桌遊社")') === 2, `計數=${safe(s, 'clubDrawCounts.get("桌遊社")')}`);
+        c.answer = true;
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：取消後再按確定，記錄為第 3 次（取消的那次沒有算進去）', clubs(s).length === 1 && lastClub(s).drawRound === 3 && redraws(c).at(-1) === REDRAW_MSG(2) && lotteryCalls === 1,
+            `drawRound=${rounds(s)}，抽籤 ${lotteryCalls} 次`);
+    }
+
+    // 「全部清除」、清除這次的資料、下載後清空社團都不歸零
+    {
+        const s = loadSite();
+        const c = stubConfirm(s);
+        let downloads = 0;
+        s.ctx.triggerFileDownload = () => { downloads++; };
+        addClub(s, TWO, { name: '桌遊社' });
+        s.run('clearAllPastedClubs()');
+        const clearedAll = clubs(s).length === 0;
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：「全部清除」之後再加入，次數仍然累加（第 2 次）', clearedAll && clubs(s).length === 1 && lastClub(s).drawRound === 2 && redraws(c).at(-1) === REDRAW_MSG(1),
+            `清除後 ${clearedAll ? '0' : '仍有'} 個，drawRound=${rounds(s)}`);
+        s.run('manualHardResetAll()');
+        const reset = clubs(s).length === 0;
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：手動清除這次的資料（manualHardResetAll）之後再加入，次數仍然累加（第 3 次）', reset && clubs(s).length === 1 && lastClub(s).drawRound === 3 && redraws(c).at(-1) === REDRAW_MSG(2),
+            `清除後 ${reset ? '0' : '仍有'} 個，drawRound=${rounds(s)}`);
+        await s.run('processPastedData()');
+        await s.settle();
+        const exported = downloads === 1 && clubs(s).length === 0;
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：轉換下載後清空社團，再加入次數仍然累加（第 4 次）', exported && clubs(s).length === 1 && lastClub(s).drawRound === 4 && redraws(c).at(-1) === REDRAW_MSG(3),
+            `下載 ${downloads} 次，drawRound=${rounds(s)}`);
+    }
+
+    // 驗證失敗不計次；不同社團各自計數；前後空白與不可見字元視為同一個社團
+    {
+        const s = loadSite();
+        const c = stubConfirm(s);
+        addClub(s, TWO, { name: '桌遊社', quota: '0' });
+        addClub(s, '', { name: '桌遊社' });
+        addClub(s, '這不是名單', { name: '桌遊社' });
+        const blocked = s.alerts.length === 3 && clubs(s).length === 0;
+        R.check('重抽：名額錯誤、沒有名單、讀不到學生時不計次', blocked && safe(s, 'clubDrawCounts.size') === 0, `提醒 ${s.alerts.length} 則，計數表 ${safe(s, 'clubDrawCounts.size')} 筆`);
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：驗證失敗之後第一次成功加入仍是第 1 次，不跳 confirm', clubs(s).length === 1 && lastClub(s).drawRound === 1 && c.messages.length === 0, `drawRound=${rounds(s)}，confirm ${c.messages.length} 則`);
+
+        const alertsBefore = s.alerts.length;
+        addClub(s, TWO, { name: '桌遊社', quota: '0' });
+        R.check('重抽：已抽過的社團名額填錯時，先提醒名額、不跳重抽 confirm、不計次', s.alerts.length === alertsBefore + 1 && /正取人數/.test(s.alerts.at(-1)) && c.messages.length === 0 && safe(s, 'clubDrawCounts.get("桌遊社")') === 1,
+            `confirm ${c.messages.length} 則，計數=${safe(s, 'clubDrawCounts.get("桌遊社")')}`);
+
+        addClub(s, TWO, { name: '圍棋社' });
+        R.check('重抽：不同社團名稱各自計數（圍棋社第 1 次、不跳 confirm）', clubs(s).length === 2 && lastClub(s).drawRound === 1 && c.messages.length === 0, `drawRound=${rounds(s)}`);
+
+        const SP = String.fromCharCode(0x3000);
+        const WJ = String.fromCharCode(0x2060);
+        addClub(s, TWO, { name: `${ZWSP} 桌遊社${SP}${WJ}` });
+        // 第 1 個桌遊社還在清單裡，所以 confirm 多一句同名提醒
+        R.check('重抽：名稱前後有空白或不可見字元時視為同一個社團（跳 confirm，記為第 2 次）', clubs(s).length === 3 && lastClub(s).drawRound === 2 && redraws(c).length === 1 && redraws(c)[0] === REDRAW_MSG(1, true),
+            `drawRound=${rounds(s)}，confirm：${redraws(c).join(' / ')}`);
+        R.check('重抽：計數表的鍵是清除不可見字元與空白後的名稱', JSON.stringify(safe(s, '[...clubDrawCounts.entries()]')) === JSON.stringify([['桌遊社', 2], ['圍棋社', 1]]),
+            JSON.stringify(safe(s, '[...clubDrawCounts.entries()]')));
+    }
+
+    // 寫法不同但看起來是同一個名稱：大小寫、全形英數、名稱中間的空白都算同一個社團，不可藉此不留紀錄地重抽
+    for (const [first, second, label] of [
+        ['Lego社', 'LEGO社', '英文大小寫不同'],
+        ['AI社', 'ＡＩ社', '全形英數'],
+        ['桌遊社', '桌遊 社', '名稱中間多一個空白'],
+        ['圍棋社', `圍${String.fromCharCode(0x3000)}棋社`, '名稱中間多一個全形空白'],
+    ]) {
+        const s = loadSite();
+        const c = stubConfirm(s);
+        addClub(s, TWO, { name: first });
+        removeAt(s, 0);
+        addClub(s, TWO, { name: second });
+        R.check(`重抽：${label}（${first} → ${second}）視為同一個社團，跳 confirm 並記為第 2 次`,
+            redraws(c).length === 1 && redraws(c)[0] === REDRAW_MSG(1) && clubs(s).length === 1 && lastClub(s).drawRound === 2,
+            `confirm ${redraws(c).length} 則，drawRound=${rounds(s)}`);
+    }
+
+    // 社團名稱只有不可見字元：要當成還沒有填社團名稱
+    {
+        const s = loadSite();
+        const c = stubConfirm(s);
+        addClub(s, TWO, { name: `${ZWSP}${String.fromCharCode(0x2060)} ` });
+        R.check('重抽：社團名稱只有不可見字元時，提醒還沒有填社團名稱，不加入也不計次',
+            clubs(s).length === 0 && s.alerts.length === 1 && /還沒有填社團名稱/.test(s.alerts[0]) && safe(s, 'clubDrawCounts.size') === 0 && c.messages.length === 0,
+            `社團 ${clubs(s).length} 個，提醒：${s.alerts.join(' / ')}，計數表 ${safe(s, 'clubDrawCounts.size')} 筆`);
+    }
+
+    // 同名社團還在清單裡時，confirm 多一句提醒；已移除時不加
+    {
+        const s = loadSite();
+        const c = stubConfirm(s);
+        addClub(s, TWO, { name: '桌遊社' });
+        addClub(s, TWO, { name: '桌遊社' });
+        R.check('重抽：同名社團還在清單裡時，confirm 提醒兩份都會匯出', redraws(c).length === 1 && redraws(c)[0] === REDRAW_MSG(1, true) && clubs(s).length === 2,
+            redraws(c).join(' / '));
+    }
+
+    // 匯出檔的「抽籤次數」列（drawInfoRows 的內容；實際寫入 Excel 的列位置在第 14 節檢查）
+    {
+        const s = loadSite();
+        stubConfirm(s);
+        addClub(s, TWO, { name: '桌遊社' });
+        removeAt(s, 0);
+        addClub(s, TWO, { name: '桌遊社' });
+        const rowsOf = (club) => { try { return s.fn('drawInfoRows')(club); } catch (e) { return []; } };
+        const roundRow = (club) => rowsOf(club).find(([l]) => l === '抽籤次數');
+        const labels = rowsOf(lastClub(s)).map(([l]) => l);
+        R.check('重抽：抽籤資訊有「抽籤次數」列，緊接在「抽籤時間」之後，值是「第 2 次（…）」',
+            roundRow(lastClub(s))?.[1] === ROUND_VALUE(2) && labels.indexOf('抽籤次數') === labels.indexOf('抽籤時間') + 1,
+            `${labels.join(',')}；${roundRow(lastClub(s))?.[1]}`);
+        const legacy = { ...lastClub(s) };
+        delete legacy.drawRound;
+        R.check('重抽：舊的社團物件沒有 drawRound 時，抽籤次數寫「未記錄」', roundRow(legacy)?.[1] === '未記錄', String(roundRow(legacy)?.[1]));
+        R.check('重抽：抽籤資訊的內容不含社團名稱或測試姓名', rowsOf(lastClub(s)).length > 0 && rowsOf(lastClub(s)).every(([l, v]) => noRoster(`${l}${v}`)));
+    }
+
+    // 計數只放在記憶體：localStorage、sessionStorage 都沒有寫入
+    {
+        const s = loadSite();
+        stubConfirm(s);
+        const writes = [];
+        const session = new Map();
+        s.ctx.sessionStorage = {
+            getItem: k => (session.has(k) ? session.get(k) : null),
+            setItem: (k, v) => { writes.push(['session', k, String(v)]); session.set(k, String(v)); },
+            removeItem: k => session.delete(k),
+            clear: () => session.clear(),
+        };
+        const realSet = s.ctx.localStorage.setItem;
+        s.ctx.localStorage.setItem = (k, v) => { writes.push(['local', k, String(v)]); return realSet(k, v); };
+        for (let i = 0; i < 3; i++) {
+            addClub(s, TWO, { name: '桌遊社' });
+            if (clubs(s).length) removeAt(s, 0);
+        }
+        addClub(s, TWO, { name: '桌遊社' });
+        const counted = lastClub(s)?.drawRound === 4;
+        const leaked = writes.filter(([, k, v]) => /drawRound|DrawCount|抽籤|次|桌遊社|測試生/.test(`${k}${v}`));
+        R.check('重抽：抽了 4 次之後，計數沒有寫進 localStorage 或 sessionStorage', counted && leaked.length === 0 && session.size === 0 && [...s.storage.values()].every(v => !/drawRound|DrawCount|抽籤|測試生/.test(v)),
+            `drawRound=${lastClub(s)?.drawRound}，可疑寫入 ${leaked.length} 筆，sessionStorage ${session.size} 筆，localStorage 鍵：${[...s.storage.keys()].join(',') || '（無）'}`);
+    }
 }
 
 R.done();

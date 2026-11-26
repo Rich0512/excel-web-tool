@@ -44,7 +44,8 @@ function mergeAndStyleCountCell(ws, startRow, endRow, count, grade) {
 
 /**
  * 抽籤資訊的內容（標題 → 值）。都是抽籤設定與筆數，不含學生資料。
- * 舊的社團物件沒有某一項時，筆數以名單推算，抽籤時間寫「未記錄」
+ * 舊的社團物件沒有某一項時，筆數以名單推算，抽籤時間與抽籤次數寫「未記錄」。
+ * 抽籤次數是本次開啟網頁後同名社團第幾次抽籤（app.js 的 clubDrawCounts），大於 1 表示移除後重新抽過籤
  */
 function drawInfoRows(club) {
     const students = Array.isArray(club.students) ? club.students : [];
@@ -56,6 +57,9 @@ function drawInfoRows(club) {
     // 「報名人數」與畫面上的「報名 N 人」相同，是去除重複後的人數；重複的筆數另列一行
     return [
         ['抽籤時間', formatDrawTime(club.drawnAt, true) || '未記錄'],
+        ['抽籤次數', Number.isInteger(club.drawRound) && club.drawRound >= 1
+            ? `第 ${club.drawRound} 次（本次開啟網頁後，同名社團的抽籤次數）`
+            : '未記錄'],
         ['正取人數', `${selectedCount} 人（名額 ${club.quota} 人）`],
         ['年級限制', `${gradeOptionLabel(club.gradeStart)} 至 ${gradeOptionLabel(club.gradeEnd)}`],
         ['優先順序', PRIORITY_LABELS[club.priority] || String(club.priority || '')],
