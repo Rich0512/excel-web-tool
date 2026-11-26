@@ -1,5 +1,5 @@
 // Excel 模式轉換後的週課表內容：單一清單（時段欄位、衝突備註、「無」與空白、同名同班、合併跨列、新生、寒暑假標籤）、
-// 多工作表（工作表對到星期、衝突、新生、寒暑假標籤）、晨間時段不算衝突，以及匯出檔「課程與學生清單」工作表
+// 多工作表（工作表對到星期、衝突、新生、寒暑假標籤）、晨間時段的衝突（同一晨間欄位兩個社團算衝突，晨間與下午不算），以及匯出檔「課程與學生清單」工作表
 // （用真的 ExcelJS 讀回，核對表頭、每一列與排序）。至少一個案例從第 1 步上傳、第 2 步對照表、按「開始轉換」一路走到下載。
 // 名冊都是虛構的假工作表（測試生301_05…），不讀取任何真實檔案。
 import vm from 'node:vm';
@@ -258,7 +258,7 @@ const MORNING_TF = '晨間(週二、週五)';
 const MULTI = [
     st('301', '5', '測試生301_05',
         { 週一: '籃球社', 週三: '桌遊社, 直笛社', 週四: '足球社, 籃球社', [MORNING_TF]: '晨間扯鈴, 晨間跳繩' },
-        [conflict('週三', '桌遊社, 直笛社'), conflict('週四', '足球社, 籃球社')]),
+        [conflict('週三', '桌遊社, 直笛社'), conflict('週四', '足球社, 籃球社'), conflict(MORNING_TF, '晨間扯鈴, 晨間跳繩')]),
     st('301', '7', '測試生301_05', { 週一: '圍棋社', 週四: '圍棋社' }),
     st('302', '11', '測試生302_11', { 週一: '圍棋社', 週三: '桌遊社', 週四: '圍棋社' }),
     st('303', '8', '測試生303_08', { 週三: '直笛社' }),
@@ -310,7 +310,7 @@ const MULTI_FRESH = [st('新生', '', '測試生新生_01', { 週三: '桌遊社
 }
 
 // ============================================================
-// 4. 晨間時段：同一個晨間欄位有多個社團不算衝突
+// 4. 晨間時段：同一個晨間欄位有多個社團算衝突；晨間與下午同一天不算
 // ============================================================
 {
     const s = loadSite();
@@ -328,11 +328,11 @@ const MULTI_FRESH = [st('新生', '', '測試生新生_01', { 週三: '桌遊社
     const lib = loadRealExcelJS(s);
     const res = runMapping(s);
     const expected = [
-        st('401', '1', '測試生401_01', { 週一: '直笛社, 桌遊社', [MT]: '晨間扯鈴, 晨間跳繩' }, [conflict('週一', '直笛社, 桌遊社')]),
+        st('401', '1', '測試生401_01', { 週一: '直笛社, 桌遊社', [MT]: '晨間扯鈴, 晨間跳繩' }, [conflict('週一', '直笛社, 桌遊社'), conflict(MT, '晨間扯鈴, 晨間跳繩')]),
         st('401', '2', '測試生401_02', { 週一: '直笛社', [MT]: '晨間扯鈴' }),
     ];
     checkStudents('晨間（單一清單）', res.resultData, expected);
-    R.check('晨間（單一清單）：晨間兩個社團不算衝突，只有週一的衝突一則', res.resultData[0]?.remarks.length === 1, JSON.stringify(res.resultData[0]?.remarks));
+    R.check('晨間（單一清單）：週一下午與晨間兩個社團各一則衝突', res.resultData[0]?.remarks.length === 2, JSON.stringify(res.resultData[0]?.remarks));
     const r = await clickConvert(s, lib);
     if (r.file) checkExport('匯出檔（晨間欄位排在週五之後）', r.file, expected, [...WEEKDAYS, MT], res.resultData);
     else R.check('匯出檔（晨間欄位）：匯出成功', false, r.alerts.join(' / '));
@@ -342,17 +342,17 @@ const MULTI_FRESH = [st('新生', '', '測試生新生_01', { 週三: '桌遊社
     const finalize = s.fn('finalizeStudents');
     const run = (days) => finalize(new Map([['k', { class: '401', seat: '1', name: '測試生401_01', days }]])).resultData[0];
     const ALL = '晨間(週一、週二、週四、週五)';
-    R.test('finalizeStudents：晨間(週二、週五) 兩個社團、週五一個社團 → 沒有衝突', () => {
-        const r = run({ '晨間(週二、週五)': ['晨間扯鈴', '晨間跳繩'], 週五: ['足球社'] });
-        return [r.remarks.length === 0 && r.schedule['晨間(週二、週五)'] === '晨間扯鈴, 晨間跳繩' && r.schedule['週五'] === '足球社', canon(r)];
+    R.test('finalizeStudents：晨間(週二、週五) 一個社團、週五一個社團 → 沒有衝突（晨間與下午不算）', () => {
+        const r = run({ '晨間(週二、週五)': ['晨間扯鈴'], 週五: ['足球社'] });
+        return [r.remarks.length === 0 && r.schedule['晨間(週二、週五)'] === '晨間扯鈴' && r.schedule['週五'] === '足球社', canon(r)];
     });
-    R.test(`finalizeStudents：${ALL} 三個社團 → 沒有衝突`, () => {
+    R.test(`finalizeStudents：${ALL} 三個社團 → 一則衝突`, () => {
         const r = run({ [ALL]: ['晨間扯鈴', '晨間跳繩', '晨間游泳'] });
-        return [r.remarks.length === 0 && r.schedule[ALL] === '晨間扯鈴, 晨間跳繩, 晨間游泳', canon(r)];
+        return [JSON.stringify(r.remarks) === JSON.stringify([conflict(ALL, '晨間扯鈴, 晨間跳繩, 晨間游泳')]) && r.schedule[ALL] === '晨間扯鈴, 晨間跳繩, 晨間游泳', canon(r)];
     });
-    R.test('finalizeStudents：週五兩個社團 → 一則衝突（晨間兩個社團不算）', () => {
+    R.test('finalizeStudents：週五兩個社團、晨間(週二、週五) 兩個社團 → 各一則衝突', () => {
         const r = run({ 週五: ['足球社', '籃球社'], '晨間(週二、週五)': ['晨間扯鈴', '晨間跳繩'] });
-        return [JSON.stringify(r.remarks) === JSON.stringify([conflict('週五', '足球社, 籃球社')]), JSON.stringify(r.remarks)];
+        return [JSON.stringify(r.remarks) === JSON.stringify([conflict('週五', '足球社, 籃球社'), conflict('晨間(週二、週五)', '晨間扯鈴, 晨間跳繩')]), JSON.stringify(r.remarks)];
     });
     R.test('finalizeStudents：週六、週日也算衝突，衝突備註依星期順序（週一 → 週日）', () => {
         const r = run({ 週日: ['甲社', '乙社'], [ALL]: ['晨間扯鈴'], 週一: ['丙社', '丁社'], 週六: ['戊社', '己社'] });

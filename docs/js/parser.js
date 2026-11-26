@@ -30,7 +30,9 @@ const FIELD_DETECTION_RULES = {
  */
 function normalizePastedText(text) {
     if (!text) return "";
-    let clean = cleanInvisibleChars(text);
+    // 不去掉頭尾的 Tab：第一列的班級、座號空白時（「\t\t測試生新生_01」），去掉會讓姓名跑到班級欄。
+    // 前後加上 \u0001 再切掉，cleanInvisibleChars 的 trim 就不會去掉原本的頭尾
+    let clean = cleanInvisibleChars('\u0001' + text + '\u0001').slice(1, -1);
     
     let inQuotes = false;
     let result = '';
@@ -196,66 +198,214 @@ function loadScheduleFromExcel(workbook) {
     return foundAny ? mapping : null;
 }
 
+// ---------- 貼上名單的切欄與欄位標題列 ----------
+
+// 找欄位標題列時看的行數。標題列上方可能有社團標題與好幾行說明，所以不只看前 5 行。
+// 推測社團名稱與星期（findPastedHeaderLine）也用這個行數，解析與推測找到的標題列才會一樣
+const PASTE_HEADER_SCAN_ROWS = 30;
+// 欄位標題儲存格的最大字數（去掉空白與括號裡的說明後）。超過的是一段文字或整行標題，不是欄位名稱
+const PASTE_HEADER_CELL_MAX = 12;
+// 不是座號的「號」：序號、學號、編號（舊版把「序號」當成座號欄）
+const PASTE_NOT_SEAT_RE = /學號|序號|編號|學生編號/;
+// 欄位名稱後面括號裡的說明（「班級(例:301)」）：判斷前先去掉，裡面的數字不算
+const PASTE_HEADER_NOTE_RE = /[(（\[【][^)）\]】]*[)）\]】]/g;
+
+// 清理一格：不可見字元、兩側的引號與空白
+function cleanPastedCell(c) {
+    return cleanInvisibleChars(c).replace(/^["']+|["']+$/g, '').trim();
+}
+
+/**
+ * 判斷一格是哪些欄位的名稱，回傳 'class'、'seat'、'name' 的陣列（不是欄位名稱時是空陣列）。
+ * 只接受短的欄位名稱：「班級」「學生姓名」「座號」「班級(例:301)」才算，「桌遊社 A班 錄取名單」「三年二班」與含有「名」的姓名都不算
+ * （舊版只要含有「班」與「姓／名」就當成標題，社團標題與資料列都會被誤認）。
+ * 合在一格的「班級座號」「座號姓名」同時算兩種（和舊版一樣），值的拆法見 parsePastedText
+ */
+function pasteHeaderCellKinds(cell) {
+    const scores = pasteHeaderCellScores(cell);
+    return ['name', 'seat', 'class'].filter(k => scores[k] > 0);
+}
+
+// 不是學生本人的欄位（家長、監護人的姓名等）：不能當成學生的姓名、班級、座號欄。
+// 其他三個字詞（不是學生本人的字樣）用 \u 寫法：這幾個字不在介面字型檔裡
+const PASTE_NOT_STUDENT_RE = /家長|監護|\u7236|母|\u806f\u7d61|\u7dca\u6025/;
+// 整格就是欄位名稱（2 分）優先於只是含有欄位字詞（1 分），例如「姓名」優先於「中文姓名」
+const PASTE_EXACT_HEADERS = {
+    name: ['姓名', '學生姓名', '名字', '學生名', '姓', '名', 'name', 'studentname'],
+    seat: ['座號', '座', '號', '座次', 'seat', 'seatno'],
+    class: ['班級', '班別', '班', '年班', 'class'],
+};
+const PASTE_HEADER_WORDS = { name: ['姓名', '名字'], seat: ['座號'], class: ['班級', '班別'] };
+
+/**
+ * 一格當成各欄位名稱的分數：{ name, seat, class }，2 是整格就是欄位名稱，1 是含有欄位字詞，0 是不是
+ */
+function pasteHeaderCellScores(cell) {
+    const none = { name: 0, seat: 0, class: 0 };
+    const v = toHalfwidthAlnum(String(cell || '')).replace(PASTE_HEADER_NOTE_RE, '').replace(/[\s:：*＊]/g, '').toLowerCase();
+    if (!v || v.length > PASTE_HEADER_CELL_MAX || /[0-9]/.test(v)) return none;
+    if (PASTE_NOT_SEAT_RE.test(v) || PASTE_NOT_STUDENT_RE.test(v)) return none;
+    const score = (kind) => PASTE_EXACT_HEADERS[kind].includes(v) ? 2 : (PASTE_HEADER_WORDS[kind].some(w => v.includes(w)) ? 1 : 0);
+    return { name: score('name'), seat: score('seat'), class: score('class') };
+}
+
+/**
+ * 一列是不是欄位標題列：至少兩格是欄位名稱，有姓名欄，另外有班級或座號欄，而且沒有純數字的儲存格。
+ * 是的話回傳 { colClass, colSeat, colName }（沒有的欄位是 -1），否則回傳 null
+ */
+function matchPasteHeaderRow(row) {
+    if (row.filter(c => c).length < 2) return null;
+    if (row.some(c => /^\d+$/.test(toHalfwidthAlnum(c)))) return null;
+    const cols = { colClass: -1, colSeat: -1, colName: -1 };
+    const key = { class: 'colClass', seat: 'colSeat', name: 'colName' };
+    const best = { class: 0, seat: 0, name: 0 };
+    let headerCells = 0;
+    // 每種欄位取分數最高的那一格，同分取最前面的（「中文姓名」和「姓名」都有時用「姓名」）
+    row.forEach((c, idx) => {
+        const scores = pasteHeaderCellScores(c);
+        if (scores.name || scores.seat || scores.class) headerCells++;
+        Object.keys(key).forEach(kind => {
+            if (scores[kind] > best[kind]) {
+                best[kind] = scores[kind];
+                cols[key[kind]] = idx;
+            }
+        });
+    });
+    if (headerCells < 2 || cols.colName === -1 || (cols.colClass === -1 && cols.colSeat === -1)) return null;
+    return cols;
+}
+
+/**
+ * 欄位標題列是第幾行（找不到是 -1），看前 PASTE_HEADER_SCAN_ROWS 行。lines 是已經去掉空行的各行文字。
+ * 解析名單（parsePastedText）與推測社團名稱、星期（findPastedHeaderLine）共用，解析與推測找到的標題列才會一樣
+ */
+/**
+ * 貼上的內容拆成行（parsePastedText 與 guessClubAndDay 共用，行號才會一樣）：
+ * 儲存格內換行先變成空白，每一格各自清理，保留行首與行尾的 Tab（班級、座號空白的新生「\t\t測試生新生_01」，
+ * 整行 trim 會把開頭的空儲存格去掉，姓名跑到班級欄）。只有 Tab 與空白的行是空行，不列入
+ */
+function splitPastedLines(text) {
+    return normalizePastedText(text).split(/\r?\n/)
+        .map(l => l.split('\t').map(c => cleanInvisibleChars(c)).join('\t'))
+        .filter(l => l.replace(/\t/g, '').length > 0);
+}
+
+// 各行切成儲存格，切欄方式依整份內容決定（見 choosePasteSplitter）
+function splitPastedRows(lines) {
+    const split = choosePasteSplitter(lines);
+    return lines.map(line => split(line).map(cleanPastedCell));
+}
+
+function findPasteHeaderRowIndex(rows) {
+    for (let i = 0; i < Math.min(PASTE_HEADER_SCAN_ROWS, rows.length); i++) {
+        if (matchPasteHeaderRow(rows[i])) return i;
+    }
+    return -1;
+}
+
+/**
+ * 決定切欄方式，依整份內容而不是第一行（第一行常是沒有 Tab 的社團標題）：
+ * - 任何一行有後面接著內容的 Tab：Tab（從網頁或 Excel 複製的表格）。沒有 Tab 的行（標題、說明）整行是一格。
+ *   只有行尾的 Tab 不算（空白分隔的名單行尾多一個 Tab 時，仍用空白切欄）
+ * - 沒有 Tab：能拆成多欄的行裡，一半以上用兩個以上的空白隔開時用連續空白，否則用空白（含全形空白）或逗號
+ */
+function choosePasteSplitter(lines) {
+    if (lines.some(l => /\t[^\t]/.test(l))) return (l) => l.split('\t');
+    const multiCell = (split) => lines.filter(l => split(l).filter(c => c.trim()).length >= 2).length;
+    const byMultiSpace = (l) => l.split(/\s{2,}|\t/);
+    const bySpace = (l) => l.split(/[,\s]+/);
+    const m = multiCell(byMultiSpace);
+    const s = multiCell(bySpace);
+    return m > 0 && m * 2 >= s ? byMultiSpace : bySpace;
+}
+
+/**
+ * 沒有欄位標題列時，名單上方的社團標題或說明列（不是學生）：沒有 1 到 3 位的純數字（班級、座號），而且
+ * 只有一格（其他列有多欄時），或含有星期、標題字詞（錄取、名單、名冊…），或本身就是欄位標題列
+ */
+function isPasteTitleRow(row, multiColumn) {
+    if (row.some(c => /^\d{1,3}$/.test(toHalfwidthAlnum(c)))) return false;
+    // 看切出幾格而不是有內容的格數：班級、座號空白的新生（「\t\t測試生新生_01」）仍有 3 格，不是標題
+    if (multiColumn && row.length < 2) return true;
+    const filled = row.filter(c => c);
+    const joined = toHalfwidthAlnum(filled.join(' '));
+    return PASTE_DAY_RE.test(joined) || PASTE_TITLE_WORD_RE.test(joined) || matchPasteHeaderRow(row) !== null;
+}
+
+/**
+ * 沒有欄位標題列時，拿來推測欄位的資料列：有像姓名的儲存格，另一格像班級或座號，含有數字，而且沒有標題字詞
+ * （「桌遊社 A班 錄取名單」用空白切開後有「A班」「錄取名單」，不能當成資料列）
+ */
+function isPasteSampleDataRow(row) {
+    // 兩欄（「301\t王小明」）也可以；舊版要 3 格以上，兩欄的名單一位學生都讀不到
+    if (row.length < 2 || !row.some(c => /[0-9]/.test(toHalfwidthAlnum(c)))) return false;
+    if (PASTE_TITLE_WORD_RE.test(row.join(' '))) return false;
+    let n = -1, c = -1, s = -1;
+    row.forEach((val, idx) => {
+        if (!val) return;
+        if (FIELD_DETECTION_RULES.name(val)) n = idx;
+        if (FIELD_DETECTION_RULES.class(val)) c = idx;
+        if (FIELD_DETECTION_RULES.seat(val, idx, c)) s = idx;
+    });
+    return n !== -1 && ((c !== -1 && c !== n) || (s !== -1 && s !== n));
+}
+
+/**
+ * 沒有欄位標題列時，找出推測欄位用的那一列（找不到是 -1）。
+ * 只看像學生資料的列（isPasteSampleDataRow），取最多列共有的格數，再取這種格數的第一列；
+ * 格數一樣多時以最後一列的格數為準（標題在上方，名單在下方）。
+ * 「桌遊社 限額 30 人」用空白切開也像資料（「限額」像姓名、「30」像班級），但格數和下面的名單不同
+ */
+function pickPasteSampleRow(rows) {
+    const candidates = [];
+    rows.forEach((r, i) => { if (isPasteSampleDataRow(r)) candidates.push(i); });
+    if (candidates.length === 0) return -1;
+    const counts = new Map();
+    candidates.forEach(i => counts.set(rows[i].length, (counts.get(rows[i].length) || 0) + 1));
+    let best = rows[candidates[candidates.length - 1]].length;
+    counts.forEach((n, len) => { if (n > counts.get(best)) best = len; });
+    return candidates.find(i => rows[i].length === best);
+}
+
 // 智慧解析直接貼上之文字/表格 (Tab 分隔)
 function parsePastedText(text) {
     if (!text) return [];
-    const normalized = normalizePastedText(text);
-    const lines = normalized.split(/\r?\n/)
-        .map(l => cleanInvisibleChars(l))
-        .filter(l => l.length > 0);
+    // 保留行首與行尾的 Tab（見 splitPastedLines）
+    const lines = splitPastedLines(text);
     if (lines.length === 0) return [];
-    
-    // 輔助清洗儲存格兩側引號與空白
-    const cleanCell = (c) => {
-        const str = cleanInvisibleChars(c);
-        return str.replace(/^["']+|["']+$/g, '').trim();
-    };
 
-    // 預設以 Tab 分割（網頁表格複製之標準格式）
-    let rows = lines.map(line => line.split('\t').map(cleanCell));
-    
-    // 若無 Tab，嘗試多空格或逗號分割
-    if (rows[0].length <= 1) {
-        rows = lines.map(line => line.split(/\s{2,}|\t/).map(cleanCell));
-    }
-    if (rows[0].length <= 1) {
-        rows = lines.map(line => line.split(/[,\s]+/).map(cleanCell));
-    }
-    
-    let headerIdx = -1;
+    const cleanCell = cleanPastedCell;
+
+    // 切欄方式依整份內容決定（見 choosePasteSplitter），不只看第一行
+    const rows = splitPastedRows(lines);
+    const multiColumn = rows.some(r => r.filter(c => c).length >= 2);
+
     let colClass = -1, colSeat = -1, colName = -1;
-    
-    // 1. 先嘗試掃描前 5 列尋找標準表頭
-    for (let i = 0; i < Math.min(5, rows.length); i++) {
-        const row = rows[i];
-        const cIdx = row.findIndex(c => c.includes('班'));
-        const sIdx = row.findIndex(c => (c.includes('座') || c.includes('號')) && !c.includes('學'));
-        const nIdx = row.findIndex(c => c.includes('姓') || c.includes('名'));
-        
-        if (nIdx !== -1 && (cIdx !== -1 || sIdx !== -1)) {
-            headerIdx = i;
-            colClass = cIdx;
-            colSeat = sIdx;
-            colName = nIdx;
-            break;
-        }
-    }
-    
+    // 沒有欄位標題列時，從這一列開始讀（跳過上方的社團標題與說明）
+    let dataStart = 0;
+
+    // 1. 找欄位標題列（標題列上方可能有社團標題與說明，見 matchPasteHeaderRow）
+    const headerIdx = findPasteHeaderRowIndex(rows);
+    if (headerIdx !== -1) ({ colClass, colSeat, colName } = matchPasteHeaderRow(rows[headerIdx]));
+
     // 2. 若無表頭 (最糟情況下)，啟用智慧推測 (根據規則進行欄位分類)
     if (headerIdx === -1) {
         let sampleRow = null;
-        for (let i = 0; i < rows.length; i++) {
-            if (rows[i].length >= 3 && rows[i].some(c => c.length > 0)) {
-                sampleRow = rows[i];
-                break;
-            }
+        // 先找看起來就是學生資料的列（見 pickPasteSampleRow）；找不到時退回第一個有 3 格以上的列（和舊版相同）
+        let sampleIdx = pickPasteSampleRow(rows);
+        if (sampleIdx === -1) {
+            sampleIdx = rows.findIndex(r => r.length >= 3 && r.some(c => c.length > 0));
         }
+        if (sampleIdx !== -1) sampleRow = rows[sampleIdx];
 
         if (sampleRow) {
             let guessedClass = -1;
             let guessedSeat = -1;
             let guessedName = -1;
 
+            // 班級欄：「三年二班」「301」優先於兩位數（「05」也符合班級規則，舊版取最後一個，
+            // 「301 05 王小明」會把座號讀成班級，班級無法辨識就不能抽籤）；同分取最前面的
+            let classScore = 0;
             for (let idx = 0; idx < sampleRow.length; idx++) {
                 const val = sampleRow[idx];
                 if (!val) continue;
@@ -264,10 +414,20 @@ function parsePastedText(text) {
                     guessedName = idx;
                 }
                 if (FIELD_DETECTION_RULES.class(val)) {
-                    guessedClass = idx;
+                    const score = /^\d{2}$/.test(cleanInvisibleChars(val)) ? 1 : 2;
+                    if (score > classScore) {
+                        classScore = score;
+                        guessedClass = idx;
+                    }
                 }
+            }
+            // 座號欄：班級欄之後第一個符合座號規則的儲存格
+            for (let idx = 0; idx < sampleRow.length; idx++) {
+                const val = sampleRow[idx];
+                if (!val || idx === guessedClass || idx === guessedName) continue;
                 if (FIELD_DETECTION_RULES.seat(val, idx, guessedClass)) {
                     guessedSeat = idx;
+                    break;
                 }
             }
 
@@ -282,29 +442,55 @@ function parsePastedText(text) {
             colSeat = 1;
             colName = 2;
         }
+
+        // 名單上方的社團標題與說明不是學生：標題字詞、星期、只有一格，或班級、座號欄的值不像班級、座號
+        // （「桌遊社 限額 30 人」的班級欄是「桌遊社」）
+        const fitsColumns = (row) => {
+            const cls = colClass < row.length ? row[colClass] : '';
+            const seat = colSeat < row.length ? row[colSeat] : '';
+            return (!cls || FIELD_DETECTION_RULES.class(cls)) && (!seat || /^\d{1,2}$/.test(toHalfwidthAlnum(seat)));
+        };
+        while (dataStart < sampleIdx && (isPasteTitleRow(rows[dataStart], multiColumn) || !fitsColumns(rows[dataStart]))) dataStart++;
     }
-    
+
     const students = [];
-    const startRow = headerIdx + 1;
-    
+    const startRow = headerIdx === -1 ? dataStart : headerIdx + 1;
+
     for (let i = startRow; i < rows.length; i++) {
         const row = rows[i];
         const rawName = row[colName];
         if (!rawName) continue;
         const nameVal = cleanCell(rawName);
         if (!nameVal) continue;
-        
-        if (isTotalRow(nameVal)) {
+
+        // 合計列：「合計」可能在姓名欄，也可能在班級欄（「合計\t\t2」），和 Excel 模式一樣兩欄都看
+        let classVal = (colClass !== -1 && colClass < row.length) ? cleanCell(row[colClass]) : "";
+        if (isTotalRow(nameVal, classVal)) {
             continue;
         }
-        
-        const classVal = (colClass !== -1 && colClass < row.length) ? cleanCell(row[colClass]) : "";
-        const seatVal = (colSeat !== -1 && colSeat < row.length) ? cleanCell(row[colSeat]) : "";
-        
+        // 欄位標題列（標題列沒被認出，或分頁複製時重複出現）不是學生：不可多出一位叫「姓名」的學生
+        if (pasteHeaderCellKinds(nameVal).includes('name') || matchPasteHeaderRow(row)) {
+            continue;
+        }
+
+        let seatVal = (colSeat !== -1 && colSeat < row.length) ? cleanCell(row[colSeat]) : "";
+        let studentName = nameVal;
+        // 欄位標題是「班級座號」（一格）：「30105」拆成班級 301、座號 05；拆不開時兩欄都用原本的值（和舊版一樣）
+        if (colSeat !== -1 && colSeat === colClass) {
+            const m = /^(\d{3})(\d{2})$/.exec(toHalfwidthAlnum(classVal));
+            if (m) [classVal, seatVal] = [m[1], m[2]];
+        }
+        // 欄位標題是「座號姓名」（一格）：「05王小明」拆成座號 05、姓名王小明；拆不開時座號留空
+        if (colSeat !== -1 && colSeat === colName) {
+            const m = /^(\d{1,2})\s*(\D.*)$/.exec(toHalfwidthAlnum(nameVal));
+            seatVal = m ? m[1] : '';
+            if (m) studentName = nameVal.slice(nameVal.length - m[2].length);
+        }
+
         students.push({
             class: classVal,
             seat: seatVal,
-            name: nameVal
+            name: studentName
         });
     }
     
@@ -331,7 +517,13 @@ const PASTE_HEADER_TOKENS = ['班', '座', '名', '號', '班級', '座號', '�
 // 星期選單的預設值（index.html 的第一個選項）
 const PASTE_DEFAULT_DAY = '週一';
 
-function findPastedHeaderLine(lines) {
+/**
+ * 欄位標題列是第幾行。先用解析名單時的判斷（findPasteHeaderRowIndex：同樣的切欄方式、同樣看前 30 行），
+ * 解析與推測找到的標題列才會一樣；找不到時才用舊的寬鬆規則（前 10 行內有兩個以上的欄位字詞），維持原本的推測結果
+ */
+function findPastedHeaderLine(lines, rows) {
+    const strict = findPasteHeaderRowIndex(rows);
+    if (strict !== -1) return strict;
     for (let i = 0; i < Math.min(10, lines.length); i++) {
         const hits = PASTE_HEADER_KEYWORDS.filter(kw => lines[i].includes(kw)).length;
         if (hits >= 2) return i;
@@ -521,14 +713,20 @@ function guessClubNameBeforeHeader(line) {
 function guessClubAndDay(text) {
     const result = { club: null, day: null };
     if (!text) return result;
-    const lines = text.split(/\r?\n/).map(l => cleanInvisibleChars(l)).filter(l => l.length > 0);
-    const headerIdx = findPastedHeaderLine(lines);
+    // 和 parsePastedText 用同樣的行與切欄方式找標題列（splitPastedLines 保留行首的 Tab）；
+    // 推測規則看的是去掉頭尾 Tab 的各行，行號和解析時相同
+    const rawLines = splitPastedLines(text);
+    const lines = rawLines.map(l => cleanInvisibleChars(l));
+    const headerIdx = findPastedHeaderLine(lines, splitPastedRows(rawLines));
+    // 有標題列時只看標題列上方的 5 行（社團標題通常就在標題列上方；更上面是說明文字）
+    const aboveHeader = headerIdx === -1 ? [] : lines.slice(Math.max(0, headerIdx - 5), headerIdx);
+    // 有標題列時從標題列上方第一行開始，一行一行看到上面：上方的說明文字（「請自備文具」）不會比社團標題先被拿來推測
     const candidates = (headerIdx === -1
         ? lines.slice(0, 3).filter(l => !looksLikePastedDataLine(l))
-        : lines.slice(0, Math.min(headerIdx, 5)).filter(isTitleLineBeforeHeader)
+        : aboveHeader.filter(isTitleLineBeforeHeader).reverse()
     ).filter(l => !PASTE_FIELD_KEYWORDS.some(kw => l.includes(kw)));
-    // 每行一個名字的清單不推測社團名稱；有標題列時只看標題列之前的行
-    const allowClub = !looksLikePastedNameList(headerIdx === -1 ? lines : lines.slice(0, headerIdx));
+    // 每行一個名字的清單不推測社團名稱；有標題列時只看上面那幾行
+    const allowClub = !looksLikePastedNameList(headerIdx === -1 ? lines : aboveHeader);
 
     for (const line of candidates) {
         if (!result.day) {

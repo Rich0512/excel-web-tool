@@ -167,12 +167,37 @@ function splitSlotSuffix(text) {
 
 /**
  * 寒暑假模式下，總表的時段欄位名稱要加在社團名稱後面的標籤
- * 能辨識出 A/B 時就只用字母（「第一時段(社團A)」→「A」），否則清掉通用字詞後使用欄位名稱
+ * 能辨識出 A/B 時就只用字母（「第一時段(社團A)」→「A」），否則清掉通用字詞、括號與頭尾的分隔符號後使用剩下的字
+ * （「上午社團」→「上午」、「課程名稱(上午)」→「上午」）；只剩通用字詞時回傳 ""（「課程名稱」「社團名單」不加標籤）
+ * 欄位之間的標籤可能相同，處理總表要用 slotLabelsFromColumns()
  */
+const SLOT_LABEL_GENERIC_RE = /時段|slot|社團|課程|項目|節|名稱|名單|內容|選項|類別|錄取|報名|欄位/gi;
+
 function slotLabelFromColumn(colName) {
     const slot = detectSlot(colName);
     if (slot) return slot;
-    return String(colName || '').replace(/時段|Slot|slot|社團|課程|項目|節/g, '').replace(/[()（）]/g, '').trim();
+    return String(colName || '')
+        .replace(SLOT_LABEL_GENERIC_RE, '')
+        .replace(/[()（）]/g, '')
+        .replace(/^[\s\-_:/、，：－]+|[\s\-_:/、，：－]+$/g, '')
+        .trim();
+}
+
+/**
+ * 寒暑假模式下，總表每個時段欄位的標籤，回傳 Map（欄位名稱 → 標籤，"" 表示不加標籤）
+ * 辨識不出 A/B 的欄位，清完通用字詞後如果和另一個欄位相同（「社團」「課程名稱」都清成 ""、
+ * 「上午社團」「上午課程」都是「上午」），這幾欄改用完整的欄位名稱當標籤：
+ * 否則同一個社團在這兩欄排到同一天時，課表文字相同會被合併成一筆，看不出學生錄取了兩個時段，也不會提醒衝堂。
+ * 欄位名稱是總表的表頭，不會重複。A/B 欄位維持字母（兩欄都是 A 就是同一個時段）。
+ */
+function slotLabelsFromColumns(colNames) {
+    const base = colNames.map(col => [col, slotLabelFromColumn(col), !!detectSlot(col)]);
+    const count = new Map();
+    base.forEach(([, label]) => count.set(label, (count.get(label) || 0) + 1));
+    return new Map(base.map(([col, label, isAB]) => [
+        col,
+        !isAB && count.get(label) > 1 ? (String(col).trim() || String(col)) : label,
+    ]));
 }
 
 /**

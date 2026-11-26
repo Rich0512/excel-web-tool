@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用說明 - 延平國小社團課表整理工具</title>
+    <meta name="description" content="延平國小社團課表整理工具的使用說明：上傳 Excel 名冊或貼上選課網頁名單、線上抽籤、確認上課星期、下載課表，以及常見錯誤訊息的處理方式。">
+    <link rel="canonical" href="https://rich0512.github.io/excel-web-tool/guide.html">
+
+    <!-- 安全性：Content Security Policy
+         - 這一頁只有文字說明，不需要任何程式，所以 script-src 'none'：完全不執行 JavaScript，
+           也不讀取名冊或瀏覽器儲存空間
+         - 全頁沒有 inline style 與事件屬性，樣式只從本站的 css/ 載入
+         - GitHub Pages 無法設定 HTTP header，frame-ancestors 等指令只能靠 header，這裡無法使用 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+
+    <link rel="icon" href="images/logo.png" type="image/png">
+    <meta name="theme-color" content="#0f3b6d">
+
+    <!-- 只預載介面用字（ui），與首頁相同 -->
+    <link rel="preload" href="fonts/NotoSansTC-Regular-ui.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.19">
+    <link rel="stylesheet" href="css/style.css?v=3.19">
+    <link rel="stylesheet" href="css/guide.css?v=3.19">
+</head>
+<body>
+
+    <header class="site-header" role="banner">
+        <div class="site-header-inner">
+            <div class="brand">
+                <img src="images/logo.png" class="brand-logo" alt="延平國小校徽" width="40" height="40">
+                <span class="brand-name">延平國小社團課表整理工具</span>
+            </div>
+            <a class="btn btn-outline btn-small" href="./">開啟課表工具</a>
+        </div>
+    </header>
+
+    <main class="page" role="main">
+
+        <div class="intro">
+            <h1 class="page-title">使用說明</h1>
+            <p class="page-lead">這個工具把社團錄取名冊整理成每位學生一列的週課表，也可以在線上抽籤。以下依操作順序說明每個步驟。</p>
+            <p class="page-lead">從課表工具的「使用說明」開啟時，這一頁會開在新的分頁（安裝成 App 時，可能是新的視窗或瀏覽器分頁）。看完關閉這個分頁或視窗，就會回到原本的工具，已讀取的資料不受影響。這一頁的「開啟課表工具」會另外開一份空白的工具。</p>
+        </div>
+
+        <nav class="guide-toc" aria-labelledby="guide-toc-title">
+            <p class="guide-toc-title" id="guide-toc-title">這一頁的內容</p>
+            <ol>
+                <li><a href="#choose">先選要用哪一種方式</a></li>
+                <li><a href="#excel">方式一：上傳 Excel 名冊</a></li>
+                <li><a href="#paste">方式二：貼上網頁名單並線上抽籤</a></li>
+                <li><a href="#mapping">確認上課星期</a></li>
+                <li><a href="#download">下載的檔案</a></li>
+                <li><a href="#faq">常見問題與錯誤訊息</a></li>
+                <li><a href="#privacy">個資與用完之後</a></li>
+            </ol>
+        </nav>
+
+        <!-- 1. 選擇方式 -->
+        <section class="guide-section" id="choose" aria-labelledby="choose-title">
+            <h2 class="section-title" id="choose-title">先選要用哪一種方式</h2>
+            <p>打開課表工具後，第一步上方有兩個選項，依手上的資料選一個。</p>
+            <div class="guide-choice">
+                <div class="guide-card">
+                    <h3 class="guide-card-title">
+                        <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M8 13h8M8 17h8"/></svg>
+                        上傳 Excel 檔
+                    </h3>
+                    <p>已經有錄取名單（學校系統匯出的 .xlsx 錄取名冊），只要排成課表。</p>
+                    <p><a href="#excel">看方式一的說明</a></p>
+                </div>
+                <div class="guide-card">
+                    <h3 class="guide-card-title">
+                        <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>
+                        貼上網頁名單
+                    </h3>
+                    <p>選課網頁上只有報名名單，還沒抽籤。工具會在線上抽出正取、備取，再排成課表。</p>
+                    <p><a href="#paste">看方式二的說明</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 上傳 Excel -->
+        <section class="guide-section" id="excel" aria-labelledby="excel-title">
+            <h2 class="section-title" id="excel-title">方式一：上傳 Excel 名冊</h2>
+            <ol class="guide-steps">
+                <li>選「上傳 Excel 檔」，把名冊拖到虛線框裡，或按「選擇檔案」。</li>
+                <li>讀取完成後會進到第 2 步「確認上課星期」，檢查每個社團的星期（見<a href="#mapping">確認上課星期</a>）。</li>
+                <li>按「開始轉換並下載課表」，課表 Excel 就會下載。</li>
+            </ol>
+
+            <h3 class="guide-subtitle">名冊的格式</h3>
+            <ul class="guide-list">
+                <li>只能讀取 <strong>.xlsx</strong>，檔案要在 20 MB 以內。舊版的 .xls 請先用 Excel 另存成 .xlsx。</li>
+                <li>檔案不能設密碼（設有密碼的檔案會被當成舊版 .xls 擋下）。</li>
+                <li>工具會依工作表自動選擇「彙整模式」，在第 2 步也可以自己改：
+                    <ul class="guide-list">
+                        <li><strong>單一清單</strong>：有一張名稱含「課程與學生清單」或「總表」的工作表，裡面要有班級、座號、姓名（或學生姓名）三欄，加上至少一欄寫社團的欄位（標題含「課程名稱」「社團」或「時段」等字）。</li>
+                        <li><strong>多工作表</strong>：沒有總表，每個社團一張工作表。工作表名稱就是社團名稱。欄位標題列（班級、座號、姓名）要在前 10 列內，標題列上方的文字不要含「班級」「姓名」等字；只有「姓名」一欄時，「姓名」要放在第 1 列。名稱含「說明」「總表」「統計」「清單」「報表」「對照」「人數」「小計」「README」「1152」等字的工作表會略過。</li>
+                    </ul>
+                </li>
+                <li>名冊底部的合計、總計列不會被當成學生。</li>
+            </ul>
+
+            <p>沒有名冊可以先試用？在上傳區按「沒有檔案？下載測試用的範本 Excel」，或直接<a href="templates/115學期名冊_範本.xlsx" download>下載範本 Excel</a>。範本裡的姓名都是假資料（例如「測試生301_05」）。</p>
+        </section>
+
+        <!-- 3. 貼上名單與抽籤 -->
+        <section class="guide-section" id="paste" aria-labelledby="paste-title">
+            <h2 class="section-title" id="paste-title">方式二：貼上網頁名單並線上抽籤</h2>
+            <p>選「貼上網頁名單」。<strong>一次處理一個社團</strong>：每貼上一個社團的名單，就按一次「加入這個社團」。所有社團都加入後，再一起下載，才能檢查跨社團的衝堂。</p>
+
+            <h3 class="guide-subtitle">從選課網頁複製名單</h3>
+            <ol class="guide-steps">
+                <li>在選課網頁上，用滑鼠<strong>從欄位標題那一列（班級、座號、姓名）選到最後一位學生</strong>。連同上方的社團標題（例如「桌遊社 週三 錄取名單」）一起選也可以。</li>
+                <li>按 Ctrl + C 複製，回到工具，在「名單內容」按 Ctrl + V 貼上。</li>
+                <li>文字框下方會顯示「讀到幾位學生」與「其中幾位有班級、幾位有座號」。人數要和網頁上的一樣，有班級、有座號的人數也不能是 0（只收新生的社團除外）。</li>
+            </ol>
+            <p>只要有班級、座號、姓名就能抽籤，不需要「抽籤順序」欄位。連同社團標題一起選取時，工具會從欄位標題列上方幾行的標題推測社團名稱與星期；只選欄位標題和名單時通常推測不出來。不論哪一種，都請確認「社團名稱」與「上課星期」是對的。</p>
+            <div class="warning-callout">
+                <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
+                <div>欄位標題列要在貼上內容的前 30 行內。每行只有姓名、沒有班級的名單讀不到，請連同班級欄一起選取。人數，或有班級、有座號的人數不對時，請重新選取，只選欄位標題和名單。班級、座號空白的學生會當成新生。</div>
+            </div>
+
+            <h3 class="guide-subtitle">按「加入這個社團」之前要填好的設定</h3>
+            <p>按下「加入這個社團」就會立刻抽籤，下面這些設定要先確認：</p>
+            <ul class="guide-list">
+                <li><strong>社團名稱</strong>與<strong>上課星期</strong>：會出現在課表上。</li>
+                <li><strong>正取人數</strong>：1 到 500 的整數。</li>
+                <li><strong>招收年級</strong>：例如「3 年級」至「5 年級」。預設是「1 年級」至「2 年級」，沒改的話其他年級的學生都會變成「不符限制」。沒有班級的學生算「新生」，是最低的年級，排在選單最前面；要連新生一起抽，起始年級請選「新生」。</li>
+                <li><strong>抽籤優先順序</strong>：「高年級優先」或「低年級優先」。</li>
+            </ul>
+            <p>加入一個社團後，只會清空社團名稱和名單；<strong>上課星期、正取人數、招收年級、抽籤優先順序會沿用到下一個社團</strong>，每個社團都要重新確認。</p>
+            <p>「時段模式」「包含沒有班級座號的新生」「下載的檔名（選填）」在加入第一個社團後才會出現，下載前都可以再改。取消勾選「包含沒有班級座號的新生」只會讓新生不排進課表；招收年級包含「新生」時，新生仍會參加抽籤，也可能佔掉正取名額。不想讓新生參加抽籤，招收年級就不要包含「新生」。取消勾選後下載時，若課表因此沒有學生，勾回來再按一次下載即可，不需要重新加入。</p>
+
+            <h3 class="guide-subtitle">正取、備取的決定方式</h3>
+            <ol class="guide-steps">
+                <li>同一位學生重複報名（班級、姓名相同，座號也相同或沒有填）只保留一筆。</li>
+                <li>不在招收年級內的學生標為「不符限制」；班級看不出年級的（例如「資源班」）標為「班級無法辨識」。這兩種都不參加抽籤。</li>
+                <li>依抽籤優先順序，<strong>一個年級抽完再抽下一個年級</strong>。例如高年級優先、正取 12 人，6 年級有 8 人報名，8 人都正取，剩下 4 個名額再從 5 年級抽。新生一律排在最後。</li>
+                <li>同一個年級裡用隨機順序排，依序填入正取名額；名額用完後的人依抽出的順序成為「備取 1」「備取 2」……</li>
+            </ol>
+            <p>抽籤用的是瀏覽器內建的安全亂數，每一種順序的機會都相同。瀏覽器太舊、不支援安全亂數時，工具不會抽籤。</p>
+            <p>加入後，結果列在下方「已加入的社團」。點社團那一列（或「查看名單」）可以看到正取與備取名單。</p>
+
+            <h3 class="guide-subtitle">重新抽籤與移除社團</h3>
+            <ul class="guide-list">
+                <li>每個社團右側的「移除」只移除那一個社團；「全部移除」會移除所有社團。兩者都會先出現確認視窗，抽籤結果會一起清除。</li>
+                <li>要重新抽籤，先移除那個社團，再重新貼上名單並按「加入這個社團」。</li>
+                <li>同名的社團在這次開啟網頁後已經抽過籤時，工具會先出現確認視窗，確定後才重抽。名稱只有空白、全形半形或英文大小寫不同，也算同一個社團。</li>
+                <li>沒有先移除就再加入同名社團時，<strong>兩份抽籤結果都會匯出，課表也會把兩次的正取學生都排進去</strong>。只要保留新的結果，請先移除舊的那一個。</li>
+                <li>下載的檔案會記錄抽籤時間與「抽籤次數」。次數只記錄這次開啟網頁後的抽籤，重新整理或關閉網頁後會從第 1 次重新算（按「清除這次的資料」不會歸零），所以不能用來證明沒有重抽。正式抽籤時，建議請同仁在場見證，並當場下載、保存檔案。</li>
+            </ul>
+
+            <h3 class="guide-subtitle">下載課表與抽籤結果</h3>
+            <p>所有社團都加入後，按「下載課表與抽籤結果」。下載只匯出清單上已經抽好的結果，不會重新抽籤。</p>
+            <div class="warning-callout">
+                <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
+                <div>下載後「已加入的社團」會清空。重新整理或關閉網頁，還沒下載的抽籤結果也會消失，要重新加入社團並重新抽籤。</div>
+            </div>
+        </section>
+
+        <!-- 4. 確認星期 -->
+        <section class="guide-section" id="mapping" aria-labelledby="mapping-title">
+            <h2 class="section-title" id="mapping-title">確認上課星期</h2>
+            <p>上傳 Excel 後的第 2 步，會列出名冊裡的每個社團。貼上名單時則是在加入前用「上課星期」選單選好。</p>
+
+            <h3 class="guide-subtitle">對照表</h3>
+            <ul class="guide-list">
+                <li>星期會先自動選好。單一清單模式依序看社團名稱裡的星期（例如「周三桌遊社 (三 10,11)」）、名冊裡的上課時間，最後才是這台電腦上次的設定；多工作表模式以上次的設定優先。選不出來的會顯示「請選擇」，每一列都要選好才能轉換。</li>
+                <li>「社團名稱（可修改）」可以直接修改，改過的名稱會出現在課表上。</li>
+                <li>有學生同一天的同一時段（下午或晨間）有兩個以上社團時，表格下方會列出這些學生，方便檢查星期有沒有設錯。</li>
+                <li>「包含沒有班級座號的新生名單」取消勾選時，沒有班級的學生不會列入課表。</li>
+            </ul>
+
+            <h3 class="guide-subtitle">一週上好幾天的社團與晨間社團</h3>
+            <ul class="guide-list">
+                <li>一週上好幾天的社團，選「週一、四」「週二、五」或「週一、二、四、五」，課表上每一個上課日都會填入。</li>
+                <li>晨間社團選「晨間(週一、週四)」「晨間(週二、週五)」或「晨間(週一、週二、週四、週五)」，課表會另外多出一欄。名稱含「晨間」的社團會先自動選好，請確認。晨間社團和下午的社團不算衝堂；同一個晨間欄有兩個社團，或不同晨間欄的上課日重疊（例如「晨間(週一、週四)」和「晨間(週一、週二、週四、週五)」都有週一、週四），會提醒並寫在「備註」欄。</li>
+                <li>這些選項只在上傳 Excel 的對照表裡有；貼上名單時，一個社團只能選一天。</li>
+            </ul>
+
+            <h3 class="guide-subtitle">時段模式</h3>
+            <p>寒暑假有 A、B 時段時，選「寒暑假（有 AB 時段）」，課表的社團名稱後面會加上時段，例如「桌遊社(A)」。時段依欄位名稱、工作表名稱或社團名稱裡的 A、B（或「第一時段」等字）判斷。單一清單的欄位名稱沒有 A、B 時，改用欄位名稱裡有意義的字（例如「上午社團」→「桌遊社(上午)」）；只有一欄「課程名稱」這類通用名稱時不加標籤；有兩欄清完後相同時，改用完整的欄位名稱，例如「桌遊社(課程名稱)」。一般學期選「一般學期（沒有 AB 時段）」。</p>
+
+            <h3 class="guide-subtitle">這台電腦會記住星期設定</h3>
+            <p>按「開始轉換並下載課表」時，工具會在這個瀏覽器記住每個社團選的星期，下次讀取同樣名稱的社團時自動套用。單一清單模式中，社團名稱或名冊裡已經寫明星期的社團，仍以名冊為準；欄位名稱和上次不同時，通常也不會套用。有社團套用了記住的星期時，第 2 步上方會顯示「已套用這台電腦上次記住的星期（幾個社團）」。</p>
+            <ul class="guide-list">
+                <li>記住的只有欄位名稱、社團或工作表名稱和星期，<strong>不含學生姓名、班級、座號</strong>。</li>
+                <li>只存在這台電腦的這個瀏覽器，不會傳到別的地方。</li>
+                <li>貼上名單的方式不會記住設定。</li>
+                <li>按頁首的「清除這次的資料」，記住的星期也會一起清除。</li>
+            </ul>
+        </section>
+
+        <!-- 5. 下載的檔案 -->
+        <section class="guide-section" id="download" aria-labelledby="download-title">
+            <h2 class="section-title" id="download-title">下載的檔案</h2>
+            <p>兩種方式都只會下載一個 Excel 檔。檔名是原始檔名（貼上名單時是「直接貼上名單彙整」）加上「_學期社團彙整.xlsx」或「_寒暑假社團彙整.xlsx」（依「時段模式」決定）；也可以在「下載的檔名（選填）」自己取名。</p>
+
+            <h3 class="guide-subtitle" id="sample-schedule-title">「課程與學生清單」工作表：學生週課表</h3>
+            <p>每位學生一列，依班級、座號排序。第一列有篩選按鈕。有晨間或週六、週日的社團時才會多出那幾欄。以下姓名為虛構。</p>
+            <div class="sample-scroll" role="region" aria-labelledby="sample-schedule-title" tabindex="0">
+                <table class="sample-table">
+                    <thead>
+                        <tr><th scope="col">班級</th><th scope="col">座號</th><th scope="col">姓名</th><th scope="col">週一</th><th scope="col">週二</th><th scope="col">週三</th><th scope="col">週四</th><th scope="col">週五</th><th scope="col">晨間(週一、週四)</th><th scope="col">備註</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>301</td><td>05</td><td>王小明</td><td class="is-filled">桌遊社</td><td></td><td class="is-filled">足球社, 圍棋社</td><td></td><td></td><td></td><td>「週三」時段衝突：同時錄取「足球社, 圍棋社」</td></tr>
+                        <tr><td>302</td><td>11</td><td>陳小華</td><td class="is-filled">游泳社</td><td></td><td></td><td class="is-filled">游泳社</td><td></td><td></td><td></td></tr>
+                        <tr><td>405</td><td>23</td><td>林小美</td><td></td><td></td><td></td><td class="is-filled">舞蹈社</td><td></td><td class="is-filled">晨間足球社</td><td></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>同一天有兩個社團時，那一格會寫出兩個社團，「備註」欄也會說明衝堂。</p>
+
+            <h3 class="guide-subtitle" id="sample-club-title">貼上名單時：每個社團一張抽籤結果工作表</h3>
+            <p>用貼上名單的方式時，同一個檔案裡還有每個社團各一張工作表，列出所有報名的學生（重複報名只列一次）：</p>
+            <ul class="guide-list">
+                <li>「籤序」：正取是抽中的順序 1、2、3……，其他是「備取 1」「備取 2」……、「班級無法辨識」或「不符限制」。</li>
+                <li>「錄取人數」：每個年級正取幾人。</li>
+                <li>右側的「抽籤資訊」：抽籤時間、抽籤次數、正取人數、年級限制、優先順序、報名人數、略過的重複筆數等。</li>
+            </ul>
+            <p>以「正取 2 人、3 年級至 5 年級、高年級優先」為例（姓名為虛構）：</p>
+            <div class="sample-scroll" role="region" aria-labelledby="sample-club-title" tabindex="0">
+                <table class="sample-table guide-table-narrow">
+                    <thead>
+                        <tr><th scope="col">班級</th><th scope="col">座號</th><th scope="col">姓名</th><th scope="col">籤序</th><th scope="col">錄取人數</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>501</td><td>08</td><td>林小美</td><td class="is-filled">2</td><td rowspan="2">2</td></tr>
+                        <tr><td>502</td><td>15</td><td>王小明</td><td class="is-filled">1</td></tr>
+                        <tr><td>401</td><td>05</td><td>陳小華</td><td>備取 1</td><td></td></tr>
+                        <tr><td>402</td><td>11</td><td>張小安</td><td>備取 2</td><td></td></tr>
+                        <tr><td>201</td><td>03</td><td>張小華</td><td>不符限制</td><td></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>課表只會排入正取的學生。下載後畫面會顯示「課表已開始下載」，按「整理另一份名冊」可以重新開始。</p>
+        </section>
+
+        <!-- 6. 常見問題 -->
+        <section class="guide-section" id="faq" aria-labelledby="faq-title">
+            <h2 class="section-title" id="faq-title">常見問題與錯誤訊息</h2>
+            <p>依操作時看到的訊息整理。每一項先列出訊息的內容，下面是處理方式。</p>
+
+            <h3 class="guide-subtitle">選擇 Excel 檔時</h3>
+            <dl class="guide-faq">
+                <dt>超過 20 MB 的上限</dt>
+                <dd>先確認選對了檔案，錄取名冊通常不到 1 MB。確定是名冊時，用 Excel 刪除不需要的工作表或圖片後另存，再重新選擇。</dd>
+                <dt>舊版 Excel 97-2003（.xls）格式，或只能讀取 .xlsx 格式</dt>
+                <dd>用 Excel 開啟，選「另存新檔」存成 .xlsx，再重新選擇。設有密碼的 .xlsx 也會顯示這則訊息，請另存成不設密碼的 .xlsx。</dd>
+                <dt>無法當成 Excel 讀取，或可能已損毀或設有密碼</dt>
+                <dd>用 Excel 開啟確認內容，另存成不設密碼的 .xlsx，再重新選擇。</dd>
+                <dt>可能正被其他程式使用</dt>
+                <dd>關閉正在開啟這個檔案的程式（例如 Excel），再重新選擇。</dd>
+                <dt>仍在讀取上一個名冊</dt>
+                <dd>等上一個名冊讀完，再選擇或拖放新的檔案。</dd>
+                <dt>無法載入讀寫 Excel 所需的程式</dt>
+                <dd>通常是網路中斷。第一次開啟工具時要連上網路，之後才能離線使用。如果是按下載時出現，設定好的星期和抽籤結果都還在，連上網路後再按一次下載的按鈕即可，不需要重新整理網頁。</dd>
+            </dl>
+
+            <h3 class="guide-subtitle">讀取名冊與確認星期時</h3>
+            <dl class="guide-faq">
+                <dt>沒有「課程與學生清單」或「總表」工作表，已自動改用「多工作表」模式</dt>
+                <dd>這是提醒，不是錯誤。請確認對照表裡每個社團的星期。</dd>
+                <dt>缺少必要欄位，或找不到「課程名稱」、「社團」或「時段」欄位</dt>
+                <dd>確認選的是學校系統匯出的錄取名冊，總表要有班級、座號、姓名欄。如果這份名冊其實是每個社團一張工作表，把總表工作表刪除，或改成含「統計」「報表」「說明」等字的名稱（這些工作表會被略過；改成其他名稱會被當成一個社團），存檔後重新選擇。</dd>
+                <dt>找不到可以彙整的社團名單工作表</dt>
+                <dd>確認選的是錄取名冊，並確認社團工作表的名稱沒有含「說明」「總表」「統計」「清單」「報表」「對照」「人數」「小計」等字，這些工作表會被略過。所有社團的學生都在同一張工作表時，把那張工作表改名為「總表」，存檔後重新選擇。</dd>
+                <dt>工作表找不到「姓名」欄</dt>
+                <dd>在那些工作表的學生名單上方加上「姓名」欄位標題，存檔後重新選擇。只有部分工作表缺少時，其他社團照常整理，缺少的工作表不會列入課表；不是社團名單的工作表可以不用理會。</dd>
+                <dt>在第 2 步切換「彙整模式」時出現以上訊息</dt>
+                <dd>工具會自動切回原本的彙整模式，修改過的社團名稱與星期都會保留，可以繼續操作。</dd>
+                <dt>有社團的名稱是空白的</dt>
+                <dd>在每一列的「社團名稱」填入名稱，再按「開始轉換並下載課表」。</dd>
+                <dt>以下社團還沒選擇上課星期</dt>
+                <dd>把顯示「請選擇」的社團選好星期，再按一次「開始轉換並下載課表」。</dd>
+                <dt>有幾位學生同一天的同一時段（下午或晨間）有兩個以上社團</dt>
+                <dd>這是提醒，不會擋下下載。先檢查星期有沒有選錯；真的衝堂時，課表的「備註」欄也會寫出來。</dd>
+                <dt>名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生名單」</dt>
+                <dd>勾選「包含沒有班級座號的新生名單」，再按一次「開始轉換並下載課表」，星期設定都還在。</dd>
+                <dt>名冊中讀不到有姓名的學生</dt>
+                <dd>確認選的是學校系統匯出的錄取名冊，而且「姓名」欄有填入學生姓名，再重新選擇檔案。</dd>
+            </dl>
+
+            <h3 class="guide-subtitle">貼上名單與抽籤時</h3>
+            <dl class="guide-faq">
+                <dt>讀不到學生資料</dt>
+                <dd>重新複製名單，這次連標題列（班級、座號、姓名）一起選取。</dd>
+                <dt>還沒有填社團名稱，或還沒有貼上名單</dt>
+                <dd>填好社團名稱、貼上名單，再按「加入這個社團」。</dd>
+                <dt>正取人數要填 1 到 500 之間的整數</dt>
+                <dd>修改「正取人數」，再按「加入這個社團」。</dd>
+                <dt>起始年級大於結束年級</dt>
+                <dd>重新選擇招收年級，讓起始年級低於或等於結束年級。「新生」是最低的年級，排在選單最前面；要連新生一起抽，起始年級請選「新生」。</dd>
+                <dt>貼上的內容超過 200,000 字元</dt>
+                <dd>一次只貼上一個社團的名單。</dd>
+                <dt>這個社團已經抽過幾次籤，確定要重新抽籤嗎</dt>
+                <dd>按「確定」才會重抽，下載的檔案會記錄第幾次抽籤。不要重抽就按「取消」。</dd>
+                <dt>名單裡有重複報名，或班級無法辨識</dt>
+                <dd>重複的只保留一筆；班級無法辨識的沒有參加抽籤。按「查看名單」確認，需要時移除這個社團，修正後重新貼上並加入（會重新抽籤）。</dd>
+                <dt>瀏覽器版本太舊，不支援安全的亂數</dt>
+                <dd>改用最新版 Chrome、Edge 或 Safari 開啟工具。</dd>
+                <dt>還沒有加入任何社團</dt>
+                <dd>先貼上名單並按「加入這個社團」，再按「下載課表與抽籤結果」。</dd>
+                <dt>正取的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生」</dt>
+                <dd>勾選「包含沒有班級座號的新生」，再按一次「下載課表與抽籤結果」。已加入的社團與抽籤結果都還在，不需要重新加入，也不會重新抽籤。</dd>
+                <dt>已加入的社團都沒有正取的學生</dt>
+                <dd>通常是報名的學生都不在招收年級內（標示為「不符限制」），或班級無法辨識。點社團那一列查看名單確認。如果是招收年級選錯了，要先移除那個社團，改好招收年級後重新貼上名單並加入；重新加入會重新抽籤，抽籤次數會累加。</dd>
+            </dl>
+
+            <h3 class="guide-subtitle">下載時</h3>
+            <dl class="guide-faq">
+                <dt>匯出課表時發生錯誤，課表沒有下載</dt>
+                <dd>上傳 Excel 時，重新整理網頁後再試一次。貼上名單時，已加入的社團與抽籤結果都還在，請直接再按一次「下載課表與抽籤結果」，先不要重新整理網頁。</dd>
+                <dt>按了下載，卻沒有看到檔案</dt>
+                <dd>檢查瀏覽器的下載提示或下載資料夾。</dd>
+                <dt>發生非預期的錯誤</dt>
+                <dd>先再試一次剛才的操作。已加入社團時，重新整理網頁會清除抽籤結果，仍然失敗才重新整理。</dd>
+                <dt>要離開網頁時，瀏覽器出現確認視窗</dt>
+                <dd>工具裡還有讀取的名冊或已加入的社團，離開後就會消失。確認課表已經下載好，再離開。</dd>
+            </dl>
+        </section>
+
+        <!-- 7. 個資 -->
+        <section class="guide-section" id="privacy" aria-labelledby="privacy-title">
+            <h2 class="section-title" id="privacy-title">個資與用完之後</h2>
+            <p class="guide-note">
+                <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                名冊只在這台電腦的瀏覽器分頁裡處理，不會上傳到任何伺服器。
+            </p>
+            <ul class="guide-list">
+                <li>名冊與抽籤結果只放在這個分頁的記憶體裡，關閉分頁就會清除。</li>
+                <li>要馬上清除，按頁首的「清除這次的資料」：會清除選擇的 Excel、星期設定、已加入的社團，以及瀏覽器記住的社團星期。</li>
+                <li>用完請刪除下載資料夾裡的課表 Excel，避免他人看到。</li>
+                <li>學校公用電腦建議用無痕視窗，避免瀏覽器外掛讀取頁面內容。無痕視窗關閉後，記住的星期設定也會消失。</li>
+                <li>這份說明頁沒有任何程式，不會讀取名冊。</li>
+            </ul>
+
+            <h3 class="guide-subtitle">離線使用與安裝</h3>
+            <ul class="guide-list">
+                <li>第一次開啟工具時要連上網路。之後沒有網路也能開啟課表工具和這份說明。</li>
+                <li>Chrome、Edge 等瀏覽器可以把工具安裝到電腦或手機上，像一般程式一樣開啟。安裝後一樣只在這台電腦處理資料。</li>
+            </ul>
+        </section>
+
+        <div class="guide-cta">
+            <a class="btn btn-primary btn-large" href="./">開啟課表工具</a>
+        </div>
+
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+        <p>名冊只在這個瀏覽器分頁裡處理，不會上傳到任何伺服器。</p>
+        <p class="footer-disclaimer">本網頁為個人開發的公益行政輔助工具，供台北市延平國小社團業務使用，非學校官方系統。不收集任何學生資料。</p>
+    </footer>
+</body>
+</html>

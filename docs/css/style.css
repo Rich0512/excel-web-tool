@@ -68,6 +68,20 @@ strong {
     vertical-align: -3px;
 }
 
+/* 只給螢幕閱讀器的補充文字（例如「在新分頁開啟」），畫面上不顯示 */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* ---------- 頁首 ---------- */
 
 .site-header {
@@ -871,6 +885,11 @@ strong {
     color: var(--success-text);
 }
 
+/* display: inline-flex 會蓋過 hidden 屬性 */
+.memory-hint[hidden] {
+    display: none;
+}
+
 .config-section {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1092,6 +1111,11 @@ a:focus-visible,
     .privacy-status {
         width: 100%;
         justify-content: space-between;
+    }
+
+    /* 窄螢幕排不下提示與兩顆按鈕：提示自成一列，「使用說明」「清除這次的資料」排在第二列 */
+    .privacy-note {
+        flex: 1 0 100%;
     }
 
     .page-title {

@@ -1,0 +1,194 @@
+/* ===================================================
+ * 使用說明頁（guide.html）專用樣式
+ * token、按鈕、頁首、課表範例（.sample-table）等共用元件都在 style.css，這裡只放說明頁才需要的部分
+ * =================================================== */
+
+/* ---------- 目錄 ---------- */
+
+.guide-toc {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 12px 20px;
+    max-width: 760px;
+}
+
+.guide-toc-title {
+    font-weight: 700;
+}
+
+.guide-toc ol {
+    padding-left: 1.4em;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+}
+
+/* 觸控目標至少 44px（DESIGN.md 無障礙底線） */
+.guide-toc a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
+/* ---------- 各節 ---------- */
+
+/* 各節之間用一條格線分隔，不另外包成卡片 */
+.guide-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+}
+
+/* 說明段落寬度不超過約 34 個中文字（DESIGN.md 字型與字級） */
+.guide-section > p,
+.guide-list,
+.guide-steps,
+.guide-faq,
+.guide-section > .warning-callout {
+    max-width: 34em;
+}
+
+.guide-subtitle {
+    font-size: 17px;
+    font-weight: 700;
+    margin-top: 10px;
+}
+
+.guide-list,
+.guide-steps {
+    padding-left: 1.4em;
+}
+
+.guide-list li + li,
+.guide-steps li + li,
+.guide-list .guide-list {
+    margin-top: 6px;
+}
+
+/* 帶線條圖示的一句重點（同 .privacy-note 的排法，字級用內文） */
+.guide-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.guide-note .icon {
+    margin-top: 4px;
+    color: var(--primary);
+}
+
+/* ---------- 兩種方式並排 ---------- */
+
+.guide-choice {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    max-width: 860px;
+}
+
+.guide-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.guide-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.guide-card a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
+/* ---------- 課表範例 ---------- */
+
+/* 範例表格放在可左右捲動的容器（.sample-scroll），手機上不會讓整頁水平捲動；
+   容器可用鍵盤聚焦後以方向鍵捲動 */
+.guide-section .sample-scroll {
+    max-width: 900px;
+}
+
+.sample-scroll:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* 欄位少的範例不必撐滿寬度 */
+.guide-table-narrow {
+    width: auto;
+}
+
+.guide-table-narrow th,
+.guide-table-narrow td {
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.guide-table-narrow td[rowspan] {
+    vertical-align: middle;
+    font-weight: 700;
+}
+
+/* ---------- 常見問題：看到什麼 → 怎麼做 ---------- */
+
+.guide-faq dt {
+    font-weight: 700;
+}
+
+.guide-faq dd {
+    margin-top: 4px;
+    color: var(--ink-muted);
+}
+
+.guide-faq dd + dt {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+}
+
+/* ---------- 頁尾的主要按鈕 ---------- */
+
+.guide-cta {
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+}
+
+/* ---------- 手機 (max-width: 640px) ---------- */
+
+@media (max-width: 640px) {
+    .guide-toc {
+        padding: 8px 16px;
+    }
+
+    .guide-toc ol,
+    .guide-choice {
+        grid-template-columns: 1fr;
+    }
+
+    .guide-section {
+        padding-top: 20px;
+    }
+
+    .guide-card {
+        padding: 16px;
+    }
+
+    /* 手機上主要按鈕滿版（DESIGN.md 版面） */
+    .guide-cta .btn {
+        width: 100%;
+    }
+}

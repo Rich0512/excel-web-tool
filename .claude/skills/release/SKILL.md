@@ -24,13 +24,15 @@ allowed-tools: Bash(node tools/bump-version.mjs *) Bash(node tools/check-site.mj
 ## 步驟
 
 1. **調升版本**：執行 `node tools/bump-version.mjs $ARGUMENTS`。
-   - 它會同步 `docs/service-worker.js`（`CACHE_VERSION` 與 `STATIC_ASSETS` 的 `?v=`）、`docs/index.html` 的所有 `?v=`、`docs/sitemap.xml` 的日期。
+   - 它會同步 `docs/service-worker.js`（`CACHE_VERSION` 與 `STATIC_ASSETS` 的 `?v=`）、`docs/index.html`、`docs/guide.html`、`docs/404.html` 的所有 `?v=`、`docs/sitemap.xml` 的所有日期。
+   - 改了操作流程、按鈕文字或錯誤訊息時，確認 `docs/guide.html`（使用說明）的敘述也已同步。
    - 不帶參數時，它會比對 `origin/main`：尚未調升就次版號 +1，已調升就只同步，所以重複執行是安全的。
    - 使用者指定了版本號才帶參數。
 2. **同步預快取清單**：若這次新增、改名或刪除了 `docs/` 內的檔案，更新 `docs/service-worker.js` 的 `STATIC_ASSETS`（規則見 `.claude/rules/service-worker.md`）。
 3. **檢查**：執行 `node tools/check-site.mjs --require-bump=origin/main`，必須全部通過。改了 `docs/js` 時也執行 `node tools/test-site.mjs`，必須全部通過。失敗時修正後重跑，不要跳過。大改版（版面、Service Worker、CSP、處理名冊的 JS）時，再交給 `pages-auditor` 子代理稽核。
 4. **摘要**：用 `git status --short` 與 `git diff --stat` 列出變更，並寫出新版本號。
 5. **commit 與 push 要等使用者同意**。這次對話中使用者明確要求才執行。push 前提醒：push 到 main 後約 1～2 分鐘就上線，已安裝 PWA 的使用者下次開啟會自動更新。
+6. **版本 tag**：commit 後在調升版本的那個 commit 建立附註 tag `v<X.Y>.0`，訊息格式 `v<X.Y>.0: <一句英文摘要>`（例如 `git tag -a v3.19.0 -m "v3.19.0: usage guide page and paste parser fixes"`），與 commit 一起經使用者同意後以 `git push origin main --follow-tags` 推送。發佈前用 `git tag -l` 確認前幾版都有 tag，缺的要補在各版調升版本的 commit 上。
 
 ## 範例
 

@@ -45,7 +45,7 @@
 
 ```
 ┌ 頁首（白底，下緣格線）────────────────────────────────┐
-│ [校徽] 延平國小社團課表整理工具      資料只在這台電腦處理 [清除這次的資料] │
+│ [校徽] 延平國小社團課表整理工具  資料只在這台電腦處理 [使用說明] [清除這次的資料] │
 └──────────────────────────────────────────────────┘
   把錄取名冊整理成學生週課表
   說明一段
@@ -71,14 +71,15 @@
 |---|---|---|
 | 主要按鈕 | `.btn.btn-primary` | 校徽藍實心白字。一個畫面只有一個（送出這一步的動作）。404 頁不載入 `style.css`（任意深度的網址都會回傳它，只需少量樣式），用 `404.css` 的 `.btn-home` 複製同一組數值，改按鈕時兩邊要同步 |
 | 次要按鈕 | `.btn.btn-secondary` | 白底、2px 校徽藍邊框、校徽藍字，hover 底色 `--primary-tint`。返回、加入這個社團（和下方的小按鈕要分得出來，所以不用 `--control` 灰框） |
-| 小按鈕 | `.btn.btn-outline` | 頁首「清除這次的資料」等低頻操作 |
+| 小按鈕 | `.btn.btn-outline` | 頁首「使用說明」「清除這次的資料」等低頻操作；可用在 `<a>`。首頁連到說明頁一律 `target="_blank" rel="noopener"`，並加 `.visually-hidden` 的「（在新分頁或新視窗開啟）」（安裝成 App 時可能開成新視窗）：名冊只在這個分頁的記憶體裡，換頁就會消失 |
+| 使用說明頁 | `guide.html`＋`guide.css` | 沿用首頁的頁首、`.page`、按鈕、`.warning-callout` 與 `.sample-table`（放在 `.sample-scroll` 內，可捲動時加 `role="region"`、`tabindex="0"` 與 `:focus-visible` 樣式）；窄螢幕時頁首按鈕換到第二列靠左，與首頁第二列的「使用說明」對齊；`guide.css` 只放說明頁特有的元件：目錄 `.guide-toc`、方式選擇卡 `.guide-choice`／`.guide-card`、各節格線 `.guide-section`、步驟與清單 `.guide-steps`／`.guide-list`、常見問題 `.guide-faq`（`dl`）、窄欄範例表 `.guide-table-narrow`、隱私提示 `.guide-note`、頁尾按鈕 `.guide-cta`。不放 JS |
 | 步驟列 | `.stepper` | `<ol>`，目前步驟加 `aria-current="step"`，由 `switchStep()` 更新 |
 | 來源切換 | `.tab-btn` | 兩張並排的選項（標題＋一行說明），選中時 2px 校徽藍外框 |
 | 拖曳區 | `.upload-zone` | 2px 虛線框，hover／拖曳時框線變校徽藍、底色變 `--primary-tint`。框本身不是按鈕：點框任何地方開啟選檔是滑鼠的便利操作，鍵盤用框內真正的「選擇檔案」按鈕；範本連結放在按鈕下方（14px 小字）。讀取名冊時加 `.is-busy`（外觀同拖曳中）與 `aria-busy`，「選擇檔案」改為 `aria-disabled`（不用 `disabled`，焦點才不會掉），按鈕下方的 `.upload-status`（`role="status"`，14px、`--primary`）顯示讀取狀態（讀取中又選檔或拖放時，改為「仍在讀取上一個名冊，請稍候；讀完後再重新選擇或拖放新的檔案。」，讀取結束清空）；空白時保留在版面上（螢幕閱讀器才會唸出更新），以負邊距抵掉間距 |
 | 說明段落 | `.tab-intro` | 一般段落文字，不加色條或底色 |
 | 提醒 | `.warning-callout` | 警告色系，左側線條圖示，不用 emoji。衝堂提醒（`.conflict-alert`）也是同一個元件，由 JS 產生內容時同樣要放圖示 |
 | 欄位 | `.club-input`、`.config-select`、`.day-select` | 最小高度 44px，字級 16px（避免 iOS 縮放） |
-| 課表範例 | `.sample-table` | 只用在首頁範例；有社團的格子加 `.is-filled` |
+| 課表範例 | `.sample-table` | 只用在首頁範例與使用說明頁的示意表（姓名一律虛構）；有社團的格子加 `.is-filled` |
 | 數量標籤 | `.tab-count` | 來源切換上「已加入幾個社團」的數字。校徽藍底 `--on-primary` 字、14px、22px 高的正圓（圓角為高度一半，是圓角規則的唯一例外） |
 | 時段標籤 | `.slot-badge` | 步驟二的時段分類，不是狀態，不用語意狀態色：A 時段 `--primary-tint` 底校徽藍字，其他時段 `--bg` 底 `--ink-muted` 字加 `--line` 框；圓角同控制項 |
 

@@ -52,11 +52,11 @@
     <link rel="preload" href="fonts/Outfit-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.18">
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.19">
     <!-- ExcelJS（已本地化，約 0.9 MB）不在這裡載入：由 utils.js 的 loadExcelJS() 在頁面閒置或需要時才載入，
          避免它排在所有程式前面，讓按鈕要等它下載完才有反應 -->
     <!-- 引入外部樣式表 (使用版本參數防止瀏覽器快取舊樣式) -->
-    <link rel="stylesheet" href="css/style.css?v=3.18">
+    <link rel="stylesheet" href="css/style.css?v=3.19">
 </head>
 <body>
 
@@ -72,6 +72,11 @@
                     <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                     資料只在這台電腦處理
                 </span>
+                <!-- 說明頁一律開新分頁：名冊只在這個分頁的記憶體裡，換頁就會消失 -->
+                <a class="btn btn-outline btn-small" href="guide.html" target="_blank" rel="noopener">
+                    <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7M8 11h7"/></svg>
+                    使用說明<span class="visually-hidden">（在新分頁或新視窗開啟）</span>
+                </a>
                 <button type="button" class="btn btn-outline btn-small" id="btn-hard-reset">清除這次的資料</button>
             </div>
         </div>
@@ -82,6 +87,7 @@
         <div class="intro">
             <h1 class="page-title">把錄取名冊整理成學生週課表</h1>
             <p class="page-lead">上傳學校匯出的 Excel，或貼上選課網頁的名單。確認每個社團在星期幾上課後，就能下載每位學生一列的週課表。</p>
+            <p class="page-lead">第一次使用？先看<a href="guide.html" target="_blank" rel="noopener">使用說明</a>（在新分頁或新視窗開啟，不會影響這裡的資料）。</p>
         </div>
 
         <ol class="stepper" aria-label="操作步驟">
@@ -150,23 +156,23 @@
                                     <span class="field-label" id="paste-grade-label">招收年級</span>
                                     <div class="grade-range">
                                         <select id="paste-grade-start" class="config-select" aria-label="起始年級">
+                                            <option value="新生">新生</option>
                                             <option value="1" selected>1 年級</option>
                                             <option value="2">2 年級</option>
                                             <option value="3">3 年級</option>
                                             <option value="4">4 年級</option>
                                             <option value="5">5 年級</option>
                                             <option value="6">6 年級</option>
-                                            <option value="新生">新生</option>
                                         </select>
                                         <span class="grade-range-sep" aria-hidden="true">至</span>
                                         <select id="paste-grade-end" class="config-select" aria-label="結束年級">
+                                            <option value="新生">新生</option>
                                             <option value="1">1 年級</option>
                                             <option value="2" selected>2 年級</option>
                                             <option value="3">3 年級</option>
                                             <option value="4">4 年級</option>
                                             <option value="5">5 年級</option>
                                             <option value="6">6 年級</option>
-                                            <option value="新生">新生</option>
                                         </select>
                                     </div>
                                 </div>
@@ -274,9 +280,10 @@
                         <h2 class="mapping-title">確認每個社團的上課星期</h2>
                         <p class="mapping-desc">社團名稱可以直接修改，修改後的名稱會出現在課表上。</p>
                     </div>
-                    <div class="memory-hint">
+                    <!-- 只有星期真的取自這台電腦記住的設定時，mapping-ui.js 的 showMemoryHint() 才會顯示 -->
+                    <div class="memory-hint" id="memory-hint" role="status" hidden>
                         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>
-                        已套用這台電腦上次的設定
+                        <span id="memory-hint-text">已套用這台電腦上次記住的星期</span>
                     </div>
                 </div>
 
@@ -358,13 +365,13 @@
     </footer>
 
     <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼；依相依順序載入) -->
-    <script src="js/utils.js?v=3.18" defer></script>
-    <script src="js/exporter.js?v=3.18" defer></script>
-    <script src="js/parser.js?v=3.18" defer></script>
-    <script src="js/processor.js?v=3.18" defer></script>
-    <script src="js/mapping-ui.js?v=3.18" defer></script>
-    <script src="js/app.js?v=3.18" defer></script>
+    <script src="js/utils.js?v=3.19" defer></script>
+    <script src="js/exporter.js?v=3.19" defer></script>
+    <script src="js/parser.js?v=3.19" defer></script>
+    <script src="js/processor.js?v=3.19" defer></script>
+    <script src="js/mapping-ui.js?v=3.19" defer></script>
+    <script src="js/app.js?v=3.19" defer></script>
     <!-- 註冊 Service Worker (離線快取) -->
-    <script src="js/register-sw.js?v=3.18" defer></script>
+    <script src="js/register-sw.js?v=3.19" defer></script>
 </body>
 </html>

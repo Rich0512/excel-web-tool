@@ -26,16 +26,18 @@ const jsFiles = listSite('js', '.js');
 const cssFiles = [...listSite('css', '.css'), ...listSite('fonts', '.css')];
 
 // ==========================================
-// 1. 版本號一致：service-worker.js 與 index.html、404.html 的 ?v=
+// 1. 版本號一致：service-worker.js 與每個頁面（index.html、guide.html、404.html…）的 ?v=
 // ==========================================
 const sw = read(site('service-worker.js'));
 const swVersion = versionOf(sw);
-const indexHtml = read(site('index.html'));
-// 頁面引用的 JS/CSS（相對 docs/ 的路徑，含查詢參數）；404.html 用 /excel-web-tool/ 開頭的絕對路徑
-const PAGES = { 'index.html': indexHtml, '404.html': read(site('404.html')) };
-// 單、雙引號都認；./js/… 與 /excel-web-tool/js/… 都換成 js/… 再比對
+// docs/ 根目錄的每個頁面（檔名 → 內容），與 htmlFiles 相同、由 listSite 動態列出，新增頁面會自動納入檢查
+// 頁面引用的 JS/CSS 是相對 docs/ 的路徑（含查詢參數）；404.html 用 /excel-web-tool/ 開頭的絕對路徑
+const PAGES = Object.fromEntries(htmlFiles.map(f => [f.slice(SITE.length + 1), read(f)]));
+// 頁面內的網址換成相對 docs/ 的路徑：./js/… 與 /excel-web-tool/js/… 都換成 js/…
+const siteRelative = (url) => url.startsWith(BASE_PATH) ? url.slice(BASE_PATH.length) : url.replace(/^\.\//, '');
+// 單、雙引號都認
 const pageRefs = (text) => [...text.matchAll(/\b(?:src|href)=(["'])([^"']+\.(?:js|css)(?:\?[^"']*)?)\1/g)]
-    .map(m => m[2].startsWith(BASE_PATH) ? m[2].slice(BASE_PATH.length) : m[2].replace(/^\.\//, ''))
+    .map(m => siteRelative(m[2]))
     .filter(ref => /^(?:js|css|fonts)\//.test(ref));
 if (!swVersion) {
     errors.push('service-worker.js 找不到 CACHE_VERSION');
@@ -100,12 +102,26 @@ for (const font of readdirSync(join(ROOT, SITE, 'fonts')).filter(f => f.endsWith
     if (isExt && assetPaths.includes(asset)) errors.push(`STATIC_ASSETS 不應包含常用字檔 ${asset}（約 0.8 MB，畫面用到才下載）`);
     if (!isExt && !assetPaths.includes(asset)) errors.push(`${asset} 不在 STATIC_ASSETS，離線時介面會改用系統字型`);
 }
-// preload 的檔案要存在且已預快取
-for (const m of indexHtml.matchAll(/<link\b[^>]*\brel="preload"[^>]*>/g)) {
-    const href = (m[0].match(/\bhref="([^"]+)"/) || [])[1];
-    if (!href) continue;
-    if (!existsSync(join(ROOT, site(href.replace(/\?.*$/, ''))))) errors.push(`index.html 預載的檔案不存在：${href}`);
-    else if (!assets.includes(`./${href}`)) errors.push(`index.html 預載的 ${href} 不在 STATIC_ASSETS（網址要完全相同）`);
+// 每個頁面 preload 的檔案要存在且已預快取（404.html 的 /excel-web-tool/… 絕對路徑也換成相對 docs/ 的路徑比對）
+for (const [name, text] of Object.entries(PAGES)) {
+    for (const m of text.matchAll(/<link\b[^>]*\brel=["']preload["'][^>]*>/gi)) {
+        const href = (m[0].match(/\bhref=(["'])([^"']+)\1/) || [])[2];
+        if (!href || /^(?:[a-z]+:)?\/\//i.test(href)) continue; // 外部網址由第 3 節回報
+        const ref = siteRelative(href);
+        if (ref.startsWith('/')) {
+            errors.push(`${name} 預載的 ${href} 是 ${BASE_PATH} 以外的絕對路徑，在 GitHub Pages 子路徑下會找不到`);
+        } else if (!existsSync(join(ROOT, site(ref.replace(/[?#].*$/, ''))))) {
+            errors.push(`${name} 預載的檔案不存在：${href}`);
+        } else if (!assets.includes(`./${ref}`)) {
+            errors.push(`${name} 預載的 ${href} 不在 STATIC_ASSETS（網址要完全相同）`);
+        }
+    }
+}
+// docs/ 根目錄的頁面（404.html 除外）都要預快取，否則離線時打不開；
+// 404.html 只在網址打錯時由 GitHub Pages 回傳，Service Worker 不攔截其他路徑，所以不必預快取。
+// 預快取之外，service-worker.js 的導航處理也要認得新頁面（例如 isGuideUrl()），離線時才會用快取回應。
+for (const name of Object.keys(PAGES).filter(n => n !== '404.html')) {
+    if (!assets.includes(`./${name}`)) errors.push(`${site(name)} 不在 service-worker.js 的 STATIC_ASSETS（要寫成 ./${name}），離線時打不開`);
 }
 if (precacheBytes > PRECACHE_WARN_BYTES) {
     warnings.push(`預快取總量 ${(precacheBytes / 1048576).toFixed(1)} MB，超過 ${PRECACHE_WARN_BYTES / 1048576} MB，手機首次開啟會很慢`);
@@ -154,6 +170,8 @@ for (const file of ownJsFiles) {
 const EXPECTED_CSP = {
     'index.html': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'",
     '404.html': "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'",
+    // 使用說明頁沒有 JS，政策與 404.html 相同
+    'guide.html': "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'",
 };
 const cspDirectives = (csp) => new Set(csp.split(';').map(d => d.trim().replace(/\s+/g, ' ')).filter(Boolean));
 for (const file of htmlFiles) {
@@ -329,7 +347,23 @@ for (const icon of JSON.parse(read(site('manifest.json'))).icons || []) {
 }
 
 // ==========================================
-// 10. （選用）docs/ 有變更時，快取版本必須調升
+// 10. sitemap.xml 列出根目錄的每個頁面（404.html 除外），且列出的頁面都存在
+// ==========================================
+const sitemapXml = read(site('sitemap.xml'));
+const sitemapPaths = [...sitemapXml.matchAll(/<loc>([^<]*)<\/loc>/g)].map(m => {
+    try { return new URL(m[1].trim()).pathname; } catch { return m[1]; }
+});
+for (const name of Object.keys(PAGES).filter(n => n !== '404.html')) {
+    const path = name === 'index.html' ? BASE_PATH : `${BASE_PATH}${name}`;
+    if (!sitemapPaths.includes(path)) errors.push(`sitemap.xml 沒有列出 ${name}（<loc> 的路徑應為 ${path}）`);
+}
+for (const path of sitemapPaths) {
+    const rel = path.startsWith(BASE_PATH) ? path.slice(BASE_PATH.length) || 'index.html' : null;
+    if (!rel || !existsSync(join(ROOT, site(rel)))) errors.push(`sitemap.xml 列出的 ${path} 不是網站上存在的頁面`);
+}
+
+// ==========================================
+// 11. （選用）docs/ 有變更時，快取版本必須調升
 // ==========================================
 const bumpArg = process.argv.find(a => a.startsWith('--require-bump'));
 if (bumpArg && swVersion) {
@@ -341,19 +375,20 @@ if (bumpArg && swVersion) {
     if (changed.length && versionAt(baseRef) === swVersion) {
         errors.push(`網站檔案已變更（${changed.slice(0, 5).join(', ')}${changed.length > 5 ? '…' : ''}）但 CACHE_VERSION 仍為 v${swVersion}，請執行 /release 調升版本`);
     }
-    // sitemap 的 lastmod 也要一起更新（bump-version 會改成今天，算法要和 bump-version.mjs 相同）
+    // sitemap 的 lastmod 也要一起更新（bump-version 會把每個 lastmod 都改成今天，算法要和 bump-version.mjs 相同）
+    // 每個 <lastmod> 都檢查：只看第一個的話，漏改其他頁面（例如 guide.html）的日期不會被發現
+    // 上一版以所有 lastmod 中最新的日期為準（上一版也是 bump-version 一次全部改成同一天）
     // 同一天第二次發佈時，上一版的 lastmod 已經是今天，日期相同是正確的，不算漏改
-    const lastmodOf = (xml) => ((xml || '').match(/<lastmod>([^<]*)<\/lastmod>/) || [])[1];
-    const baseLastmod = lastmodOf(git(['show', `${baseRef}:${SITE}/sitemap.xml`]));
+    const lastmodsOf = (xml) => [...(xml || '').matchAll(/<lastmod>([^<]*)<\/lastmod>/g)].map(m => m[1].trim());
+    const baseLastmod = lastmodsOf(git(['show', `${baseRef}:${SITE}/sitemap.xml`])).sort().pop();
     // 前一天調升、隔天才 push 時 lastmod 是前一天，比上一版新，可以接受；比上一版舊表示被改錯
     const today = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD（本地時區）
-    const curLastmod = lastmodOf(read(site('sitemap.xml')));
-    if (changed.some(f => f !== site('sitemap.xml')) && baseLastmod && curLastmod) {
-        if (curLastmod === baseLastmod && baseLastmod !== today) {
-            errors.push(`網站檔案已變更但 sitemap.xml 的 lastmod 仍為 ${baseLastmod}，請執行 /release`);
-        } else if (curLastmod < baseLastmod) {
-            errors.push(`sitemap.xml 的 lastmod（${curLastmod}）比上一版（${baseLastmod}）還舊，請執行 /release 改成今天`);
-        }
+    if (changed.some(f => f !== site('sitemap.xml')) && baseLastmod) {
+        const curLastmods = lastmodsOf(sitemapXml);
+        const stale = baseLastmod !== today && curLastmods.includes(baseLastmod);
+        const older = [...new Set(curLastmods.filter(d => d < baseLastmod))];
+        if (stale) errors.push(`網站檔案已變更但 sitemap.xml 有 lastmod 仍為 ${baseLastmod}，請執行 /release`);
+        if (older.length) errors.push(`sitemap.xml 的 lastmod（${older.join(', ')}）比上一版（${baseLastmod}）還舊，請執行 /release 改成今天`);
     }
 }
 

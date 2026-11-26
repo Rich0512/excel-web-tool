@@ -47,8 +47,33 @@ function addClubToStudent(student, dayStr, entryText) {
 }
 
 /**
+ * 晨間欄位上課的星期：「晨間(週一、週四)」→ ['週一', '週四']；寫不出星期時回傳空陣列
+ */
+function morningWeekdays(day) {
+    return parseDays(String(day).replace(/^晨間/, ''));
+}
+
+/**
+ * 兩個晨間欄位在重疊的上課日衝堂時的備註；沒有新的衝堂時回傳 null
+ * 只有兩欄各有一個對方沒有的社團才算：同名社團視為同一個（與下午相同），
+ * 只是其中一欄自己有兩個社團的情況，那一欄的備註已經寫了，不重複寫
+ */
+function morningOverlapRemark(dayA, clubsA, dayB, clubsB) {
+    const daysB = morningWeekdays(dayB);
+    const shared = morningWeekdays(dayA).filter(d => daysB.includes(d));
+    if (shared.length === 0) return null;
+    if (!clubsA.some(c => !clubsB.includes(c)) || !clubsB.some(c => !clubsA.includes(c))) return null;
+    const clubs = [...new Set([...clubsA, ...clubsB])];
+    return `「${dayA}」與「${dayB}」在${shared.join('、')}晨間衝突：同時錄取「${clubs.join(', ')}」`;
+}
+
+/**
  * 轉成匯出格式：schedule 是「星期 → 社團（逗號分隔）」，remarks 是衝堂說明
- * 晨間社團和下午的社團不同時段，不算衝堂
+ * - 下午（週一到週日）：同一天有兩個以上社團就是衝堂。「週一、四」這類多日選項已在 addClubToStudent() 分到每一天
+ * - 晨間：同一個晨間欄位有兩個以上社團是衝堂；不同晨間欄位的上課日重疊（例如「晨間(週一、週四)」與
+ *   「晨間(週一、週二、週四、週五)」都有週一、週四）也是衝堂
+ * - 晨間社團和下午的社團不同時段，不算衝堂
+ * 備註依星期順序；晨間欄位之間的衝堂寫在後面那個晨間欄位的備註之後
  */
 function finalizeStudents(studentMap) {
     const resultData = [];
@@ -57,14 +82,22 @@ function finalizeStudents(studentMap) {
     studentMap.forEach(s => {
         const schedule = {};
         const remarks = [];
+        const mornings = [];
         Object.keys(s.days)
             .sort((a, b) => dayOrderIndex(a) - dayOrderIndex(b))
             .forEach(day => {
                 const clubs = s.days[day];
                 activeDays.add(day);
                 schedule[day] = clubs.join(', ');
-                if (!day.startsWith('晨間') && clubs.length > 1) {
+                if (clubs.length > 1) {
                     remarks.push(`「${day}」時段衝突：同時錄取「${schedule[day]}」`);
+                }
+                if (day.startsWith('晨間')) {
+                    mornings.forEach(prev => {
+                        const remark = morningOverlapRemark(prev, s.days[prev], day, clubs);
+                        if (remark) remarks.push(remark);
+                    });
+                    mornings.push(day);
                 }
             });
         resultData.push({ class: s.class, seat: s.seat, name: s.name, schedule, remarks });
@@ -82,6 +115,8 @@ function processExcelData({ mode, includeFreshmen, slotMode, finalMapping, sheet
     const studentMap = new Map();
 
     if (mode === 'single') {
+        // 寒暑假模式每個時段欄位的標籤（欄位之間不會重複，見 slotLabelsFromColumns）
+        const labels = slotMode === 'vacation' ? slotLabelsFromColumns(slotCols.map(slot => slot.name)) : new Map();
         sheetData.forEach(row => {
             if (!includeFreshmen && !cleanInvisibleChars(row[classCol])) return;
             const student = upsertStudent(studentMap, row[classCol], row[seatCol], row[nameCol]);
@@ -92,7 +127,7 @@ function processExcelData({ mode, includeFreshmen, slotMode, finalMapping, sheet
                 if (!club || club === "無") return;
                 const mapData = finalMapping[mappingKey(slot.name, club)];
                 if (!mapData) return;
-                const label = slotMode === 'vacation' ? slotLabelFromColumn(slot.name) : "";
+                const label = labels.get(slot.name) || "";
                 addClubToStudent(student, mapData.day, label ? `${mapData.editedName}(${label})` : mapData.editedName);
             });
         });

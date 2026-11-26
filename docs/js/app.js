@@ -223,6 +223,7 @@ function clearFileModeState() {
     const mappingTableBody = document.getElementById('mapping-table-body');
     if (mappingTableBody) mappingTableBody.innerHTML = "";
     showSkippedSheets([]);
+    showMemoryHint(0);
     showConflictAlert([], 'mapping-conflict-alert');
 }
 
@@ -233,7 +234,9 @@ function resetToUpload() {
 
 // 一鍵安全清除所有暫存個資
 function manualHardResetAll() {
-    if (confirm("確定要清除這次的資料嗎？會清除選擇的 Excel 檔案、星期設定、已加入的社團，以及瀏覽器記住的社團星期，畫面會回到第一步。")) {
+    // 已加入社團時提醒抽籤結果會一起清除：之後重新加入就是重新抽籤，抽籤次數會累加
+    const lotteryNote = pastedClubs.length > 0 ? "已加入社團的抽籤結果會一起清除，之後重新加入會重新抽籤，抽籤次數會累加。" : "";
+    if (confirm(`確定要清除這次的資料嗎？會清除選擇的 Excel 檔案、星期設定、已加入的社團，以及瀏覽器記住的社團星期，畫面會回到第一步。${lotteryNote}`)) {
         clearFileModeState();
 
         // 清除貼上模式狀態（文字框、待執行的預覽、自動填入的記號）；抽籤次數 clubDrawCounts 刻意不重設
@@ -290,7 +293,7 @@ async function processAndDownload() {
         const { resultData, activeDays } = runExcelProcessing(finalMapping);
 
         if (resultData.length === 0) {
-            alert("名冊中沒有可以匯出的學生資料。請確認選擇的是錄取名冊，並檢查每個社團都選了上課星期。");
+            alert(emptyExcelResultMessage(finalMapping));
             return;
         }
 
@@ -570,10 +573,11 @@ function loadPastedClub() {
     const gradeEnd = document.getElementById('paste-grade-end').value;
     const priority = document.getElementById('paste-priority').value;
 
+    // 新生算 0 年級（與 processor.js 的 runClubLottery 相同），選單裡排在 1 年級前面
     const minG = gradeStart === "新生" ? 0 : parseInt(gradeStart, 10);
     const maxG = gradeEnd === "新生" ? 0 : parseInt(gradeEnd, 10);
     if (minG > maxG) {
-        alert(`起始年級（${gradeStart}）大於結束年級（${gradeEnd}）。請重新選擇年級範圍，再按「加入這個社團」。`);
+        alert(`起始年級（${gradeOptionLabel(gradeStart)}）大於結束年級（${gradeOptionLabel(gradeEnd)}）。「新生」是最低的年級，請重新選擇招收年級，讓起始年級低於或等於結束年級，再按「加入這個社團」。`);
         return;
     }
 
@@ -668,6 +672,20 @@ function lotteryNoticeMessage(duplicateCount, unrecognizedCount) {
     return `名單裡有 ${parts.join('；')}。請確認貼上的內容，需要時移除這個社團後重新貼上並加入（會重新抽籤）。`;
 }
 
+/**
+ * 已加入社團那一行的招收年級，例如「限 3–5 年級」「限 4 年級」「限新生與 1–2 年級」「限新生」
+ * 新生算 0 年級：結束年級是新生時，起始年級一定也是新生（起始大於結束時不會加入社團）
+ */
+function gradeRangeText(gradeStart, gradeEnd) {
+    const start = String(gradeStart);
+    const end = String(gradeEnd);
+    if (start === "新生") {
+        if (end === "新生") return "限新生";
+        return end === "1" ? "限新生與 1 年級" : `限新生與 1–${end} 年級`;
+    }
+    return start === end ? `限 ${start} 年級` : `限 ${start}–${end} 年級`;
+}
+
 // 已加入社團那一行後面的說明：略過重複、班級無法辨識的筆數、抽籤時間，以及重抽時的第幾次抽籤
 function loadedClubExtraMeta(club) {
     const extra = [];
@@ -702,7 +720,7 @@ function renderLoadedClubs() {
         infoHeader.setAttribute('tabindex', '0');
         infoHeader.setAttribute('aria-expanded', 'false');
         infoHeader.innerHTML = `<span class="loaded-club-name">${escapeHtml(club.clubName)}</span>` +
-                               `<span class="loaded-club-meta">${escapeHtml(club.day)}，正取 ${escapeHtml(String(club.selectedCount))}／${escapeHtml(String(club.quota))} 人，報名 ${escapeHtml(String(club.students.length))} 人，限 ${escapeHtml(club.gradeStart)}–${escapeHtml(club.gradeEnd)} 年級${escapeHtml(loadedClubExtraMeta(club))}</span>` +
+                               `<span class="loaded-club-meta">${escapeHtml(club.day)}，正取 ${escapeHtml(String(club.selectedCount))}／${escapeHtml(String(club.quota))} 人，報名 ${escapeHtml(String(club.students.length))} 人，${escapeHtml(gradeRangeText(club.gradeStart, club.gradeEnd))}${escapeHtml(loadedClubExtraMeta(club))}</span>` +
                                `<span class="loaded-club-badge">查看名單</span>`;
 
         const infoDetails = document.createElement('div');
@@ -790,6 +808,20 @@ function renderLoadedClubs() {
     }
 }
 
+/**
+ * 下載時沒有可以彙整的學生：說明原因與該怎麼做。訊息只寫設定與按鈕名稱，不含名冊內容
+ * 「包含沒有班級座號的新生」只影響彙整，勾回來再下載就好，不必重新加入（重新加入會重新抽籤、抽籤次數會累加），
+ * 所以先實際判斷勾選時有沒有學生；只有其他原因時才說明要移除社團後重新加入
+ */
+function emptyPastedResultMessage(clubs, slotMode, includeFreshmen) {
+    if (!includeFreshmen && processPastedClubsData(clubs, slotMode, true).resultData.length > 0) {
+        return "已加入的社團中，正取的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生」，所以課表沒有學生。" +
+            "請勾選「包含沒有班級座號的新生」，再按一次「下載課表與抽籤結果」。已加入的社團與抽籤結果都還在，不需要重新加入，也不會重新抽籤。";
+    }
+    return "已加入的社團都沒有正取的學生，沒有課表可以下載。通常是報名的學生都不在招收年級內（名單中標示為「不符限制」），或班級無法辨識。" +
+        "請點社團那一列查看名單確認。如果是招收年級選錯了，要先移除那個社團，改好招收年級後重新貼上名單並加入；重新加入會重新抽籤，抽籤次數會累加。";
+}
+
 async function processPastedData() {
     const actionBtn = document.querySelector('#loaded-clubs-section .btn-primary');
     const origBtnHtml = actionBtn ? actionBtn.innerHTML : "";
@@ -812,7 +844,7 @@ async function processPastedData() {
         const { resultData, activeDays } = processPastedClubsData(pastedClubs, slotMode, includeFreshmen);
         
         if (resultData.length === 0) {
-            alert("已加入的社團中沒有可以彙整的學生。請確認名單有學生，或調整年級範圍與「包含沒有班級座號的新生」設定後重新加入。");
+            alert(emptyPastedResultMessage(pastedClubs, slotMode, includeFreshmen));
             return;
         }
         
@@ -869,8 +901,9 @@ function showConflictAlert(resultData, elementId) {
     const conflictingStudents = resultData.filter(s => s.remarks && s.remarks.length > 0);
     if (conflictingStudents.length > 0) {
         // 與其他 .warning-callout 相同的結構：左側線條圖示＋內容（DESIGN.md 元件表「提醒」）
+        // 衝堂的判斷見 finalizeStudents()：下午同一天，或晨間同一天（含不同晨間欄位的上課日重疊）；晨間與下午不算
         let html = WARNING_ICON_SVG;
-        html += `<div><div class="conflict-title">有 ${escapeHtml(String(conflictingStudents.length))} 位學生同一天上兩個社團：</div>`;
+        html += `<div><div class="conflict-title">有 ${escapeHtml(String(conflictingStudents.length))} 位學生同一天的同一時段（下午或晨間）有兩個以上社團：</div>`;
         html += `<ul class="conflict-list">`;
         conflictingStudents.forEach(s => {
             // 姓名、班級、座號、社團都來自名冊，插入點一律 escapeHtml()；座號可能是數字，先轉成字串
@@ -955,10 +988,11 @@ function saveMappingConfig(mode, rows) {
     saveLocalStorageConfig(savedConfig);
 }
 
-function runExcelProcessing(finalMapping) {
+// includeFreshmen 預設依畫面上的勾選；emptyExcelResultMessage() 會傳 true 判斷勾選後有沒有學生
+function runExcelProcessing(finalMapping, includeFreshmen = document.getElementById('include-freshmen').checked) {
     return processExcelData({
         mode: document.getElementById('mode-select').value,
-        includeFreshmen: document.getElementById('include-freshmen').checked,
+        includeFreshmen,
         slotMode: document.getElementById('slot-mode-select').value,
         finalMapping,
         sheetData,
@@ -968,6 +1002,21 @@ function runExcelProcessing(finalMapping) {
         slotCols,
         sheetStudents
     });
+}
+
+/**
+ * 上傳 Excel 轉換時沒有可以匯出的學生：說明原因與該怎麼做。訊息不含名冊內容
+ * 星期沒選好的社團在這之前就會擋下，所以不再請使用者檢查星期；
+ * 取消勾選「包含沒有班級座號的新生名單」時，先實際判斷勾選後有沒有學生
+ */
+function emptyExcelResultMessage(finalMapping) {
+    if (!document.getElementById('include-freshmen').checked) {
+        if (runExcelProcessing(finalMapping, true).resultData.length > 0) {
+            return "名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生名單」，所以沒有學生可以匯出。" +
+                "請勾選「包含沒有班級座號的新生名單」，再按一次「開始轉換並下載課表」，星期設定都還在。";
+        }
+    }
+    return "名冊中讀不到有姓名的學生，沒有資料可以匯出。請確認選擇的是學校系統匯出的錄取名冊，而且「姓名」欄有填入學生姓名，再重新選擇檔案。";
 }
 
 function updateMappingConflicts() {

@@ -23,6 +23,7 @@ node tools/e2e-check.mjs http://localhost:8124/excel-web-tool/ [情境]  # 選�
 ```
 docs/                  對外發佈的網站（只有這裡會出現在網站上）
   index.html 404.html  主頁與 404（404 用 /excel-web-tool/ 絕對路徑）
+  guide.html           使用說明（無 JS；首頁一律以新分頁開啟，換頁會丟失記憶體中的名冊）
   service-worker.js    離線快取；STATIC_ASSETS 要列出所有執行時需要的檔案
   js/                  原生 JS，依序 defer 載入並共用全域函式（順序見 rules/frontend.md）
   js/libs/             第三方 ExcelJS 4.4.0，不要修改；由 utils.js 的 loadExcelJS() 延遲載入
