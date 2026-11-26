@@ -1,31 +1,181 @@
 /* ===================================================
  * 使用說明頁（guide.html）專用樣式
- * token、按鈕、頁首、課表範例（.sample-table）等共用元件都在 style.css，這裡只放說明頁才需要的部分
+ * token、按鈕、頁首、課表範例（.sample-table）、提醒（.warning-callout）等共用元件都在 style.css，
+ * 這裡只放說明頁才需要的部分。選擇器只用單一 class（必要時加一層結構），不覆寫 style.css 的元件
  * =================================================== */
 
-/* ---------- 目錄 ---------- */
+/* ---------- 路線課表（這一頁唯一的記憶點） ---------- */
 
-.guide-toc {
+/* 依手上的資料選一列，三個步驟由左到右；每一格都是連到說明的連結。
+   表頭沿用首頁步驟列（.stepper）：白底、--control 外框、步驟編號 20px Outfit 600 */
+.guide-routes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.guide-route {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-panel);
-    padding: 12px 20px;
-    max-width: 760px;
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
 }
 
-.guide-toc-title {
+.guide-route-caption {
+    caption-side: top;
+    text-align: left;
+    padding-bottom: 12px;
+    max-width: 34em;
+}
+
+.guide-route th,
+.guide-route td {
+    text-align: left;
+    vertical-align: top;
+}
+
+.guide-route thead th {
+    padding: 12px 16px;
+    color: var(--ink-muted);
+    font-weight: 400;
+    border-bottom: 1px solid var(--control);
+}
+
+.guide-route thead th + th {
+    border-left: 1px solid var(--control);
+}
+
+.guide-route-corner {
+    width: 28%;
+    font-size: 14px;
+    vertical-align: bottom;
+}
+
+.guide-route-num {
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 1;
+    margin-right: 10px;
+}
+
+/* 列標題：手上有什麼 */
+.guide-route-have {
+    padding: 16px;
+    background: var(--bg);
+}
+
+.guide-route-have-title {
+    display: block;
+    font-size: 17px;
     font-weight: 700;
+    color: var(--ink);
 }
 
-.guide-toc ol {
-    padding-left: 1.4em;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 32px;
+.guide-route-have-desc {
+    display: block;
+    margin-top: 4px;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--ink-muted);
 }
 
-/* 觸控目標至少 44px（DESIGN.md 無障礙底線） */
-.guide-toc a {
+.guide-route tbody tr + tr > * {
+    border-top: 1px solid var(--line);
+}
+
+/* 整格可點：連結的 ::after 蓋滿整格（td 是定位基準）。
+   td 用 z-index: 0 自成一層，::after 放在 -1，hover 底色就會在文字後面、格子底色前面 */
+.guide-route td {
+    position: relative;
+    z-index: 0;
+    border-left: 1px solid var(--line);
+}
+
+.guide-route-link {
+    display: block;
+    min-height: 44px;
+    padding: 16px;
+    text-decoration: none;
+}
+
+.guide-route-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transition: background-color 0.15s;
+}
+
+.guide-route-link:hover::after {
+    background: var(--primary-tint);
+}
+
+/* 焦點框畫在整格的內側（::after），才不會只框住文字，也不會被相鄰格子蓋住 */
+.guide-route-link:focus-visible {
+    outline: none;
+}
+
+.guide-route-link:focus-visible::after {
+    outline: 3px solid var(--primary);
+    outline-offset: -3px;
+}
+
+.guide-route-do {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* 桌機的步驟名稱已在表頭，格子裡的步驟名稱只給螢幕閱讀器（同 .visually-hidden）；768px 以下才顯示 */
+.guide-route-step {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* 四個角的格子跟著外框的圓角，hover 底色才不會超出外框 */
+.guide-route thead th:first-child {
+    border-top-left-radius: calc(var(--radius-control) - 1px);
+}
+
+.guide-route thead th:last-child {
+    border-top-right-radius: calc(var(--radius-control) - 1px);
+}
+
+.guide-route tbody tr:last-child > th {
+    border-bottom-left-radius: calc(var(--radius-control) - 1px);
+}
+
+.guide-route tbody tr:last-child > td:last-child,
+.guide-route tbody tr:last-child > td:last-child .guide-route-link::after {
+    border-bottom-right-radius: calc(var(--radius-control) - 1px);
+}
+
+/* 表格下方的補充說明與連結列 */
+.guide-route-note {
+    font-size: 14px;
+    color: var(--ink-muted);
+    max-width: 34em;
+}
+
+/* 一行小字：說明＋兩個連結。連結各自撐到 44px 高，換行時不會把文字行距撐開 */
+.guide-route-more {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 16px;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+.guide-route-more a {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
@@ -37,7 +187,7 @@
 .guide-section {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
     border-top: 1px solid var(--line);
     padding-top: 28px;
 }
@@ -46,7 +196,6 @@
 .guide-section > p,
 .guide-list,
 .guide-steps,
-.guide-faq,
 .guide-section > .warning-callout {
     max-width: 34em;
 }
@@ -54,7 +203,7 @@
 .guide-subtitle {
     font-size: 17px;
     font-weight: 700;
-    margin-top: 10px;
+    margin-top: 8px;
 }
 
 .guide-list,
@@ -65,7 +214,7 @@
 .guide-list li + li,
 .guide-steps li + li,
 .guide-list .guide-list {
-    margin-top: 6px;
+    margin-top: 8px;
 }
 
 /* 帶線條圖示的一句重點（同 .privacy-note 的排法，字級用內文） */
@@ -80,38 +229,431 @@
     color: var(--primary);
 }
 
-/* ---------- 兩種方式並排 ---------- */
-
-.guide-choice {
+/* 步驟清單旁放示意圖；768px 以下示意圖移到清單下方 */
+.guide-split {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    max-width: 860px;
+    grid-template-columns: minmax(0, 34em) minmax(0, 420px);
+    gap: 16px 40px;
+    align-items: start;
 }
 
-.guide-card {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-panel);
-    padding: 20px;
+/* 和示意圖編號對應的步驟：編號畫成和示意圖相同的圓點。
+   清除 list-style 後部分螢幕閱讀器不再當成清單，HTML 另加 role="list" */
+.guide-steps-dot {
+    list-style: none;
+    padding-left: 0;
+    counter-reset: guide-step;
+}
+
+.guide-steps-dot > li {
+    counter-increment: guide-step;
+    position: relative;
+    padding-left: 34px;
+}
+
+.guide-steps-dot > li::before {
+    content: counter(guide-step);
+    position: absolute;
+    left: 0;
+    top: 2px;
+}
+
+/* 圓點：同「數量標籤」（.tab-count）的 22px 正圓（DESIGN.md 圓角規則的唯一例外） */
+.guide-steps-dot > li::before,
+.guide-mock-dot {
+    display: inline-block;
+    flex: 0 0 auto;
+    min-width: 22px;
+    padding: 0 7px;
+    border-radius: 11px;
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 22px;
+    text-align: center;
+}
+
+/* ---------- 介面示意圖（不可互動，aria-hidden；文字與工具畫面一致） ---------- */
+
+.guide-figure {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-width: 0;
 }
 
-.guide-card-title {
+.guide-figcaption {
+    font-size: 14px;
+    color: var(--ink-muted);
+    max-width: 34em;
+}
+
+/* 示意框：代表工具的頁面（--bg 底），裡面畫縮小的元件。
+   只是外觀，沒有 hover、焦點或游標變化，避免看起來可以點 */
+.guide-mock {
     display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    font-size: 14px;
+    cursor: default;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* 上傳區（同 .upload-zone 的虛線框） */
+.guide-mock-zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 8px;
-    font-size: 17px;
-    font-weight: 700;
+    padding: 24px 16px;
+    border: 2px dashed var(--control);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    text-align: center;
+}
+
+.guide-mock-dot-corner {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+}
+
+.guide-mock-upload-icon {
     color: var(--primary);
 }
 
-.guide-card a {
+.guide-mock-zone-title {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.guide-mock-note {
+    font-size: 13px;
+    color: var(--ink-muted);
+}
+
+.guide-mock-link {
+    font-size: 13px;
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* 按鈕外觀（同 .btn-primary／.btn-secondary 的配色，縮小） */
+.guide-mock-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 16px;
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-control);
+    background: var(--primary);
+    color: var(--on-primary);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.guide-mock-btn-secondary {
+    background: var(--surface);
+    color: var(--primary);
+}
+
+/* 貼上表單（同 .paste-zone） */
+.guide-mock-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+}
+
+.guide-mock-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.guide-mock-field-full {
+    grid-column: 1 / -1;
+}
+
+.guide-mock-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* 輸入框與選單的外觀（同 .club-input／.config-select 的框線，縮小） */
+.guide-mock-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    min-width: 0;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+.guide-mock-chevron {
+    flex: 0 0 auto;
+    color: var(--ink-muted);
+}
+
+.guide-mock-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.guide-mock-range .guide-mock-control {
+    flex: 1 1 0;
+}
+
+.guide-mock-sep {
+    font-size: 13px;
+    color: var(--ink-muted);
+}
+
+.guide-mock-textarea {
+    display: block;
+    padding: 8px;
+    line-height: 1.5;
+}
+
+.guide-mock-roster-row {
+    display: grid;
+    grid-template-columns: 3.5em 3.5em auto;
+}
+
+.guide-mock-preview-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+/* 貼上後的讀取結果（同 .parse-preview 讀得到名單時的成功色系） */
+.guide-mock-preview {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 4px 8px;
+    border: 1px solid var(--success-line);
+    border-radius: var(--radius-control);
+    background: var(--success-bg);
+    color: var(--success-text);
+    font-size: 13px;
+}
+
+.guide-mock-preview-detail {
+    display: block;
+}
+
+/* 對照表上方的記住設定提示（同 .memory-hint） */
+.guide-mock-memory {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--success-text);
+}
+
+.guide-mock-memory svg {
+    flex: 0 0 auto;
+}
+
+/* 對照表（同 .mapping-table：淡藍表頭、--line 格線） */
+.guide-mock-table {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
+}
+
+.guide-mock-th,
+.guide-mock-td {
+    padding: 6px;
+    border-bottom: 1px solid var(--line);
+    min-width: 0;
+}
+
+.guide-mock-th {
+    background: var(--primary-tint);
+    color: var(--ink-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.guide-mock-td {
+    display: flex;
+    align-items: center;
+}
+
+.guide-mock-td .guide-mock-control {
+    flex: 1 1 auto;
+}
+
+/* 每列 3 格：第 2、3 格加左側格線；最後一列不畫底線 */
+.guide-mock-table > :nth-child(3n + 2),
+.guide-mock-table > :nth-child(3n) {
+    border-left: 1px solid var(--line);
+}
+
+.guide-mock-table > :nth-last-child(-n + 3) {
+    border-bottom: 0;
+}
+
+/* 時段標籤（同 .slot-badge：A 時段淡藍底，其他時段灰底加框） */
+.guide-mock-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.guide-mock-badge.is-a {
+    background: var(--primary-tint);
+    color: var(--primary);
+}
+
+.guide-mock-badge.is-other {
+    background: var(--bg);
+    color: var(--ink-muted);
+    border-color: var(--line);
+}
+
+/* 還沒選星期的那一列：說明用的警告框（實際畫面沒有，圖說有寫） */
+.guide-mock-control.is-unset {
+    padding: 3px 7px;
+    border: 2px solid var(--warning-text);
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+
+.guide-mock-control.is-unset .guide-mock-chevron {
+    color: inherit;
+}
+
+/* ---------- 抽籤圖解 ---------- */
+
+/* 12 格正取名額畫成一排格子（課表格線）；格子寬 48px，手機改成每列 6 格，都不需要水平捲動 */
+.guide-lottery-art {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 578px;
+}
+
+.guide-lottery-label {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* 格線用 1px 的 gap 透出底色 --control */
+.guide-lottery-seats {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--control);
+    border: 1px solid var(--control);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+}
+
+.guide-lottery-seat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     min-height: 44px;
+    padding: 4px 2px;
+    font-size: 14px;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.guide-lottery-seat.is-first,
+.guide-lottery-swatch.is-first {
+    background: var(--primary);
+    color: var(--on-primary);
+}
+
+.guide-lottery-seat.is-drawn,
+.guide-lottery-swatch.is-drawn {
+    background: var(--primary-tint);
+    color: var(--primary);
+}
+
+.guide-lottery-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+.guide-lottery-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.guide-lottery-swatch {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--control);
+}
+
+.guide-lottery-label + .guide-lottery-seats {
+    margin-top: -4px;
+}
+
+/* 備取：虛線框，表示還不是正取 */
+.guide-lottery-waitlist {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.guide-lottery-wait {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px dashed var(--control);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    font-size: 14px;
+}
+
+.guide-lottery-more {
+    padding: 0 4px;
+    color: var(--ink-muted);
 }
 
 /* ---------- 課表範例 ---------- */
@@ -143,21 +685,66 @@
     font-weight: 700;
 }
 
-/* ---------- 常見問題：看到什麼 → 怎麼做 ---------- */
+/* ---------- 常見問題：原生 <details>，看到的訊息 → 點開看處理方式 ---------- */
 
-.guide-faq dt {
-    font-weight: 700;
+.guide-faq {
+    max-width: 40em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
 }
 
-.guide-faq dd {
-    margin-top: 4px;
-    color: var(--ink-muted);
-}
-
-.guide-faq dd + dt {
-    margin-top: 14px;
-    padding-top: 14px;
+.guide-faq-item + .guide-faq-item {
     border-top: 1px solid var(--line);
+}
+
+.guide-faq-q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+    transition: color 0.15s;
+}
+
+/* 換成自訂的展開圖示，隱藏瀏覽器內建的三角形 */
+.guide-faq-q::-webkit-details-marker {
+    display: none;
+}
+
+.guide-faq-q:hover,
+.guide-faq-item[open] > .guide-faq-q {
+    color: var(--primary);
+}
+
+/* 摘要貼著外框，焦點框畫在內側 */
+.guide-faq-q:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: -3px;
+}
+
+.guide-faq-icon {
+    flex: 0 0 auto;
+    color: var(--primary);
+}
+
+.guide-faq-opened,
+.guide-faq-item[open] .guide-faq-closed {
+    display: none;
+}
+
+.guide-faq-item[open] .guide-faq-opened {
+    display: inline;
+}
+
+.guide-faq-a {
+    max-width: 34em;
+    padding: 0 16px 16px;
+    color: var(--ink-muted);
 }
 
 /* ---------- 頁尾的主要按鈕 ---------- */
@@ -167,24 +754,145 @@
     padding-top: 28px;
 }
 
+/* ---------- 平板 (max-width: 768px) ---------- */
+
+@media (max-width: 768px) {
+    .guide-split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .guide-figure {
+        max-width: 420px;
+    }
+
+    /* 路線課表：768px 以下四欄太擠（641px 時每欄約 150px，「確認上課星期」會斷行、列高超過 200px），
+       改成每一列一組：「手上的資料」在上，三個步驟在下面並排（640px 以下再改成由上而下），仍保留格線。
+       改成 display: block／grid 後，表格語意靠 HTML 上寫明的 ARIA role 維持 */
+    .guide-route,
+    .guide-route tbody,
+    .guide-route th,
+    .guide-route td {
+        display: block;
+    }
+
+    .guide-route {
+        background: none;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .guide-route-caption {
+        display: block;
+    }
+
+    /* 步驟名稱改在每一格裡顯示，表頭只留給螢幕閱讀器 */
+    .guide-route thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .guide-route tbody tr {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        background: var(--surface);
+        border: 1px solid var(--control);
+        border-radius: var(--radius-control);
+        overflow: hidden;
+    }
+
+    .guide-route tbody tr + tr {
+        margin-top: 12px;
+    }
+
+    .guide-route tbody tr + tr > * {
+        border-top: 0;
+    }
+
+    .guide-route-have {
+        grid-column: 1 / -1;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--control);
+    }
+
+    /* 第一個步驟格不畫左線（緊貼外框） */
+    .guide-route tbody tr > th + td {
+        border-left: 0;
+    }
+
+    .guide-route tbody tr:last-child > th,
+    .guide-route tbody tr:last-child > td:last-child,
+    .guide-route tbody tr:last-child > td:last-child .guide-route-link::after {
+        border-radius: 0;
+    }
+
+    .guide-route-link {
+        height: 100%;
+        padding: 12px 16px;
+    }
+
+    .guide-route-step {
+        position: static;
+        display: flex;
+        align-items: baseline;
+        width: auto;
+        height: auto;
+        margin: 0 0 4px;
+        overflow: visible;
+        clip: auto;
+        clip-path: none;
+        white-space: normal;
+        font-size: 14px;
+        color: var(--ink-muted);
+    }
+
+    .guide-route-step .guide-route-num {
+        font-size: 17px;
+        margin-right: 8px;
+    }
+}
+
 /* ---------- 手機 (max-width: 640px) ---------- */
 
 @media (max-width: 640px) {
-    .guide-toc {
-        padding: 8px 16px;
-    }
-
-    .guide-toc ol,
-    .guide-choice {
-        grid-template-columns: 1fr;
-    }
-
     .guide-section {
         padding-top: 20px;
     }
 
-    .guide-card {
-        padding: 16px;
+    /* 路線課表：三個步驟改成由上而下 */
+    .guide-route tbody tr {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .guide-route tbody tr > td {
+        border-left: 0;
+    }
+
+    /* 權重要高於 tr + tr > *，第二組的步驟之間才有格線 */
+    .guide-route tbody tr > td + td {
+        border-top: 1px solid var(--line);
+    }
+
+    .guide-mock {
+        padding: 12px;
+    }
+
+    /* 抽籤格子每列 6 格，格子寬度和桌機差不多，「6 年級」放得下 */
+    .guide-lottery-seats {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .guide-faq-q {
+        padding: 12px;
+    }
+
+    .guide-faq-a {
+        padding: 0 12px 12px;
     }
 
     /* 手機上主要按鈕滿版（DESIGN.md 版面） */

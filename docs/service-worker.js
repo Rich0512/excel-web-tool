@@ -3,7 +3,7 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.19';
+const CACHE_VERSION = 'v3.20';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
 // 網路連得上但很慢時（學校 Wi-Fi 常見），等這麼久就先用快取的頁面
@@ -19,15 +19,15 @@ const STATIC_ASSETS = [
     './index.html',
     // 使用說明頁（沒有 JS）：離線時用這份預快取的版本回應，見下方 isGuideUrl()
     './guide.html',
-    './css/style.css?v=3.19',
-    './css/guide.css?v=3.19',
+    './css/style.css?v=3.20',
+    './css/guide.css?v=3.20',
     './images/logo.png',
     './images/logo-192.png',
     './images/logo-512.png',
     './images/logo-maskable-192.png',
     './images/logo-maskable-512.png',
     './manifest.json',
-    './fonts/fonts.css?v=3.19',
+    './fonts/fonts.css?v=3.20',
     // Noto Sans TC 依 unicode-range 拆成介面用字（ui）與其餘常用字（ext），見 fonts/fonts.css。
     // 只預快取 ui；ext（每個字重約 0.8 MB）在畫面第一次出現學生姓名等字時才下載，
     // 由下方 Cache-First 存進快取。從沒在線上顯示過名單就離線時，姓名改用系統字型。
@@ -36,15 +36,15 @@ const STATIC_ASSETS = [
     './fonts/Outfit-Regular.woff2',
     './fonts/Outfit-SemiBold.woff2',
     // ExcelJS 由 utils.js 的 loadExcelJS() 以 ?v=<版本> 載入；帶版本才不會在升級時拿到舊版 SW 快取的舊檔
-    './js/libs/exceljs.min.js?v=3.19',
-    './js/utils.js?v=3.19',
-    './js/exporter.js?v=3.19',
-    './js/parser.js?v=3.19',
-    './js/processor.js?v=3.19',
-    './js/mapping-ui.js?v=3.19',
-    './js/app.js?v=3.19',
-    './js/register-sw.js?v=3.19',
-    './css/404.css?v=3.19',
+    './js/libs/exceljs.min.js?v=3.20',
+    './js/utils.js?v=3.20',
+    './js/exporter.js?v=3.20',
+    './js/parser.js?v=3.20',
+    './js/processor.js?v=3.20',
+    './js/mapping-ui.js?v=3.20',
+    './js/app.js?v=3.20',
+    './js/register-sw.js?v=3.20',
+    './css/404.css?v=3.20',
     './templates/115學期名冊_範本.xlsx'
 ];
 
@@ -53,7 +53,7 @@ const SHELL_URL = './index.html';
 // 使用說明頁（離線時的備用頁面就是預快取的版本）
 const GUIDE_URL = './guide.html';
 // 備用頁面必須引用這一版的檔案（?v=），否則離線時會變成新 HTML 配舊 JS
-// 版本號後面不能再接數字或小數點，否則 v3.1 會把引用 ?v=3.19 的 HTML 誤認為同一版
+// 版本號後面不能再接數字或小數點，否則 v3.1 會把引用 ?v=3.20 的 HTML 誤認為同一版
 const ASSET_QUERY_RE = new RegExp(`\\?v=${CACHE_VERSION.slice(1).replace(/\./g, '\\.')}(?![\\d.])`);
 
 // ==========================================
