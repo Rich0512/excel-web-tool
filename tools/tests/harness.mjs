@@ -83,7 +83,8 @@ export class FakeElement {
         return ev;
     }
     dispatchEvent(ev) { return this.dispatch(ev.type, ev); }
-    focus() {}
+    // 記錄目前焦點（document.activeElement），讓測試檢查操作後焦點移到哪裡
+    focus() { if (this.ownerDocument) this.ownerDocument.activeElement = this; }
     click() { if (!this.disabled) this.dispatch('click'); }
     closest() { return null; }
     descendants() { return this.children.flatMap(c => [c, ...c.descendants()]); }
@@ -126,6 +127,7 @@ export function loadSite({ files = DEFAULT_FILES, withExcelJS = true, codeGenera
     const appended = [];
 
     const document = {
+        activeElement: null,
         __onAppend(child, parent) { appended.push({ child, parent }); },
         getElementById(id) {
             if (!registry.has(id)) {

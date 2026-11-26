@@ -534,7 +534,7 @@ document.getElementById('paste-include-freshmen').addEventListener('change', ren
 
 // 移除所有已加入的社團
 function clearAllPastedClubs() {
-    if (confirm("確定要移除所有已加入的社團嗎？抽籤結果會一起清除。移除後要重新貼上名單並加入，加入時會重新抽籤，並記錄抽籤次數。")) {
+    if (confirm("確定要移除所有已加入的社團嗎？抽籤結果會一起清除。移除後要重新貼上名單並加入，加入時會重新抽籤，抽籤次數會累加。")) {
         // 抽籤次數 clubDrawCounts 刻意不重設，重新加入同名社團仍會累加
         pastedClubs = [];
         renderLoadedClubs();
@@ -739,10 +739,22 @@ function renderLoadedClubs() {
         delBtn.className = "loaded-club-delete";
         delBtn.textContent = "移除";
         delBtn.setAttribute('aria-label', `移除 ${club.clubName}`);
+        // 誤按會失去這個社團的抽籤結果，重新加入就是重新抽籤，所以移除前先確認；抽籤次數不會因移除而改變
         delBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (!confirm("確定要移除這個社團嗎？抽籤結果會一起清除。重新加入時會重新抽籤，抽籤次數會累加。")) return;
             pastedClubs.splice(index, 1);
             renderLoadedClubs();
+            // 移除的按鈕已不存在，焦點移到下一個「移除」按鈕或貼上區，鍵盤使用者才不會失去焦點
+            if (pastedClubs.length > 0) {
+                const list = document.getElementById('loaded-clubs-list');
+                const buttons = list ? list.querySelectorAll('.loaded-club-delete') : [];
+                const next = buttons[Math.min(index, pastedClubs.length - 1)];
+                if (next) next.focus();
+            } else {
+                const textArea = document.getElementById('paste-text-area');
+                if (textArea) textArea.focus();
+            }
         });
         
         item.appendChild(infoContainer);

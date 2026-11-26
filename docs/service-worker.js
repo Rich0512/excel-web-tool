@@ -3,7 +3,7 @@
 // 提供離線快取功能，確保斷網後仍可正常使用
 // ============================================
 
-const CACHE_VERSION = 'v3.17';
+const CACHE_VERSION = 'v3.18';
 const CACHE_NAME = `excel-web-tool-${CACHE_VERSION}`;
 
 // 網路連得上但很慢時（學校 Wi-Fi 常見），等這麼久就先用快取的頁面
@@ -16,14 +16,14 @@ const NAVIGATION_TIMEOUT_MS = 4000;
 // - og-image.jpg 僅供社群分享爬蟲使用，不需離線快取
 const STATIC_ASSETS = [
     './index.html',
-    './css/style.css?v=3.17',
+    './css/style.css?v=3.18',
     './images/logo.png',
     './images/logo-192.png',
     './images/logo-512.png',
     './images/logo-maskable-192.png',
     './images/logo-maskable-512.png',
     './manifest.json',
-    './fonts/fonts.css?v=3.17',
+    './fonts/fonts.css?v=3.18',
     // Noto Sans TC 依 unicode-range 拆成介面用字（ui）與其餘常用字（ext），見 fonts/fonts.css。
     // 只預快取 ui；ext（每個字重約 0.8 MB）在畫面第一次出現學生姓名等字時才下載，
     // 由下方 Cache-First 存進快取。從沒在線上顯示過名單就離線時，姓名改用系統字型。
@@ -32,22 +32,22 @@ const STATIC_ASSETS = [
     './fonts/Outfit-Regular.woff2',
     './fonts/Outfit-SemiBold.woff2',
     // ExcelJS 由 utils.js 的 loadExcelJS() 以 ?v=<版本> 載入；帶版本才不會在升級時拿到舊版 SW 快取的舊檔
-    './js/libs/exceljs.min.js?v=3.17',
-    './js/utils.js?v=3.17',
-    './js/exporter.js?v=3.17',
-    './js/parser.js?v=3.17',
-    './js/processor.js?v=3.17',
-    './js/mapping-ui.js?v=3.17',
-    './js/app.js?v=3.17',
-    './js/register-sw.js?v=3.17',
-    './css/404.css?v=3.17',
+    './js/libs/exceljs.min.js?v=3.18',
+    './js/utils.js?v=3.18',
+    './js/exporter.js?v=3.18',
+    './js/parser.js?v=3.18',
+    './js/processor.js?v=3.18',
+    './js/mapping-ui.js?v=3.18',
+    './js/app.js?v=3.18',
+    './js/register-sw.js?v=3.18',
+    './css/404.css?v=3.18',
     './templates/115學期名冊_範本.xlsx'
 ];
 
 // 首頁（離線或網路太慢時的備用頁面）
 const SHELL_URL = './index.html';
 // 備用頁面必須引用這一版的檔案（?v=），否則離線時會變成新 HTML 配舊 JS
-// 版本號後面不能再接數字或小數點，否則 v3.1 會把引用 ?v=3.17 的 HTML 誤認為同一版
+// 版本號後面不能再接數字或小數點，否則 v3.1 會把引用 ?v=3.18 的 HTML 誤認為同一版
 const ASSET_QUERY_RE = new RegExp(`\\?v=${CACHE_VERSION.slice(1).replace(/\./g, '\\.')}(?![\\d.])`);
 
 // ==========================================
