@@ -68,22 +68,43 @@ function appendMappingRow(tbody, row) {
     tbody.appendChild(tr);
 }
 
+// 有姓名欄、但看起來是課程表而略過的工作表（courseScheduleKind 是 'named'）：略過的原因、是名單時怎麼改
+const SCHEDULE_LIKE_REASON = '「社團」或「課程名稱」欄有兩種以上的值，也沒有班級、座號欄';
+const SCHEDULE_LIKE_FIX = '如果其實是社團名單，請在學生名單加上「班級」「座號」欄';
+
 /**
- * 多工作表模式中找不到姓名欄而略過的工作表，顯示在對照表上方，避免社團默默從課表消失
+ * 多工作表模式中沒有列入課表的工作表，顯示在對照表上方，避免社團默默從課表消失：
+ * names 是找不到姓名欄的工作表，scheduleLike 是有姓名欄、但看起來是課程表的工作表（排在後面）。工作表名稱不是學生資料
  */
-function showSkippedSheets(names) {
+function showSkippedSheets(names, scheduleLike = []) {
     const box = document.getElementById('mapping-skip-alert');
     if (!box) return;
-    if (!names || names.length === 0) {
+    const noName = names || [];
+    const sched = scheduleLike || [];
+    if (noName.length === 0 && sched.length === 0) {
         box.hidden = true;
         box.innerHTML = '';
         return;
     }
-    box.innerHTML = WARNING_ICON_SVG +
-        `<div><div class="conflict-title">有 ${escapeHtml(String(names.length))} 張工作表找不到「姓名」欄，沒有列入課表：</div>` +
-        `<ul class="conflict-list">${names.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` +
-        `<p class="skip-alert-hint">如果這些是社團名單，請在學生名單上方加上「姓名」欄位標題，存檔後回到第 1 步重新選擇檔案；不是社團名單的工作表可以不用理會。</p></div>`;
+    const list = (arr) => `<ul class="conflict-list">${arr.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`;
+    let body = '';
+    if (noName.length) {
+        body += `<div class="conflict-title">有 ${escapeHtml(String(noName.length))} 張工作表找不到「姓名」欄，沒有列入課表：</div>` + list(noName) +
+            '<p class="skip-alert-hint">如果這些是社團名單，請在學生名單上方加上「姓名」欄位標題，存檔後回到第 1 步重新選擇檔案；不是社團名單的工作表可以不用理會。</p>';
+    }
+    if (sched.length) {
+        body += `<div class="conflict-title">有 ${escapeHtml(String(sched.length))} 張工作表有姓名欄，但看起來是課程表，沒有列入課表：</div>` + list(sched) +
+            `<p class="skip-alert-hint">這些工作表的${SCHEDULE_LIKE_REASON}。${SCHEDULE_LIKE_FIX}，存檔後回到第 1 步重新選擇檔案；真的是課程表的可以不用理會。</p>`;
+    }
+    box.innerHTML = `${WARNING_ICON_SVG}<div>${body}</div>`;
     box.hidden = false;
+}
+
+// alert 用的「看起來是課程表」說明（沒有這類工作表時是空字串）
+function scheduleLikeAlertNote(names) {
+    if (!names.length) return '';
+    return `\n\n以下工作表有姓名欄，但看起來是課程表（${SCHEDULE_LIKE_REASON}），沒有列入課表：\n${formatSheetList(names)}\n` +
+        `${SCHEDULE_LIKE_FIX}，存檔後重新選擇檔案。`;
 }
 
 /**
@@ -106,6 +127,12 @@ function isMappingStepShown() {
 }
 
 const MODE_SWITCH_FAILED_NOTE = '已切回原本的彙整模式，修改過的社團名稱與星期都會保留。';
+// 多工作表模式略過名稱含這些字的工作表（說明、統計等不是社團名單）。「1152」是舊檔裡學校系統匯出的課程時間表名稱，
+// 為了相容保留；其他學期的課程表名稱不同，改由 findScheduleHeader() 依標頭判斷。提示訊息也由這個清單產生
+const IGNORED_SHEET_KEYWORDS = ['對照', '說明', 'README', '總表', '統計', '人數', '小計', '1152', '清單', '報表'];
+const IGNORED_SHEETS_NOTE = `名稱含${IGNORED_SHEET_KEYWORDS.map(kw => `「${kw}」`).join('')}的工作表會略過，` +
+    '課程表（前 5 列有「課程名稱」或「社團」欄，以及「上課時間」「時間」或「星期」欄，沒有班級、座號欄，' +
+    '而且沒有姓名欄或列了兩種以上的社團）也會略過';
 // 每社團一張工作表的名冊，被「總表」工作表讓工具選了單一清單時，使用者可以的處理
 const REMOVE_SUMMARY_SHEET_TIP = (sheetName) =>
     `如果這份名冊其實是每個社團一張工作表，請把「${sheetName}」工作表刪除，或改成含「說明」「統計」「報表」等字的名稱` +
@@ -177,8 +204,8 @@ function analyzeAndRenderMapping() {
         const headers = detectedHeaders;
 
         colClassIdx = findColumnByKeywords(headers, CLASS_KEYWORDS);
-        colSeatIdx = findColumnByKeywords(headers, SEAT_KEYWORDS, true, false);
-        colNameIdx = findColumnByKeywords(headers, NAME_KEYWORDS, false, true);
+        colSeatIdx = findColumnByKeywords(headers, SEAT_KEYWORDS, true);
+        colNameIdx = findNameColumn(headers);
 
         if (colClassIdx === -1 || colSeatIdx === -1 || colNameIdx === -1) {
             const what = `工作表「${sheet.name}」缺少必要欄位（班級、座號、學生姓名或姓名），無法用「單一清單」模式整理。`;
@@ -210,7 +237,7 @@ function analyzeAndRenderMapping() {
             return false;
         }
 
-        // 讀取學生列。新生（沒有班級）也先讀進來，是否納入由轉換時的勾選決定，
+        // 讀取學生列。新生（班級空白或寫「新生」，見 isFreshmanClass）也先讀進來，是否納入由轉換時的勾選決定，
         // 這樣切換「包含新生」時不必重建對照表，已修改的名稱與星期才不會被重設
         sheet.eachRow((row, rowNum) => {
             if (rowNum <= headerRowIndex) return;
@@ -275,25 +302,43 @@ function analyzeAndRenderMapping() {
 
     } else {
         // --- 多工作表分社團模式 ---
-        const ignoreKeywords = ['對照', '說明', 'README', '總表', '統計', '人數', '小計', '1152', '清單', '報表'];
         const skipped = [];
         const ignored = [];
+        const scheduleLike = [];
         let candidateCount = 0;
 
         uploadedWorkbook.eachSheet((ws) => {
             const name = ws.name.trim();
-            if (ignoreKeywords.some(kw => name.includes(kw))) {
+            if (IGNORED_SHEET_KEYWORDS.some(kw => name.includes(kw))) {
                 ignored.push(name);
                 return;
             }
-            candidateCount++;
 
             // 學生名單在這裡讀一次，衝堂即時提醒與轉換都用同一份資料
             const students = readClubSheetStudents(ws);
             if (!students) {
+                // 沒有姓名欄（或姓名欄只是誤中課程表的欄位，見 readClubSheetStudents）的課程時間表不是社團名單：
+                // 略過，不算候選、也不列入「找不到姓名欄」的提醒。
+                // 它的上課時間已由 loadScheduleFromExcel() 讀進 excelSchedule，仍會用來自動選星期。
+                // 課程表標頭其實是名單上方的資訊列，或標頭那一列就是名單的表頭時不算課程表（isCourseScheduleSheet）：
+                // 例如第 1 列是標題「桌遊社」、第 2 列才是「姓名｜社團｜星期」，或資訊列「社團｜桌遊社｜上課時間｜週三」
+                // 下方（不論隔了幾列說明）是「班級｜座號｜學生」（沒有姓名欄）。這些是名單，要列入「找不到姓名欄」的提醒，
+                // 不可靜默略過；只有這一張工作表時，下方的「找不到姓名欄」訊息也才不會誤說它是課程表。
+                // 課程表資料列（「桌遊社｜週三｜Bring name tag」「桌遊社｜下午｜姓名」）與英文副標頭「Name｜Time」
+                // 不算名單表頭，課程表照常略過。
+                // 標頭有姓名欄的課程表（「姓名｜社團｜星期」而且社團欄有兩種以上的值，或「課程名稱｜上課時間｜Name」）
+                // 和沒有班級、座號欄的名單分不出來：仍略過（人員才不會變成學生），但列入「看起來是課程表」的提醒
+                const scheduleKind = courseScheduleKind(ws);
+                if (scheduleKind) {
+                    ignored.push(name);
+                    if (scheduleKind === 'named') scheduleLike.push(name);
+                    return;
+                }
+                candidateCount++;
                 skipped.push(name);
                 return;
             }
+            candidateCount++;
             sheetStudents.set(name, students);
 
             const parsed = parseSheetName(name);
@@ -329,8 +374,8 @@ function analyzeAndRenderMapping() {
         });
 
         if (candidateCount === 0) {
-            const what = `這個 Excel 找不到可以${inMappingStep ? '用「多工作表」模式' : ''}彙整的社團名單工作表。` + '名稱含「說明」「統計」「清單」「報表」「對照」「人數」「小計」「總表」等字的工作表會略過' +
-                (ignored.length ? `：\n${formatSheetList(ignored)}` : '。');
+            const what = `這個 Excel 找不到可以${inMappingStep ? '用「多工作表」模式' : ''}彙整的社團名單工作表。${IGNORED_SHEETS_NOTE}` +
+                (ignored.length ? `：\n${formatSheetList(ignored)}` : '。') + scheduleLikeAlertNote(scheduleLike);
             alert(inMappingStep
                 ? `${what}\n\n${MODE_SWITCH_FAILED_NOTE}`
                 : `${what}\n\n請確認選擇的是錄取名冊。如果社團工作表的名稱含有上面這些字，請改名後存檔，再重新選擇檔案。\n${RENAME_TO_SUMMARY_TIP}`);
@@ -338,13 +383,14 @@ function analyzeAndRenderMapping() {
         }
         if (sheetStudents.size === 0) {
             // 每張工作表都找不到姓名欄：對照表會是空的，不進入第 2 步。工作表名稱不是學生資料，可以列出
-            const what = `這個 Excel 的工作表都找不到「姓名」欄，無法用「多工作表」模式整理：\n${formatSheetList(skipped)}`;
+            const what = `這個 Excel 的工作表都找不到「姓名」欄，無法用「多工作表」模式整理：\n${formatSheetList(skipped)}` +
+                scheduleLikeAlertNote(scheduleLike);
             alert(inMappingStep
                 ? `${what}\n\n${MODE_SWITCH_FAILED_NOTE}`
                 : `${what}\n\n請確認選擇的是錄取名冊，並在每張社團工作表的學生名單上方加上「姓名」欄位標題，存檔後重新選擇檔案。`);
             return false;
         }
-        showSkippedSheets(skipped);
+        showSkippedSheets(skipped, scheduleLike);
     }
 
     showMemoryHint(fromMemoryClubs.size);

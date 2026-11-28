@@ -19,8 +19,8 @@ const FRESHMEN_MSG = '已加入的社團中，正取的學生都沒有班級座�
 const NO_SELECTED_MSG = '已加入的社團都沒有正取的學生，沒有課表可以下載。通常是報名的學生都不在招收年級內（名單中標示為「不符限制」），或班級無法辨識。' +
     '請點社團那一列查看名單確認。如果是招收年級選錯了，要先移除那個社團，改好招收年級後重新貼上名單並加入；重新加入會重新抽籤，抽籤次數會累加。';
 const RANGE_MSG = (a, b) => `起始年級（${a}）大於結束年級（${b}）。「新生」是最低的年級，請重新選擇招收年級，讓起始年級低於或等於結束年級，再按「加入這個社團」。`;
-const EXCEL_FRESHMEN_MSG = '名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生名單」，所以沒有學生可以匯出。' +
-    '請勾選「包含沒有班級座號的新生名單」，再按一次「開始轉換並下載課表」，星期設定都還在。';
+const EXCEL_FRESHMEN_MSG = '名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生」，所以沒有學生可以匯出。' +
+    '請勾選「包含沒有班級座號的新生」，再按一次「開始轉換並下載課表」，星期設定都還在。';
 // 訊息不可含名冊內容
 const leaks = (msgs) => msgs.some(m => /測試生|\b[1-6]0\d\b/.test(m));
 
@@ -66,6 +66,15 @@ function instrument(s) {
         const bad = opts.filter(m => f(m[1]) !== m[3].trim());
         R.check(`#${id} 的選項文字與 gradeOptionLabel 相同`, opts.length === 7 && bad.length === 0, bad.map(m => m[1]).join(','));
     }
+}
+
+// ---- 1b. 兩種模式的新生勾選框用同一個名稱（DESIGN.md：同一個動作從頭到尾用同一個名稱）
+{
+    const html = readSiteFile('index.html');
+    const label = (id) => (html.match(new RegExp(`id="${id}"[^>]*>\\s*<span class="checkbox-text">([^<]+)</span>`)) || ['', ''])[1];
+    R.check('上傳 Excel 與貼上名單的新生勾選框都叫「包含沒有班級座號的新生」',
+        label('include-freshmen') === '包含沒有班級座號的新生' && label('paste-include-freshmen') === '包含沒有班級座號的新生',
+        `Excel=${label('include-freshmen')}，貼上=${label('paste-include-freshmen')}`);
 }
 
 // ---- 2. 新生至 2 年級：可以加入並抽籤，新生與 1、2 年級參加抽籤

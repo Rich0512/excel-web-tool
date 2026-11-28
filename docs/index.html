@@ -52,11 +52,11 @@
     <link rel="preload" href="fonts/Outfit-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <!-- 引入本地化字型 (已從 Google Fonts 下載至本機，不連接外部 CDN，保障隱私與離線使用) -->
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.20">
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.21">
     <!-- ExcelJS（已本地化，約 0.9 MB）不在這裡載入：由 utils.js 的 loadExcelJS() 在頁面閒置或需要時才載入，
          避免它排在所有程式前面，讓按鈕要等它下載完才有反應 -->
     <!-- 引入外部樣式表 (使用版本參數防止瀏覽器快取舊樣式) -->
-    <link rel="stylesheet" href="css/style.css?v=3.20">
+    <link rel="stylesheet" href="css/style.css?v=3.21">
 </head>
 <body>
 
@@ -306,7 +306,7 @@
                     <div class="config-row full-width">
                         <label class="config-checkbox-container">
                             <input type="checkbox" id="include-freshmen" checked>
-                            <span class="checkbox-text">包含沒有班級座號的新生名單</span>
+                            <span class="checkbox-text">包含沒有班級座號的新生</span>
                         </label>
                     </div>
                 </div>
@@ -349,10 +349,15 @@
                 <svg class="success-icon" viewBox="0 0 48 48" width="56" height="56" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="21"/><path d="M14 25l7 7 14-15"/></svg>
                 <h2 class="success-title">課表已開始下載</h2>
                 <p class="success-desc">
-                    如果沒有看到下載，請檢查瀏覽器的下載提示或下載資料夾。<br>
+                    如果沒有看到下載，請檢查瀏覽器的下載提示或下載資料夾；還是沒有，就按「再下載一次」。<br>
                     用完請刪除下載資料夾裡的課表 Excel。
                 </p>
+                <!-- 主要動作在前；「再下載一次」是備用的次要動作。
+                     只在這次有成功匯出時顯示（app.js 的 setLastExport）；JS 只設定 hidden，由 style.css 的 .btn[hidden] 隱藏 -->
                 <button type="button" class="btn btn-primary" id="btn-restart">整理另一份名冊</button>
+                <button type="button" class="btn btn-secondary" id="btn-redownload" hidden>再下載一次</button>
+                <!-- 再下載一次的進度：按鈕停用時焦點會離開，改由這裡讓螢幕閱讀器讀出 -->
+                <p class="visually-hidden" role="status" id="redownload-status"></p>
             </div>
         </div>
 
@@ -365,13 +370,13 @@
     </footer>
 
     <!-- 引入外部邏輯程式碼 (使用版本參數防止瀏覽器快取舊程式碼；依相依順序載入) -->
-    <script src="js/utils.js?v=3.20" defer></script>
-    <script src="js/exporter.js?v=3.20" defer></script>
-    <script src="js/parser.js?v=3.20" defer></script>
-    <script src="js/processor.js?v=3.20" defer></script>
-    <script src="js/mapping-ui.js?v=3.20" defer></script>
-    <script src="js/app.js?v=3.20" defer></script>
+    <script src="js/utils.js?v=3.21" defer></script>
+    <script src="js/exporter.js?v=3.21" defer></script>
+    <script src="js/parser.js?v=3.21" defer></script>
+    <script src="js/processor.js?v=3.21" defer></script>
+    <script src="js/mapping-ui.js?v=3.21" defer></script>
+    <script src="js/app.js?v=3.21" defer></script>
     <!-- 註冊 Service Worker (離線快取) -->
-    <script src="js/register-sw.js?v=3.20" defer></script>
+    <script src="js/register-sw.js?v=3.21" defer></script>
 </body>
 </html>

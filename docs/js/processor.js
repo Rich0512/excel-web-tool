@@ -118,7 +118,7 @@ function processExcelData({ mode, includeFreshmen, slotMode, finalMapping, sheet
         // 寒暑假模式每個時段欄位的標籤（欄位之間不會重複，見 slotLabelsFromColumns）
         const labels = slotMode === 'vacation' ? slotLabelsFromColumns(slotCols.map(slot => slot.name)) : new Map();
         sheetData.forEach(row => {
-            if (!includeFreshmen && !cleanInvisibleChars(row[classCol])) return;
+            if (!includeFreshmen && isFreshmanClass(row[classCol])) return;
             const student = upsertStudent(studentMap, row[classCol], row[seatCol], row[nameCol]);
             if (!student) return;
 
@@ -139,7 +139,7 @@ function processExcelData({ mode, includeFreshmen, slotMode, finalMapping, sheet
             const entryText = label ? `${mapData.editedName}(${label})` : mapData.editedName;
 
             students.forEach(s => {
-                if (!includeFreshmen && !s.class) return;
+                if (!includeFreshmen && isFreshmanClass(s.class)) return;
                 const student = upsertStudent(studentMap, s.class, s.seat, s.name);
                 if (student) addClubToStudent(student, mapData.day, entryText);
             });
@@ -314,7 +314,7 @@ function processPastedClubsData(pastedClubs, slotMode, includeFreshmen) {
         club.students.forEach(s => {
             // 僅彙整正式被抽中錄取的學生！
             if (s.selected === false) return;
-            if (!includeFreshmen && !cleanInvisibleChars(s.class)) return;
+            if (!includeFreshmen && isFreshmanClass(s.class)) return;
             const student = upsertStudent(studentMap, s.class, s.seat, s.name);
             if (student) addClubToStudent(student, club.day, entryText);
         });

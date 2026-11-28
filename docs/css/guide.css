@@ -1,7 +1,8 @@
 /* ===================================================
  * 使用說明頁（guide.html）專用樣式
  * token、按鈕、頁首、課表範例（.sample-table）、提醒（.warning-callout）等共用元件都在 style.css，
- * 這裡只放說明頁才需要的部分。選擇器只用單一 class（必要時加一層結構），不覆寫 style.css 的元件
+ * 這裡只放說明頁才需要的部分。選擇器只用單一 class（必要時加一層結構），不覆寫 style.css 的元件。
+ * 例外：展開圖示的切換用 details[open] > summary 通用選擇器，常見問題（.guide-faq）與補充細節（.guide-more）共用
  * =================================================== */
 
 /* ---------- 路線課表（這一頁唯一的記憶點） ---------- */
@@ -685,6 +686,55 @@
     font-weight: 700;
 }
 
+/* ---------- 補充細節（.guide-more）：原生 <details>，主線只放操作步驟，規格與例外收在這裡 ---------- */
+
+/* 可選讀的內容，比常見問題更輕：不做卡片、不加底色，只有一行校徽藍的摘要。
+   寬度同說明段落（不論是不是 .guide-section 的直接子元素） */
+.guide-more {
+    max-width: 34em;
+}
+
+/* 摘要只有文字＋圖示的寬度可點（inline-flex 不撐滿整行），窄螢幕時文字在 span 內換行 */
+.guide-more-q {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    min-height: 44px;
+    color: var(--primary);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+    border-radius: var(--radius-control);
+}
+
+/* 換成自訂的展開圖示，隱藏瀏覽器內建的三角形 */
+.guide-more-q::-webkit-details-marker {
+    display: none;
+}
+
+.guide-more-q:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.guide-more-q:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* 展開後的內容：左側一條格線表示屬於上面的摘要；文字用內文色，不用淡色 */
+.guide-more-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+    padding: 4px 0 4px 16px;
+    border-left: 2px solid var(--line);
+    color: var(--ink);
+}
+
 /* ---------- 常見問題：原生 <details>，看到的訊息 → 點開看處理方式 ---------- */
 
 .guide-faq {
@@ -732,12 +782,18 @@
     color: var(--primary);
 }
 
-.guide-faq-opened,
-.guide-faq-item[open] .guide-faq-closed {
+/* 展開圖示（常見問題與補充細節共用）：收合時顯示向下箭頭，展開時換成向上箭頭。
+   只看這個 <details> 自己的摘要，巢狀的 <details> 各自切換；
+   [open] 的規則權重高於預設隱藏的 .guide-faq-opened */
+.guide-faq-opened {
     display: none;
 }
 
-.guide-faq-item[open] .guide-faq-opened {
+details[open] > summary .guide-faq-closed {
+    display: none;
+}
+
+details[open] > summary .guide-faq-opened {
     display: inline;
 }
 
@@ -749,9 +805,20 @@
 
 /* ---------- 頁尾的主要按鈕 ---------- */
 
+/* 說明一行＋按鈕上下排；align-items: flex-start 讓桌機按鈕維持自身寬度（手機版另設滿版） */
 .guide-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
     border-top: 1px solid var(--line);
     padding-top: 28px;
+}
+
+.guide-cta-note {
+    max-width: 34em;
+    font-size: 14px;
+    color: var(--ink-muted);
 }
 
 /* ---------- 平板 (max-width: 768px) ---------- */
@@ -893,6 +960,11 @@
 
     .guide-faq-a {
         padding: 0 12px 12px;
+    }
+
+    /* 與 .guide-section 一致 */
+    .guide-cta {
+        padding-top: 20px;
     }
 
     /* 手機上主要按鈕滿版（DESIGN.md 版面） */

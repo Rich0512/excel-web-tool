@@ -19,9 +19,9 @@
 
     <!-- 只預載介面用字（ui），與首頁相同 -->
     <link rel="preload" href="fonts/NotoSansTC-Regular-ui.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="fonts/fonts.css?v=3.20">
-    <link rel="stylesheet" href="css/style.css?v=3.20">
-    <link rel="stylesheet" href="css/guide.css?v=3.20">
+    <link rel="stylesheet" href="fonts/fonts.css?v=3.21">
+    <link rel="stylesheet" href="css/style.css?v=3.21">
+    <link rel="stylesheet" href="css/guide.css?v=3.21">
 </head>
 <body>
 
@@ -31,7 +31,7 @@
                 <img src="images/logo.png" class="brand-logo" alt="延平國小校徽" width="40" height="40">
                 <span class="brand-name">延平國小社團課表整理工具</span>
             </div>
-            <a class="btn btn-outline btn-small" href="./">開啟課表工具</a>
+            <a class="btn btn-outline btn-small" href="./">開啟課表工具<span class="visually-hidden">（會另外開一份空白的工具）</span></a>
         </div>
     </header>
 
@@ -39,8 +39,8 @@
 
         <div class="intro">
             <h1 class="page-title">使用說明</h1>
-            <p class="page-lead">這個工具把社團錄取名冊整理成每位學生一列的週課表，也可以在線上抽籤。以下依操作順序說明每個步驟。</p>
-            <p class="page-lead">從課表工具的「使用說明」開啟時，這一頁會開在新的分頁（安裝成 App 時，可能是新的視窗或瀏覽器分頁）。看完關閉這個分頁或視窗，就會回到原本的工具，已讀取的資料不受影響。這一頁的「開啟課表工具」會另外開一份空白的工具。</p>
+            <p class="page-lead">這個工具把社團錄取名冊整理成每位學生一列的週課表，也可以在線上抽籤。先依手上的資料選一條路線，點步驟就會跳到對應的說明。</p>
+            <p class="page-lead"><strong>從課表工具開啟這一頁的話，不要按這一頁的「開啟課表工具」</strong>（上方與最下方都有）：那會另外開一份空白的工具，在那裡重新加入社團就是重新抽籤。看完關掉這個分頁（或視窗）就會回到原本的工具，資料都還在。</p>
         </div>
 
         <!-- 路線課表：依手上的資料選一列，三個步驟由左到右；每一格連到對應的說明。
@@ -74,13 +74,13 @@
                             <span class="guide-route-have-title">只有選課網頁的報名名單</span>
                             <span class="guide-route-have-desc" aria-hidden="true">還沒抽籤。工具會在線上抽出正取、備取，再排成課表。在工具選「貼上網頁名單」。</span>
                         </th>
-                        <td role="cell"><a class="guide-route-link" href="#paste"><span class="guide-route-step"><span class="guide-route-num">1</span> 選擇名冊<span class="visually-hidden">：</span></span><span class="guide-route-do">貼上名單，每個社團按一次「加入這個社團」，加入時就會抽籤</span></a></td>
-                        <td role="cell"><a class="guide-route-link" href="#paste-settings"><span class="guide-route-step"><span class="guide-route-num">2</span> 確認上課星期<span class="visually-hidden">：</span></span><span class="guide-route-do">加入前就用「上課星期」選單選好</span></a></td>
+                        <td role="cell"><a class="guide-route-link" href="#paste"><span class="guide-route-step"><span class="guide-route-num">1</span> 選擇名冊<span class="visually-hidden">：</span></span><span class="guide-route-do">貼上一個社團的名單</span></a></td>
+                        <td role="cell"><a class="guide-route-link" href="#paste-settings"><span class="guide-route-step"><span class="guide-route-num">2</span> 確認上課星期<span class="visually-hidden">：</span></span><span class="guide-route-do">選好星期、正取人數、招收年級（預設只有 1–2 年級）與抽籤優先順序，再按「加入這個社團」（會立刻抽籤）</span></a></td>
                         <td role="cell"><a class="guide-route-link" href="#paste-download"><span class="guide-route-step"><span class="guide-route-num">3</span> 下載課表<span class="visually-hidden">：</span></span><span class="guide-route-do">按「下載課表與抽籤結果」</span></a></td>
                     </tr>
                 </tbody>
             </table>
-            <p class="guide-route-note">貼上名單時，這三步都在工具第 1 步的畫面完成，下載後直接到第 3 步。</p>
+            <p class="guide-route-note">貼上名單時都在同一個畫面完成：每個社團重複第 1、2 步，全部加入後再下載。</p>
             <p class="guide-route-more"><span>看到錯誤訊息，或用完之後要清除資料：</span><a href="#faq">常見問題與錯誤訊息</a><a href="#privacy">個資與用完之後</a></p>
         </nav>
 
@@ -91,7 +91,7 @@
                 <ol class="guide-steps guide-steps-dot" role="list">
                     <li>選「上傳 Excel 檔」，把名冊拖到虛線框裡，或按「選擇檔案」。</li>
                     <li>讀取完成後會進到第 2 步「確認上課星期」，檢查每個社團的星期（見<a href="#mapping">確認上課星期</a>）。</li>
-                    <li>按「開始轉換並下載課表」，課表 Excel 就會下載。</li>
+                    <li>按「開始轉換並下載課表」，課表 Excel 就會下載。沒看到檔案時，在完成畫面按「再下載一次」。</li>
                 </ol>
                 <figure class="guide-figure">
                     <div class="guide-mock" aria-hidden="true">
@@ -104,37 +104,54 @@
                             <span class="guide-mock-link">沒有檔案？下載測試用的範本 Excel</span>
                         </div>
                     </div>
-                    <figcaption class="guide-figcaption">示意圖：第 1 步的上傳區。編號 1 對應步驟清單的第 1 步。</figcaption>
+                    <figcaption class="guide-figcaption">示意圖：第 1 步的上傳區。</figcaption>
                 </figure>
             </div>
 
             <h3 class="guide-subtitle">名冊的格式</h3>
-            <ul class="guide-list">
-                <li>只能讀取 <strong>.xlsx</strong>，檔案要在 20 MB 以內。舊版的 .xls 請先用 Excel 另存成 .xlsx。</li>
-                <li>檔案不能設密碼（設有密碼的檔案會被當成舊版 .xls 擋下）。</li>
-                <li>工具會依工作表自動選擇「彙整模式」，在第 2 步也可以自己改：
-                    <ul class="guide-list">
-                        <li><strong>單一清單</strong>：有一張名稱含「課程與學生清單」或「總表」的工作表，裡面要有班級、座號、姓名（或學生姓名）三欄，加上至少一欄寫社團的欄位（標題含「課程名稱」「社團」或「時段」等字）。</li>
-                        <li><strong>多工作表</strong>：沒有總表，每個社團一張工作表。工作表名稱就是社團名稱。欄位標題列（班級、座號、姓名）要在前 10 列內，標題列上方的文字不要含「班級」「姓名」等字；只有「姓名」一欄時，「姓名」要放在第 1 列。名稱含「說明」「總表」「統計」「清單」「報表」「對照」「人數」「小計」「README」「1152」等字的工作表會略過。</li>
-                    </ul>
-                </li>
-                <li>名冊底部的合計、總計列不會被當成學生。</li>
-            </ul>
+            <p>學校系統匯出的 <strong>.xlsx</strong> 名冊通常可以直接讀取。.xls 或設了開啟密碼的檔案，先用 Excel 另存成沒有密碼的 .xlsx。</p>
 
-            <p>沒有名冊可以先試用？在上傳區按「沒有檔案？下載測試用的範本 Excel」，或直接<a href="templates/115學期名冊_範本.xlsx" download>下載範本 Excel</a>。範本裡的姓名都是假資料（例如「測試生301_05」）。</p>
+            <details class="guide-more" id="excel-more">
+                <summary class="guide-more-q"><span>名冊讀不到，或少了某個社團時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>只能讀取 .xlsx，檔案要在 20 MB 以內。</li>
+                        <li>設了開啟密碼的檔案無法讀取（訊息和舊版 .xls 相同），請先在 Excel 移除開啟密碼再選擇。只保護工作表、沒有開啟密碼的檔案可以直接讀取。</li>
+                        <li>工具會依工作表自動選擇「彙整模式」，在第 2 步也可以自己改：
+                            <ul class="guide-list">
+                                <li><strong>單一清單</strong>：有一張名稱含「課程與學生清單」或「總表」的工作表，裡面要有班級、座號、姓名（或學生姓名）三欄，加上至少一欄寫社團的欄位（標題含「課程名稱」「社團」或「時段」等字）。</li>
+                                <li><strong>多工作表</strong>：沒有總表，每個社團一張工作表。
+                                    <ul class="guide-list">
+                                        <li>工作表名稱就是社團名稱。開頭的「社團-」和名稱裡的星期、時段字樣會去掉，例如「社團-周一桌遊社」會變成「桌遊社」；名稱裡的星期也會用來自動選星期。</li>
+                                        <li>欄位標題列（班級、座號、姓名）要在前 10 列內；標題列上方有好幾列說明文字時，標題列每格都是常見的欄位名稱（班級、座號、姓名、備註等）就可以放在更下面，但不能超過第 50 列。標題列上方的文字不要含「班級」「姓名」等字；沒有班級、座號欄時，姓名欄的標題請寫成「姓名」或「學生姓名」（整格只有這幾個字），標題列才找得到。</li>
+                                        <li>名稱含「對照」「說明」「README」「總表」「統計」「人數」「小計」「1152」「清單」「報表」等字的工作表不算社團，會略過。</li>
+                                        <li>課程表格式的工作表也會略過：前 5 列有「課程名稱」（或「社團」）欄，以及「上課時間」（或「時間」「星期」）欄，沒有班級、座號欄，也沒有姓名欄（例如以學期代碼命名的課程時間表）。表裡的上課時間仍會用來自動選星期。有姓名欄、但「課程名稱」或「社團」欄有兩種以上的值（例如「桌遊社A組」「桌遊社B組」）的工作表也會當成課程表略過，但會列在第 2 步上方「看起來是課程表」的提醒裡；如果它其實是社團名單，請加上「班級」「座號」欄後重新選擇檔案。學生名單上方的「社團｜桌遊社｜上課時間｜週三」這種資訊列不算課程表，下方的學生照常讀取。</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>名冊底部的合計、總計列不會被當成學生。</li>
+                        <li>「教師姓名」「指導老師」「家長姓名」等欄不會當成學生姓名，「名額」「報名人數」等欄也不會。多工作表模式中，只有這類欄、沒有學生姓名欄的工作表不會列入課表：課程表格式的會直接略過，其他的會列在第 2 步上方的「找不到「姓名」欄」提醒裡；全部工作表都沒有姓名欄時，會直接跳出訊息。單一清單的總表沒有學生姓名欄時，會跳出「缺少必要欄位」訊息。</li>
+                    </ul>
+                </div>
+            </details>
+
+            <p>想先試用？<a href="templates/115學期名冊_範本.xlsx" download>下載範本 Excel</a>（姓名都是假資料，例如「測試生301_12」）。</p>
+
+            <p>下一步：<a href="#mapping">確認上課星期</a>。</p>
         </section>
 
         <!-- 方式二：貼上名單與抽籤 -->
         <section class="guide-section" id="paste" aria-labelledby="paste-title">
             <h2 class="section-title" id="paste-title">方式二：貼上網頁名單並線上抽籤</h2>
-            <p>選「貼上網頁名單」。<strong>一次處理一個社團</strong>：每貼上一個社團的名單，就按一次「加入這個社團」。所有社團都加入後，再一起下載，才能檢查跨社團的衝堂。</p>
+            <p>選「貼上網頁名單」。<strong>一次處理一個社團</strong>：貼上名單、填好設定，再按「加入這個社團」。全部加入後再一起下載，才能檢查跨社團的衝堂。</p>
 
             <h3 class="guide-subtitle">從選課網頁複製名單</h3>
             <div class="guide-split">
                 <ol class="guide-steps guide-steps-dot" role="list">
-                    <li>在選課網頁上，用滑鼠<strong>從欄位標題那一列（班級、座號、姓名）選到最後一位學生</strong>。連同上方的社團標題（例如「桌遊社 週三 錄取名單」）一起選也可以。</li>
+                    <li>在選課網頁上，用滑鼠<strong>從欄位標題那一列（班級、座號、姓名）選到最後一位學生</strong>。</li>
                     <li>按 Ctrl + C 複製，回到工具，在「名單內容」按 Ctrl + V 貼上。</li>
-                    <li>文字框下方會顯示「讀到幾位學生」與「其中幾位有班級、幾位有座號」。人數要和網頁上的一樣，有班級、有座號的人數也不能是 0（只收新生的社團除外）。</li>
+                    <li>文字框下方會顯示「讀到幾位學生」，以及其中幾位有班級和座號。<strong>人數要和網頁上的一樣</strong>；有班級的人數是 0 時（只收新生的社團除外），通常是選錯範圍，請重新選取再貼上。</li>
                 </ol>
                 <figure class="guide-figure">
                     <div class="guide-mock" aria-hidden="true">
@@ -179,53 +196,83 @@
                             <span class="guide-mock-btn guide-mock-btn-secondary guide-mock-field-full">加入這個社團</span>
                         </div>
                     </div>
-                    <figcaption class="guide-figcaption">示意圖：「貼上網頁名單」的表單（姓名為虛構）。編號 2、3 對應步驟清單的第 2、3 步；第 1 步在選課網頁上進行。</figcaption>
+                    <figcaption class="guide-figcaption">示意圖：「貼上網頁名單」的表單（姓名為虛構）。編號對應前面的步驟；第 1 步在選課網頁上進行。</figcaption>
                 </figure>
             </div>
-            <p>只要有班級、座號、姓名就能抽籤，不需要「抽籤順序」欄位。連同社團標題一起選取時，工具會從欄位標題列上方幾行的標題推測社團名稱與星期；只選欄位標題和名單時通常推測不出來。不論哪一種，都請確認「社團名稱」與「上課星期」是對的。</p>
-            <div class="warning-callout">
-                <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
-                <div>欄位標題列要在貼上內容的前 30 行內。每行只有姓名、沒有班級的名單讀不到，請連同班級欄一起選取。人數，或有班級、有座號的人數不對時，請重新選取，只選欄位標題和名單。班級、座號空白的學生會當成新生。</div>
-            </div>
+            <p>也可以從上方的社團標題（例如「桌遊社 週三 錄取名單」）開始選，工具會試著帶入社團名稱和星期。<strong>貼上後先別按「加入這個社團」</strong>，填好名單上方的設定（見下一段）再按。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>讀不到名單，或人數不對時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>人數，或有班級、有座號的人數不對時，請重新選取，只選欄位標題和名單。</li>
+                        <li>沒有選到欄位標題列時，座號可能被當成班級，學生會變成「班級無法辨識」。請重新選取，並包含欄位標題列。</li>
+                        <li>欄位標題列要在貼上內容的前 30 行內。</li>
+                        <li>每行只有姓名、沒有班級的名單讀不到，請連同班級欄一起選取。</li>
+                        <li>社團名稱和星期是從欄位標題列上方幾行的標題推測的；只選欄位標題和名單時通常推測不出來，要自己填。</li>
+                        <li>班級空白的學生算新生。新生怎麼認定，請點開<a href="#freshmen">「有新生報名時」</a>。</li>
+                        <li>只要有班級、座號、姓名就能抽籤，不需要「抽籤順序」欄位。</li>
+                    </ul>
+                </div>
+            </details>
 
             <h3 class="guide-subtitle" id="paste-settings">按「加入這個社團」之前要填好的設定</h3>
-            <p>按下「加入這個社團」就會立刻抽籤，下面這些設定要先確認：</p>
+            <div class="warning-callout">
+                <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
+                <div>按下「加入這個社團」就會立刻抽籤。招收年級預設是「1 年級」至「2 年級」，沒改的話其他年級的學生都會變成「不符限制」，不會被抽到。</div>
+            </div>
+            <p>要確認的設定：</p>
             <ul class="guide-list">
                 <li><strong>社團名稱</strong>與<strong>上課星期</strong>：會出現在課表上。</li>
-                <li><strong>正取人數</strong>：1 到 500 的整數。</li>
-                <li><strong>招收年級</strong>：例如「3 年級」至「5 年級」。預設是「1 年級」至「2 年級」，沒改的話其他年級的學生都會變成「不符限制」。沒有班級的學生算「新生」，是最低的年級，排在選單最前面；要連新生一起抽，起始年級請選「新生」。</li>
+                <li><strong>正取人數</strong>：這個社團要錄取幾人。</li>
+                <li><strong>招收年級</strong>：例如「3 年級」至「5 年級」。要連新生一起抽，起始年級選「新生」（選單最前面）。</li>
                 <li><strong>抽籤優先順序</strong>：「高年級優先」或「低年級優先」。</li>
             </ul>
-            <p>加入一個社團後，只會清空社團名稱和名單；<strong>上課星期、正取人數、招收年級、抽籤優先順序會沿用到下一個社團</strong>，每個社團都要重新確認。</p>
-            <p>「時段模式」「包含沒有班級座號的新生」「下載的檔名（選填）」在加入第一個社團後才會出現，下載前都可以再改。取消勾選「包含沒有班級座號的新生」只會讓新生不排進課表；招收年級包含「新生」時，新生仍會參加抽籤，也可能佔掉正取名額。不想讓新生參加抽籤，招收年級就不要包含「新生」。取消勾選後下載時，若課表因此沒有學生，勾回來再按一次下載即可，不需要重新加入。</p>
+            <details class="guide-more" id="freshmen">
+                <summary class="guide-more-q"><span>有新生報名時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>「新生」是班級空白，或班級以「新生」開頭（例如「新生」「新生班」）的學生；「一年級新生」算 1 年級。新生是最低的年級。上傳 Excel 與貼上名單都用這個規則。</li>
+                        <li>要不要讓新生參加抽籤，只看招收年級。下載前的「包含沒有班級座號的新生」勾選框（加入第一個社團後才會出現），只決定課表裡要不要列出新生。</li>
+                        <li>招收年級包含「新生」時，即使取消勾選「包含沒有班級座號的新生」，新生仍會參加抽籤，也可能佔掉正取名額，只是不會排進課表。</li>
+                        <li>取消勾選後下載時，若課表因此沒有學生，勾回來再按一次下載即可，不需要重新加入。</li>
+                    </ul>
+                </div>
+            </details>
+            <p>貼上名單時，一個社團只能選一天（週一到週日）。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>一週上好幾天，或晨間社團要抽籤時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>貼上名單時沒有「週一、四」這類多日選項，也沒有晨間欄。</li>
+                        <li>一週上好幾天的社團，先選其中一天加入，下載後在課表 Excel 加上其他上課日。衝堂只檢查加入時選的那一天，其他上課日的衝堂不會檢查。</li>
+                        <li>晨間社團選了星期，會被當成那天下午的社團，和那天下午的其他社團算衝堂。</li>
+                    </ul>
+                </div>
+            </details>
+            <p><strong>加入後，除了社團名稱和名單，其他設定都會留到下一個社團，每次都要重新確認。</strong>上課星期也可能被新名單的標題自動改掉，加入前再看一次（這個社團貼上前自己選過星期，就不會被改）。</p>
 
             <h3 class="guide-subtitle" id="lottery">正取、備取的決定方式</h3>
-            <ol class="guide-steps">
-                <li>同一位學生重複報名（班級、姓名相同，座號也相同或沒有填）只保留一筆。</li>
-                <li>不在招收年級內的學生標為「不符限制」；班級看不出年級的（例如「資源班」）標為「班級無法辨識」。這兩種都不參加抽籤。</li>
-                <li>依抽籤優先順序，<strong>一個年級抽完再抽下一個年級</strong>。例如高年級優先、正取 12 人，6 年級有 8 人報名，8 人都正取，剩下 4 個名額再從 5 年級抽。新生一律排在最後。</li>
-                <li>同一個年級裡用隨機順序排，依序填入正取名額；名額用完後的人依抽出的順序成為「備取 1」「備取 2」……</li>
-            </ol>
+            <p>依抽籤優先順序，<strong>一個年級抽完再抽下一個年級</strong>；同一個年級裡隨機抽，名額用完後依抽出的順序成為備取。</p>
             <figure class="guide-figure guide-lottery">
                 <div class="guide-lottery-art" aria-hidden="true">
-                    <span class="guide-lottery-label">例：高年級優先、正取 12 人</span>
+                    <span class="guide-lottery-label">例：招收 3–5 年級、高年級優先、正取 12 人</span>
                     <span class="guide-lottery-seats">
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-first">6 年級</span>
-                        <span class="guide-lottery-seat is-drawn">5 年級</span>
-                        <span class="guide-lottery-seat is-drawn">5 年級</span>
-                        <span class="guide-lottery-seat is-drawn">5 年級</span>
-                        <span class="guide-lottery-seat is-drawn">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-first">5 年級</span>
+                        <span class="guide-lottery-seat is-drawn">4 年級</span>
+                        <span class="guide-lottery-seat is-drawn">4 年級</span>
+                        <span class="guide-lottery-seat is-drawn">4 年級</span>
+                        <span class="guide-lottery-seat is-drawn">4 年級</span>
                     </span>
                     <span class="guide-lottery-legend">
-                        <span class="guide-lottery-key"><span class="guide-lottery-swatch is-first"></span>6 年級 8 人報名，8 人都正取</span>
-                        <span class="guide-lottery-key"><span class="guide-lottery-swatch is-drawn"></span>剩下 4 個名額從 5 年級抽</span>
+                        <span class="guide-lottery-key"><span class="guide-lottery-swatch is-first"></span>5 年級 8 人報名，8 人都正取</span>
+                        <span class="guide-lottery-key"><span class="guide-lottery-swatch is-drawn"></span>剩下 4 個名額從 4 年級抽</span>
                     </span>
                     <span class="guide-lottery-waitlist">
                         <span class="guide-lottery-wait">備取 1</span>
@@ -233,40 +280,74 @@
                         <span class="guide-lottery-more">……</span>
                     </span>
                 </div>
-                <figcaption class="guide-figcaption"><span class="visually-hidden">圖解：以高年級優先、正取 12 人為例。6 年級有 8 人報名，佔前 8 個正取名額；剩下 4 個名額從 5 年級抽。</span>沒抽中的 5 年級依抽出的順序成為備取 1、備取 2……，後面再依優先順序排招收年級內其他年級的學生。招收年級包含新生時，新生排在最後；前面的年級都排完還有名額，新生也會正取。</figcaption>
+                <figcaption class="guide-figcaption">例：招收 3–5 年級、高年級優先、正取 12 人。沒抽中的人依抽出的順序成為備取，4 年級之後是 3 年級。<span class="visually-hidden">圖中 5 年級有 8 人報名，佔前 8 個正取名額；剩下 4 個名額從 4 年級抽，沒抽中的 4 年級學生依抽出的順序成為備取 1、備取 2……，之後是 3 年級。</span></figcaption>
             </figure>
-            <p>抽籤用的是瀏覽器內建的安全亂數，每一種順序的機會都相同。瀏覽器太舊、不支援安全亂數時，工具不會抽籤。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>想知道抽籤的完整規則時（例如要對家長說明）</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ol class="guide-steps">
+                        <li>同一位學生重複報名（班級、姓名相同，座號也相同或沒有填）只保留一筆。</li>
+                        <li>不在招收年級內的學生標為「不符限制」；班級看不出年級的（例如「資源班」）標為「班級無法辨識」。這兩種都不參加抽籤。</li>
+                        <li>依抽籤優先順序，一個年級抽完再抽下一個年級。招收年級包含新生時，新生一律排在最後；前面的年級都排完還有名額，新生也會正取。</li>
+                        <li>同一個年級裡用隨機順序排，依序填入正取名額；名額用完後的人依抽出的順序成為「備取 1」「備取 2」……，後面再依優先順序接著排其他年級的學生。</li>
+                        <li>順序由瀏覽器內建的安全亂數抽出，每種順序的機會都相同。</li>
+                    </ol>
+                </div>
+            </details>
             <p>加入後，結果列在下方「已加入的社團」。點社團那一列（或「查看名單」）可以看到正取與備取名單。</p>
 
             <h3 class="guide-subtitle">重新抽籤與移除社團</h3>
             <ul class="guide-list">
-                <li>每個社團右側的「移除」只移除那一個社團；「全部移除」會移除所有社團。兩者都會先出現確認視窗，抽籤結果會一起清除。</li>
-                <li>要重新抽籤，先移除那個社團，再重新貼上名單並按「加入這個社團」。</li>
-                <li>同名的社團在這次開啟網頁後已經抽過籤時，工具會先出現確認視窗，確定後才重抽。名稱只有空白、全形半形或英文大小寫不同，也算同一個社團。</li>
-                <li>沒有先移除就再加入同名社團時，<strong>兩份抽籤結果都會匯出，課表也會把兩次的正取學生都排進去</strong>。只要保留新的結果，請先移除舊的那一個。</li>
-                <li>下載的檔案會記錄抽籤時間與「抽籤次數」。次數只記錄這次開啟網頁後的抽籤，重新整理或關閉網頁後會從第 1 次重新算（按「清除這次的資料」不會歸零），所以不能用來證明沒有重抽。正式抽籤時，建議請同仁在場見證，並當場下載、保存檔案。</li>
+                <li>每個社團右側的「移除」只移除那一個社團，「全部移除」移除所有社團。都會先跳確認視窗，抽籤結果一起清除。</li>
+                <li>要重新抽籤：先按那個社團的「移除」，再重新貼上名單並按「加入這個社團」。</li>
+                <li><strong>沒移除就再加入同名社團，按確認視窗的「確定」也不會取代舊的結果。兩份都會匯出，兩次的正取學生都會排進課表。</strong></li>
+                <li>下載的檔案會記錄「抽籤次數」，但重新整理網頁或另外開一份工具後會從第 1 次重新算，所以不能證明沒有重抽。正式抽籤時，建議請同仁在場見證，並當場下載、保存檔案。</li>
             </ul>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>重抽的確認視窗與「抽籤次數」怎麼算</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>同名的社團在這次開啟網頁後已經抽過籤時，按「加入這個社團」會先出現確認視窗，按「確定」才重抽。清單裡還有同名社團時，視窗也會提醒兩份都會匯出。</li>
+                        <li>名稱只有空白、全形半形或英文大小寫不同，也算同一個社團。</li>
+                        <li>下載的檔案會記錄抽籤時間與「抽籤次數」。次數只算這次開啟網頁後的抽籤，移除社團後再加入，次數照樣累加；重新整理或關閉網頁後會從第 1 次重新算（按「清除這次的資料」不會歸零）。</li>
+                    </ul>
+                </div>
+            </details>
 
             <h3 class="guide-subtitle" id="paste-download">下載課表與抽籤結果</h3>
-            <p>所有社團都加入後，按「下載課表與抽籤結果」。下載只匯出清單上已經抽好的結果，不會重新抽籤。</p>
+            <p>所有社團都加入後，按「下載課表與抽籤結果」。下載只匯出已經抽好的結果，不會重新抽籤。</p>
+            <p>下載前可以看一下：「時段模式」（只有寒暑假才要改）、「包含沒有班級座號的新生」、「下載的檔名（選填）」，這三項在加入第一個社團後才會出現。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>社團名稱結尾有 A、B 時（例如「桌遊社A」「桌遊社B」）</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>選「寒暑假（有 AB 時段）」時，社團名稱結尾要寫 A 或 B，例如「桌遊社A」，課表會寫成「桌遊社(A)」。</li>
+                        <li>選「一般學期（沒有 AB 時段）」時，社團名稱結尾的 A、B 會去掉，例如「桌遊社A」在課表寫成「桌遊社」。</li>
+                        <li>所以名稱只有結尾 A、B 不同的兩個社團（例如「桌遊社A」「桌遊社B」）排在同一天時，同一位學生兩個都錄取的話，課表會合併成一筆「桌遊社」，也不會提醒衝堂。要分開列出，選「寒暑假（有 AB 時段）」。</li>
+                    </ul>
+                </div>
+            </details>
             <div class="warning-callout">
                 <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>
-                <div>下載後「已加入的社團」會清空。重新整理或關閉網頁，還沒下載的抽籤結果也會消失，要重新加入社團並重新抽籤。</div>
+                <div>下載後「已加入的社團」會清空，抽籤結果只留在下載的檔案裡，<strong>請先確認檔案已經存好</strong>。沒看到檔案時，在完成畫面按「再下載一次」（不會重新抽籤）；重新整理、關閉網頁，或按「整理另一份名冊」「清除這次的資料」後，就不能再下載。</div>
             </div>
+            <p>抽籤結果的內容見<a href="#sample-club-title">每個社團一張抽籤結果工作表</a>；下一節「確認上課星期」只有上傳 Excel 需要。</p>
         </section>
 
         <!-- 確認星期 -->
         <section class="guide-section" id="mapping" aria-labelledby="mapping-title">
-            <h2 class="section-title" id="mapping-title">確認上課星期</h2>
-            <p>上傳 Excel 後的第 2 步，會列出名冊裡的每個社團。貼上名單時則是在加入前用「上課星期」選單選好。</p>
+            <h2 class="section-title" id="mapping-title">確認上課星期（上傳 Excel）</h2>
+            <p>上傳 Excel 後的第 2 步會列出名冊裡的每個社團，請檢查每個社團的星期。</p>
 
-            <h3 class="guide-subtitle">對照表</h3>
+            <h3 class="guide-subtitle">檢查每個社團的星期</h3>
             <div class="guide-split">
                 <ul class="guide-list">
-                    <li>星期會先自動選好。單一清單模式依序看社團名稱裡的星期（例如「周三桌遊社 (三 10,11)」）、名冊裡的上課時間，最後才是這台電腦上次的設定；多工作表模式以上次的設定優先。選不出來的會顯示「請選擇」，每一列都要選好才能轉換。</li>
+                    <li><strong>先確認名冊裡的每個社團都有列出</strong>（同一個社團在不同時段欄會各列一次）。少了社團時，點開<a href="#excel-more">「名冊讀不到，或少了某個社團時」</a>。</li>
+                    <li>上方的「彙整模式」會自動選好：名冊有總表的是「單一清單」，每個社團一張工作表的是「多工作表」，通常不用改。</li>
+                    <li>星期會先自動選好；選不出來的顯示「請選擇」，每一列都要選好才能轉換。</li>
                     <li>「社團名稱（可修改）」可以直接修改，改過的名稱會出現在課表上。</li>
-                    <li>有學生同一天的同一時段（下午或晨間）有兩個以上社團時，表格下方會列出這些學生，方便檢查星期有沒有設錯。</li>
-                    <li>「包含沒有班級座號的新生名單」取消勾選時，沒有班級的學生不會列入課表。</li>
+                    <li>同一位學生同一天下午（或同一個晨間）有兩個社團時，表格下方會列出來，方便檢查星期有沒有選錯。</li>
+                    <li>「包含沒有班級座號的新生」取消勾選時，新生不會列入課表。</li>
                 </ul>
                 <figure class="guide-figure">
                     <div class="guide-mock" aria-hidden="true">
@@ -292,58 +373,91 @@
                             <span class="guide-mock-td"><span class="guide-mock-control guide-mock-select is-unset">請選擇<svg class="guide-mock-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></span>
                         </span>
                     </div>
-                    <figcaption class="guide-figcaption">示意圖：第 2 步的對照表（單一清單模式，「時段」欄顯示名冊的欄位名稱）。框起來的「請選擇」是還沒選星期的社團，選好才能轉換（框線是說明加上的，實際畫面沒有）。</figcaption>
+                    <figcaption class="guide-figcaption">示意圖：第 2 步。顯示「請選擇」的社團要選好星期才能轉換（框線是說明加上的）。</figcaption>
                 </figure>
             </div>
 
             <h3 class="guide-subtitle">一週上好幾天的社團與晨間社團</h3>
             <ul class="guide-list">
                 <li>一週上好幾天的社團，選「週一、四」「週二、五」或「週一、二、四、五」，課表上每一個上課日都會填入。</li>
-                <li>晨間社團選「晨間(週一、週四)」「晨間(週二、週五)」或「晨間(週一、週二、週四、週五)」，課表會另外多出一欄。名稱含「晨間」的社團會先自動選好，請確認。晨間社團和下午的社團不算衝堂；同一個晨間欄有兩個社團，或不同晨間欄的上課日重疊（例如「晨間(週一、週四)」和「晨間(週一、週二、週四、週五)」都有週一、週四），會提醒並寫在「備註」欄。</li>
-                <li>這些選項只在上傳 Excel 的對照表裡有；貼上名單時，一個社團只能選一天。</li>
+                <li>晨間社團選「晨間(…)」開頭的選項，課表會多一欄；名稱有「晨間」的社團會自動選好，請確認。晨間社團和下午的社團不算衝堂。</li>
             </ul>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>兩個晨間社團的上課日重疊時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <p>同一個晨間欄有兩個社團，或不同晨間欄的上課日重疊（例如「晨間(週一、週四)」和「晨間(週一、週二、週四、週五)」都有週一、週四），會提醒並寫在「備註」欄。</p>
+                </div>
+            </details>
 
             <h3 class="guide-subtitle">時段模式</h3>
-            <p>寒暑假有 A、B 時段時，選「寒暑假（有 AB 時段）」，課表的社團名稱後面會加上時段，例如「桌遊社(A)」。時段依欄位名稱、工作表名稱或社團名稱裡的 A、B（或「第一時段」等字）判斷。單一清單的欄位名稱沒有 A、B 時，改用欄位名稱裡有意義的字（例如「上午社團」→「桌遊社(上午)」）；只有一欄「課程名稱」這類通用名稱時不加標籤；有兩欄清完後相同時，改用完整的欄位名稱，例如「桌遊社(課程名稱)」。一般學期選「一般學期（沒有 AB 時段）」。</p>
+            <p>平常學期選「一般學期（沒有 AB 時段）」。寒暑假有 A、B 時段才選「寒暑假（有 AB 時段）」，課表會寫成「桌遊社(A)」。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>課表上的 (A)、(上午) 標籤不對時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>時段依欄位名稱、工作表名稱或社團名稱裡的 A、B（或「第一時段」等字）判斷。</li>
+                        <li>單一清單的欄位名稱沒有 A、B 時，改用欄位名稱裡有意義的字，例如「上午社團」→「桌遊社(上午)」。</li>
+                        <li>只有一欄「課程名稱」這類通用名稱時不加標籤。</li>
+                        <li>有兩欄清完後相同時，改用完整的欄位名稱，例如「桌遊社(課程名稱)」。</li>
+                        <li>多工作表模式選「一般學期」時，也會去掉工作表名稱裡的 A、B，例如「桌遊社A」寫成「桌遊社」。所以「桌遊社A」「桌遊社B」排在同一天時，同一位學生兩個都錄取的話會合併成一筆，也不會提醒衝堂；要分開列出，在「社團名稱（可修改）」改成不同的名稱。單一清單模式不會去掉社團名稱裡的 A、B。</li>
+                    </ul>
+                </div>
+            </details>
 
             <h3 class="guide-subtitle">這台電腦會記住星期設定</h3>
-            <p>按「開始轉換並下載課表」時，工具會在這個瀏覽器記住每個社團選的星期，下次讀取同樣名稱的社團時自動套用。單一清單模式中，社團名稱或名冊裡已經寫明星期的社團，仍以名冊為準；欄位名稱和上次不同時，通常也不會套用。有社團套用了記住的星期時，第 2 步上方會顯示「已套用這台電腦上次記住的星期（幾個社團）」。</p>
-            <ul class="guide-list">
-                <li>記住的只有欄位名稱、社團或工作表名稱和星期，<strong>不含學生姓名、班級、座號</strong>。</li>
-                <li>只存在這台電腦的這個瀏覽器，不會傳到別的地方。</li>
-                <li>貼上名單的方式不會記住設定。</li>
-                <li>按頁首的「清除這次的資料」，記住的星期也會一起清除。</li>
-            </ul>
+            <p>轉換時，這個瀏覽器會記住各社團選的星期（不含學生資料），下次讀到同名的社團時自動套用。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>記住了哪些內容，或自動選的星期不對時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <p>記住的內容：</p>
+                    <ul class="guide-list">
+                        <li>記住的只有欄位名稱、社團或工作表名稱和星期，<strong>不含學生姓名、班級、座號</strong>。</li>
+                        <li>只存在這台電腦的這個瀏覽器，不會傳到別的地方。</li>
+                        <li>貼上名單的方式不會記住設定。</li>
+                        <li>按課表工具頁首的「清除這次的資料」，記住的星期也會一起清除。</li>
+                    </ul>
+                    <p>星期怎麼自動選：</p>
+                    <ul class="guide-list">
+                        <li>單一清單模式中，一般社團依序看社團名稱裡的星期（例如「周三桌遊社 (三 10,11)」）、名冊裡的上課時間，最後才是這台電腦上次的設定。所以社團名稱或名冊裡已經寫明星期的社團，仍以名冊為準。</li>
+                        <li>單一清單模式中，晨間社團依序看名冊裡的上課時間、上次的設定，最後才依名稱推測。</li>
+                        <li>單一清單模式中，欄位名稱和上次不同時，通常不會套用上次的設定。</li>
+                        <li>多工作表模式以上次的設定優先。</li>
+                        <li>星期不對時，直接在選單改成正確的星期，轉換時會記住。單一清單模式中，社團名稱或名冊裡寫明星期的社團，下次仍以名冊為準，要改的話請改名冊。</li>
+                        <li>有社團套用了記住的星期時，第 2 步上方會顯示「已套用這台電腦上次記住的星期（幾個社團）」。</li>
+                    </ul>
+                </div>
+            </details>
         </section>
 
         <!-- 下載的檔案 -->
         <section class="guide-section" id="download" aria-labelledby="download-title">
             <h2 class="section-title" id="download-title">下載的檔案</h2>
-            <p>兩種方式都只會下載一個 Excel 檔。檔名是原始檔名（貼上名單時是「直接貼上名單彙整」）加上「_學期社團彙整.xlsx」或「_寒暑假社團彙整.xlsx」（依「時段模式」決定）；也可以在「下載的檔名（選填）」自己取名。</p>
+            <p>兩種方式都只會下載一個 Excel 檔。想換檔名，可以填「下載的檔名（選填）」。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>下載的檔名怎麼決定</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <p>檔名是原始檔名（貼上名單時是「直接貼上名單彙整」），或「下載的檔名（選填）」填的名稱，後面再加上「_學期社團彙整.xlsx」或「_寒暑假社團彙整.xlsx」（依「時段模式」決定）。</p>
+                </div>
+            </details>
 
             <h3 class="guide-subtitle" id="sample-schedule-title">「課程與學生清單」工作表：學生週課表</h3>
-            <p>每位學生一列，依班級、座號排序。第一列有篩選按鈕。有晨間或週六、週日的社團時才會多出那幾欄。以下姓名為虛構。</p>
+            <p>每位學生一列，依班級、座號排序（姓名為虛構）。</p>
             <div class="sample-scroll" role="region" aria-labelledby="sample-schedule-title" tabindex="0">
                 <table class="sample-table">
                     <thead>
                         <tr><th scope="col">班級</th><th scope="col">座號</th><th scope="col">姓名</th><th scope="col">週一</th><th scope="col">週二</th><th scope="col">週三</th><th scope="col">週四</th><th scope="col">週五</th><th scope="col">晨間(週一、週四)</th><th scope="col">備註</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>301</td><td>05</td><td>王小明</td><td class="is-filled">桌遊社</td><td></td><td class="is-filled">足球社, 圍棋社</td><td></td><td></td><td></td><td>「週三」時段衝突：同時錄取「足球社, 圍棋社」</td></tr>
-                        <tr><td>302</td><td>11</td><td>陳小華</td><td class="is-filled">游泳社</td><td></td><td></td><td class="is-filled">游泳社</td><td></td><td></td><td></td></tr>
-                        <tr><td>405</td><td>23</td><td>林小美</td><td></td><td></td><td></td><td class="is-filled">舞蹈社</td><td></td><td class="is-filled">晨間足球社</td><td></td></tr>
+                        <tr><td>301</td><td>05</td><td>王小明</td><td class="is-filled">足球社, 圍棋社</td><td></td><td class="is-filled">桌遊社</td><td></td><td></td><td></td><td>「週一」時段衝突：同時錄取「足球社, 圍棋社」</td></tr>
+                        <tr><td>302</td><td>11</td><td>陳小華</td><td class="is-filled">游泳社</td><td></td><td class="is-filled">桌遊社</td><td class="is-filled">游泳社</td><td></td><td></td><td></td></tr>
+                        <tr><td>405</td><td>23</td><td>林小美</td><td></td><td></td><td class="is-filled">桌遊社</td><td class="is-filled">舞蹈社</td><td></td><td class="is-filled">晨間足球社</td><td></td></tr>
                     </tbody>
                 </table>
             </div>
-            <p>同一天有兩個社團時，那一格會寫出兩個社團，「備註」欄也會說明衝堂。</p>
+            <p>有晨間或週六、週日的社團時，才會多出那幾欄。</p>
 
             <h3 class="guide-subtitle" id="sample-club-title">貼上名單時：每個社團一張抽籤結果工作表</h3>
-            <p>用貼上名單的方式時，同一個檔案裡還有每個社團各一張工作表，列出所有報名的學生（重複報名只列一次）：</p>
-            <ul class="guide-list">
-                <li>「籤序」：正取是抽中的順序 1、2、3……，其他是「備取 1」「備取 2」……、「班級無法辨識」或「不符限制」。</li>
-                <li>「錄取人數」：每個年級正取幾人。</li>
-                <li>右側的「抽籤資訊」：抽籤時間、抽籤次數、正取人數、年級限制、優先順序、報名人數、略過的重複筆數等。</li>
-            </ul>
+            <p>用貼上名單的方式時，同一個檔案裡還有每個社團各一張工作表，列出所有報名的學生（重複報名只列一次）。</p>
             <p>以「正取 2 人、3 年級至 5 年級、高年級優先」為例（姓名為虛構）：</p>
             <div class="sample-scroll" role="region" aria-labelledby="sample-club-title" tabindex="0">
                 <table class="sample-table guide-table-narrow">
@@ -351,21 +465,31 @@
                         <tr><th scope="col">班級</th><th scope="col">座號</th><th scope="col">姓名</th><th scope="col">籤序</th><th scope="col">錄取人數</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>501</td><td>08</td><td>林小美</td><td class="is-filled">2</td><td rowspan="2">2</td></tr>
-                        <tr><td>502</td><td>15</td><td>王小明</td><td class="is-filled">1</td></tr>
-                        <tr><td>401</td><td>05</td><td>陳小華</td><td>備取 1</td><td></td></tr>
-                        <tr><td>402</td><td>11</td><td>張小安</td><td>備取 2</td><td></td></tr>
+                        <tr><td>501</td><td>08</td><td>周小安</td><td class="is-filled">2</td><td rowspan="2">2</td></tr>
+                        <tr><td>502</td><td>15</td><td>張小明</td><td class="is-filled">1</td></tr>
+                        <tr><td>401</td><td>05</td><td>王小華</td><td>備取 1</td><td></td></tr>
+                        <tr><td>402</td><td>11</td><td>林小安</td><td>備取 2</td><td></td></tr>
                         <tr><td>201</td><td>03</td><td>張小華</td><td>不符限制</td><td></td></tr>
                     </tbody>
                 </table>
             </div>
-            <p>課表只會排入正取的學生。下載後畫面會顯示「課表已開始下載」，按「整理另一份名冊」可以重新開始。</p>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>抽籤結果工作表各欄的說明</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>「籤序」：正取是抽中的順序 1、2、3……，其他是「備取 1」「備取 2」……、「班級無法辨識」或「不符限制」。</li>
+                        <li>「錄取人數」：每個年級正取幾人。</li>
+                        <li>右側的「抽籤資訊」：抽籤時間、抽籤次數、正取人數、年級限制、優先順序、報名人數、重複略過筆數、班級無法辨識筆數等。</li>
+                    </ul>
+                </div>
+            </details>
+            <p>課表只會排入正取的學生。</p>
         </section>
 
         <!-- 常見問題：原生 <details>，不需要程式；依路線課表的步驟分組 -->
         <section class="guide-section" id="faq" aria-labelledby="faq-title">
             <h2 class="section-title" id="faq-title">常見問題與錯誤訊息</h2>
-            <p>依操作時看到的訊息整理。每一項是訊息的內容，點一下就會顯示處理方式。</p>
+            <p>依操作時看到的訊息整理，點一下就會顯示處理方式；也可以按 Ctrl + F 找訊息裡的字。</p>
 
             <h3 class="guide-subtitle">選擇 Excel 檔時</h3>
             <div class="guide-faq">
@@ -374,12 +498,12 @@
                     <p class="guide-faq-a">先確認選對了檔案，錄取名冊通常不到 1 MB。確定是名冊時，用 Excel 刪除不需要的工作表或圖片後另存，再重新選擇。</p>
                 </details>
                 <details class="guide-faq-item">
-                    <summary class="guide-faq-q"><span>舊版 Excel 97-2003（.xls）格式，或只能讀取 .xlsx 格式</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">用 Excel 開啟，選「另存新檔」存成 .xlsx，再重新選擇。設有密碼的 .xlsx 也會顯示這則訊息，請另存成不設密碼的 .xlsx。</p>
+                    <summary class="guide-faq-q"><span>舊版 Excel 97-2003（.xls）格式，或設了開啟密碼；只能讀取「.xlsx」格式</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                    <p class="guide-faq-a">用 Excel 開啟，選「另存新檔」存成 .xlsx，再重新選擇。設了開啟密碼的 .xlsx 也會顯示這則訊息，請先取消開啟密碼再另存成 .xlsx；只設工作表保護的檔案可以直接讀取，不受影響。</p>
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>無法當成 Excel 讀取，或可能已損毀或設有密碼</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">用 Excel 開啟確認內容，另存成不設密碼的 .xlsx，再重新選擇。</p>
+                    <p class="guide-faq-a">先確認選的是 Excel 名冊，再用 Excel 開啟確認內容沒有損毀；有開啟密碼時先取消密碼，另存成 .xlsx 後再重新選擇。工作表保護不影響讀取。</p>
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>可能正被其他程式使用</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
@@ -399,7 +523,7 @@
             <div class="guide-faq">
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>沒有「課程與學生清單」或「總表」工作表，已自動改用「多工作表」模式</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">這是提醒，不是錯誤。請確認對照表裡每個社團的星期。</p>
+                    <p class="guide-faq-a">這是提醒，不是錯誤。請確認第 2 步每個社團的星期。</p>
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>缺少必要欄位，或找不到「課程名稱」、「社團」或「時段」欄位</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
@@ -407,14 +531,14 @@
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>找不到可以彙整的社團名單工作表</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">確認選的是錄取名冊，並確認社團工作表的名稱沒有含「說明」「總表」「統計」「清單」「報表」「對照」「人數」「小計」等字，這些工作表會被略過。所有社團的學生都在同一張工作表時，把那張工作表改名為「總表」，存檔後重新選擇。</p>
+                    <p class="guide-faq-a">確認選的是錄取名冊，並確認社團工作表的名稱沒有含「對照」「說明」「README」「總表」「統計」「人數」「小計」「1152」「清單」「報表」這些字，名稱含這些字的工作表會被略過；前 5 列有「課程名稱」（或「社團」）欄，以及「上課時間」（或「時間」「星期」）欄、沒有班級、座號欄和姓名欄的課程表（例如以學期代碼命名的課程時間表）也會被略過。有姓名欄、但「課程名稱」或「社團」欄有兩種以上值的工作表會當成課程表略過，訊息會列出這些工作表；如果其實是社團名單，請加上「班級」「座號」欄。所有社團的學生都在同一張工作表時，把那張工作表改名為「總表」，存檔後重新選擇。</p>
                 </details>
                 <details class="guide-faq-item">
-                    <summary class="guide-faq-q"><span>工作表找不到「姓名」欄</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                    <summary class="guide-faq-q"><span>找不到「姓名」欄</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
                     <p class="guide-faq-a">在那些工作表的學生名單上方加上「姓名」欄位標題，存檔後重新選擇。只有部分工作表缺少時，其他社團照常整理，缺少的工作表不會列入課表；不是社團名單的工作表可以不用理會。</p>
                 </details>
                 <details class="guide-faq-item">
-                    <summary class="guide-faq-q"><span>在第 2 步切換「彙整模式」時出現以上訊息</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                    <summary class="guide-faq-q"><span>在第 2 步切換「彙整模式」時出現以上訊息，已切回原本的彙整模式</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
                     <p class="guide-faq-a">工具會自動切回原本的彙整模式，修改過的社團名稱與星期都會保留，可以繼續操作。</p>
                 </details>
                 <details class="guide-faq-item">
@@ -426,12 +550,12 @@
                     <p class="guide-faq-a">把顯示「請選擇」的社團選好星期，再按一次「開始轉換並下載課表」。</p>
                 </details>
                 <details class="guide-faq-item">
-                    <summary class="guide-faq-q"><span>有幾位學生同一天的同一時段（下午或晨間）有兩個以上社團</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                    <summary class="guide-faq-q"><span>有…位學生同一天的同一時段（下午或晨間）有兩個以上社團</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
                     <p class="guide-faq-a">這是提醒，不會擋下下載。先檢查星期有沒有選錯；真的衝堂時，課表的「備註」欄也會寫出來。</p>
                 </details>
                 <details class="guide-faq-item">
-                    <summary class="guide-faq-q"><span>名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生名單」</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">勾選「包含沒有班級座號的新生名單」，再按一次「開始轉換並下載課表」，星期設定都還在。</p>
+                    <summary class="guide-faq-q"><span>名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生」</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                    <p class="guide-faq-a">勾選「包含沒有班級座號的新生」，再按一次「開始轉換並下載課表」，星期設定都還在。</p>
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>名冊中讀不到有姓名的學生</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
@@ -454,7 +578,7 @@
                     <p class="guide-faq-a">修改「正取人數」，再按「加入這個社團」。</p>
                 </details>
                 <details class="guide-faq-item">
-                    <summary class="guide-faq-q"><span>起始年級大於結束年級</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                    <summary class="guide-faq-q"><span>起始年級（…）大於結束年級</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
                     <p class="guide-faq-a">重新選擇招收年級，讓起始年級低於或等於結束年級。「新生」是最低的年級，排在選單最前面；要連新生一起抽，起始年級請選「新生」。</p>
                 </details>
                 <details class="guide-faq-item">
@@ -462,8 +586,8 @@
                     <p class="guide-faq-a">一次只貼上一個社團的名單。</p>
                 </details>
                 <details class="guide-faq-item">
-                    <summary class="guide-faq-q"><span>這個社團已經抽過幾次籤，確定要重新抽籤嗎</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">按「確定」才會重抽，下載的檔案會記錄第幾次抽籤。不要重抽就按「取消」。</p>
+                    <summary class="guide-faq-q"><span>這個社團在這次開啟網頁後已經抽過…次籤，確定要重新抽籤嗎</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                    <p class="guide-faq-a">按「確定」會再抽一次，下載的檔案會記錄第幾次抽籤。如果清單裡還有同名的舊社團，舊的結果不會被取代：兩份都會匯出，兩次的正取學生都會排進課表。只要新的結果，先按「取消」，移除舊的社團後重新加入，並在確認視窗按「確定」。不要重抽就按「取消」。</p>
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>名單裡有重複報名，或班級無法辨識</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
@@ -491,11 +615,15 @@
             <div class="guide-faq">
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>匯出課表時發生錯誤，課表沒有下載</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">上傳 Excel 時，重新整理網頁後再試一次。貼上名單時，已加入的社團與抽籤結果都還在，請直接再按一次「下載課表與抽籤結果」，先不要重新整理網頁。</p>
+                    <p class="guide-faq-a">上傳 Excel 時：重新整理網頁後再試一次。</p>
+                    <p class="guide-faq-a">貼上名單時：已加入的社團與抽籤結果都還在，直接再按一次「下載課表與抽籤結果」，先不要重新整理網頁。</p>
+                    <p class="guide-faq-a">按「再下載一次」時出現「再下載一次時發生錯誤，課表沒有下載」：再按一次「再下載一次」。先不要重新整理網頁，也不要按「整理另一份名冊」（回到第 1 步就不能再下載）。貼上名單時，已加入的社團這時已經清空，只能用「再下載一次」。</p>
+                    <p class="guide-faq-a">上傳 Excel 時再下載一次仍然失敗：按「整理另一份名冊」，重新選擇檔案再轉換。</p>
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>按了下載，卻沒有看到檔案</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
-                    <p class="guide-faq-a">檢查瀏覽器的下載提示或下載資料夾。</p>
+                    <p class="guide-faq-a">先檢查瀏覽器的下載提示或下載資料夾。還是沒有，就在完成畫面（「課表已開始下載」）按「再下載一次」，會用同一份結果重新匯出，不會重新抽籤。</p>
+                    <p class="guide-faq-a">重新整理、關閉網頁，或按「整理另一份名冊」「清除這次的資料」後就不能再下載，請先確認檔案已經存好。貼上名單時，按下載後「已加入的社團」就會清空，離開網頁時也不會再跳出確認視窗。</p>
                 </details>
                 <details class="guide-faq-item">
                     <summary class="guide-faq-q"><span>發生非預期的錯誤</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
@@ -517,20 +645,24 @@
             </p>
             <ul class="guide-list">
                 <li>名冊與抽籤結果只放在這個分頁的記憶體裡，關閉分頁就會清除。</li>
-                <li>要馬上清除，按頁首的「清除這次的資料」：會清除選擇的 Excel、星期設定、已加入的社團，以及瀏覽器記住的社團星期。</li>
+                <li>要馬上清除，按課表工具頁首的「清除這次的資料」：會清除選擇的 Excel、星期設定、已加入的社團，以及瀏覽器記住的社團星期。</li>
                 <li>用完請刪除下載資料夾裡的課表 Excel，避免他人看到。</li>
                 <li>學校公用電腦建議用無痕視窗，避免瀏覽器外掛讀取頁面內容。無痕視窗關閉後，記住的星期設定也會消失。</li>
-                <li>這份說明頁沒有任何程式，不會讀取名冊。</li>
             </ul>
 
-            <h3 class="guide-subtitle">離線使用與安裝</h3>
-            <ul class="guide-list">
-                <li>第一次開啟工具時要連上網路。之後沒有網路也能開啟課表工具和這份說明。</li>
-                <li>Chrome、Edge 等瀏覽器可以把工具安裝到電腦或手機上，像一般程式一樣開啟。安裝後一樣只在這台電腦處理資料。</li>
-            </ul>
+            <details class="guide-more">
+                <summary class="guide-more-q"><span>沒有網路，或想安裝到電腦、手機時</span><svg class="guide-faq-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="guide-faq-closed" d="M6 9l6 6 6-6"/><path class="guide-faq-opened" d="M6 15l6-6 6 6"/></svg></summary>
+                <div class="guide-more-body">
+                    <ul class="guide-list">
+                        <li>第一次開啟工具時要連上網路。之後沒有網路也能開啟課表工具和這份說明。</li>
+                        <li>Chrome、Edge 等瀏覽器可以把工具安裝到電腦或手機上，像一般程式一樣開啟。安裝後一樣只在這台電腦處理資料。</li>
+                    </ul>
+                </div>
+            </details>
         </section>
 
         <div class="guide-cta">
+            <p class="guide-cta-note">這個按鈕會另外開一份空白的工具。</p>
             <a class="btn btn-primary btn-large" href="./">開啟課表工具</a>
         </div>
 

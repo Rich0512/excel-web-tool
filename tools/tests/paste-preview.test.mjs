@@ -67,4 +67,18 @@ const previewShown = (s) => s.el('paste-parse-preview').style.display === 'block
     const n = (s.el('paste-text-area').listeners.paste || []).length;
     R.check('貼上框沒有額外的 paste 監聽', n === 0, `${n} 個`);
 }
+// 5. 預覽的「有班級」人數和抽籤、課表的新生判斷（isFreshmanClass）一致：
+//    班級寫「新生」「新生班」或空白都算新生，不計入有班級
+{
+    const s = loadSite();
+    const area = s.el('paste-text-area');
+    area.value = '班級\t座號\t姓名\n301\t05\t測試生301_05\n新生班\t01\t測試生新生_01\n新生\t02\t測試生新生_02\n\t\t測試生新生_03';
+    area.dispatch('input');
+    s.advance(1000);
+    const html = s.el('paste-parse-preview').innerHTML;
+    const total = (html.match(/讀到 <strong>(\d+)<\/strong> 位學生/) || [])[1];
+    const withClass = (html.match(/其中 (\d+) 位有班級/) || [])[1];
+    R.check('預覽讀到 4 位學生（含 3 位新生）', total === '4', `讀到 ${total} 位`);
+    R.check('預覽的「有班級」不計入班級為「新生班」「新生」或空白的學生', withClass === '1', `有班級 ${withClass} 位`);
+}
 R.done();

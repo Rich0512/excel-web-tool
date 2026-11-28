@@ -231,6 +231,14 @@ function parseGrade(classStr) {
 }
 
 /**
+ * 是否為新生：班級空白（含只有不可見字元）或以「新生」開頭。
+ * 抽籤（parseGrade 的 0 年級）與課表的「包含新生」篩選都用這個判斷，兩者才會一致
+ */
+function isFreshmanClass(classStr) {
+    return parseGrade(classStr) === 0;
+}
+
+/**
  * 瀏覽器是否提供密碼學亂數（crypto.getRandomValues）。沒有時不可抽籤，也不可退回 Math.random
  */
 function hasSecureRandom() {
@@ -323,11 +331,12 @@ function getColLetter(colIdx) {
 
 /**
  * 提取數值作為排序鍵 (比照 Python get_numeric_sort_key)
+ * 空白與新生（isFreshmanClass，例如「新生」「新生班」）回傳 Infinity 排到最後，與抽籤、課表篩選的新生判斷一致。
+ * 座號也用這個函式：座號不會以「新生」開頭，空白座號同樣排最後
  */
 function getNumericSortKey(val) {
-    if (val === null || val === undefined) return Infinity;
+    if (isFreshmanClass(val)) return Infinity;
     const strVal = String(val).trim();
-    if (strVal === "新生" || strVal === "") return Infinity;
 
     // 1. 如果是純阿拉伯數字，如 "404"、"102" 或座號 "5"，直接轉數值返回
     const pureDigits = strVal.replace(/[^\d]/g, '');
@@ -603,12 +612,13 @@ async function checkExcelFileFormat(file) {
             return { valid: true, type: 'xlsx' };
         }
         
-        // 2. 檢查 D0 CF 11 E0 (OLE2 Compound Document) - 舊版 Excel 97-2003 (.xls)
+        // 2. 檢查 D0 CF 11 E0 (OLE2 Compound Document) - 舊版 Excel 97-2003 (.xls)，
+        //    設了開啟密碼的 .xlsx 也會加密包成 OLE2，檔頭相同
         if (bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0) {
-            return { 
-                valid: false, 
+            return {
+                valid: false,
                 type: 'xls_legacy',
-                reason: '這個檔案是舊版 Excel 97-2003（.xls）格式，無法讀取。\n請用 Excel 開啟，選擇「另存新檔」存成「.xlsx」後，再重新選擇。'
+                reason: '這個檔案是舊版 Excel 97-2003（.xls）格式，或設了開啟密碼，無法讀取。\n請用 Excel 開啟（設了開啟密碼的先取消密碼），選擇「另存新檔」存成「.xlsx」後，再重新選擇。'
             };
         }
 

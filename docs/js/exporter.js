@@ -111,7 +111,9 @@ function writeDrawInfoBlock(ws, club, startCol) {
     });
 }
 
-async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName, pastedClubsList = null) {
+// options.showSuccess：下載後是否切到完成畫面（預設是）。完成畫面的「再下載一次」傳 false，
+// 處理中使用者清除資料回到第一步時，匯出完成後才不會又跳回完成畫面
+async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBaseName, pastedClubsList = null, { showSuccess = true } = {}) {
     const targetWeekdays = ['週一', '週二', '週三', '週四', '週五'];
     // 晨間專屬欄位（依序排在週五之後）
     MORNING_OPTIONS.forEach(m => {
@@ -374,5 +376,5 @@ async function exportWeeklySchedule(resultData, activeDays, slotMode, outputBase
 
     triggerFileDownload(blob, outputName);
 
-    switchStep('step-success');
+    if (showSuccess) switchStep('step-success');
 }

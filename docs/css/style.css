@@ -723,6 +723,13 @@ strong {
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
+/* 上面的 inline-flex 會蓋過瀏覽器內建的 [hidden]，帶 hidden 屬性的按鈕要另外隱藏（例如完成畫面的「再下載一次」）。
+   只限 .btn，和 .tab-count[hidden] 等寫法相同；不寫全域的 [hidden] !important，
+   以免影響其他用 style.display 控制顯示的元素 */
+.btn[hidden] {
+    display: none;
+}
+
 /* 讀取名冊中的「選擇檔案」用 aria-disabled（保留鍵盤焦點，見 app.js 的 setUploadBusy），外觀與 disabled 相同 */
 .btn:disabled,
 .btn[aria-disabled="true"] {

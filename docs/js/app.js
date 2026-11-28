@@ -18,6 +18,13 @@ let uploadBusy = false;
 // 每次開始讀取名冊與每次清除名冊狀態都加 1。handleFileSelect 在每個 await 之後比對，
 // 不一致代表讀取途中使用者按了「清除這次的資料」等操作，這次讀取的結果直接丟掉
 let fileLoadToken = 0;
+// 上一次成功匯出時傳入 exportWeeklySchedule() 的參數，完成畫面的「再下載一次」會用到（瀏覽器擋下下載時不必重新抽籤）。
+// { resultData, activeDays, slotMode, outputBaseName, clubs }；clubs 是貼上模式的社團陣列，上傳 Excel 模式為 null。
+// 含學生資料，只能放在記憶體：不可寫入任何儲存空間，也不可用 console 輸出。改值一律透過 setLastExport()
+let lastExport = null;
+// 清除 lastExport 時加 1（「整理另一份名冊」「清除這次的資料」）。下載在 await 之後比對：
+// 不一致代表下載途中按了清除，這次的結果不保存，也不切到完成畫面（學生資料在清除時就要從記憶體消失）
+let exportToken = 0;
 
 // 上傳檔案大小上限。學校系統匯出的錄取名冊通常不到 1 MB；
 // 太大的檔案會讓舊電腦的瀏覽器分頁記憶體不足而當掉（貼上名單也有 200,000 字元的上限）
@@ -229,6 +236,7 @@ function clearFileModeState() {
 
 function resetToUpload() {
     clearFileModeState();
+    setLastExport(null);
     switchStep('step-upload');
 }
 
@@ -238,6 +246,7 @@ function manualHardResetAll() {
     const lotteryNote = pastedClubs.length > 0 ? "已加入社團的抽籤結果會一起清除，之後重新加入會重新抽籤，抽籤次數會累加。" : "";
     if (confirm(`確定要清除這次的資料嗎？會清除選擇的 Excel 檔案、星期設定、已加入的社團，以及瀏覽器記住的社團星期，畫面會回到第一步。${lotteryNote}`)) {
         clearFileModeState();
+        setLastExport(null);
 
         // 清除貼上模式狀態（文字框、待執行的預覽、自動填入的記號）；抽籤次數 clubDrawCounts 刻意不重設
         pastedClubs = [];
@@ -324,7 +333,12 @@ async function processAndDownload() {
 
         const customFilename = document.getElementById('excel-filename').value.trim();
         const finalFilename = customFilename || originalFileName;
-        await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename);
+        const token = exportToken;
+        await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, null, { showSuccess: false });
+        // 下載途中按了「清除這次的資料」：資料已經清除，不保存、不切到完成畫面
+        if (token !== exportToken) return;
+        setLastExport({ resultData, activeDays, slotMode, outputBaseName: finalFilename, clubs: null });
+        switchStep('step-success');
 
     } catch (err) {
         console.error("處理或匯出失敗:", err);
@@ -463,7 +477,8 @@ function updatePastePreview() {
     // 嘗試解析名單進行即時預覽
     const parsed = parsePastedText(text);
     if (parsed && parsed.length > 0) {
-        const hasClass = parsed.filter(s => s.class && s.class !== "新生").length;
+        // 新生的判斷和抽籤、課表相同（isFreshmanClass）：「新生班」或空白也算新生，不計入有班級
+        const hasClass = parsed.filter(s => !isFreshmanClass(s.class)).length;
         const hasSeat = parsed.filter(s => s.seat).length;
         const hasName = parsed.filter(s => s.name).length;
         
@@ -863,8 +878,14 @@ async function processPastedData() {
         
         const customFilename = document.getElementById('paste-excel-filename').value.trim();
         const finalFilename = customFilename || "直接貼上名單彙整";
-        await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, pastedClubs);
-        
+        const token = exportToken;
+        await exportWeeklySchedule(resultData, activeDays, slotMode, finalFilename, pastedClubs, { showSuccess: false });
+        // 下載途中按了「清除這次的資料」：已加入的社團已經清除，不保存、不切到完成畫面
+        if (token !== exportToken) return;
+        // 先記住這次匯出的社團（含抽籤結果），下面清空 pastedClubs 後仍可用「再下載一次」重新下載，不必重新抽籤
+        setLastExport({ resultData, activeDays, slotMode, outputBaseName: finalFilename, clubs: pastedClubs });
+        switchStep('step-success');
+
         // 重設狀態（畫面在 finally 還原按鈕後才重繪）；抽籤次數 clubDrawCounts 刻意不重設
         pastedClubs = [];
         document.getElementById('paste-excel-filename').value = "";
@@ -887,6 +908,66 @@ async function processPastedData() {
         // 必須在還原按鈕之後重繪：處理中按鈕的文字被替換，裡面的筆數 <span> 暫時不存在，
         // 之前在 try 裡重繪會丟出例外，下載成功卻跳出「課表沒有下載」
         renderLoadedClubs();
+    }
+}
+
+// 記住（或清除）上一次成功匯出的參數，並同步完成畫面「再下載一次」的顯示。
+// 只設 hidden 屬性：style.css 的 .btn[hidden] 規則會蓋過 .btn 的 display
+function setLastExport(exp) {
+    lastExport = exp || null;
+    if (lastExport === null) exportToken++;
+    const btn = document.getElementById('btn-redownload');
+    if (btn) btn.hidden = lastExport === null;
+}
+
+/**
+ * 完成畫面的「再下載一次」：用 lastExport 再匯出一次同樣的檔案。
+ * 不重新彙整也不重新抽籤，貼上模式匯出的籤序、抽籤時間與次數都和第一次相同。
+ * 訊息只寫按鈕名稱與處理方式，不含名冊內容（例外訊息可能含有儲存格內容，只附錯誤類型）
+ */
+async function redownloadLastExport() {
+    const job = lastExport;
+    if (!job) return;
+    const btn = document.getElementById('btn-redownload');
+    // 處理中也停用「整理另一份名冊」，避免匯出到一半就跳走
+    const restartBtn = document.getElementById('btn-restart');
+    // 按鈕裡只有文字（「再下載一次」），用 textContent 還原即可
+    const origBtnText = btn ? btn.textContent : "";
+    const hadFocus = btn && document.activeElement === btn;
+    const isPaste = Array.isArray(job.clubs);
+    const status = document.getElementById('redownload-status');
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '正在重新下載課表…';
+        }
+        if (status) status.textContent = '正在重新下載課表…';
+        if (restartBtn) restartBtn.disabled = true;
+        // 本來就在完成畫面，匯出完成後不切換畫面：處理中按了頁首的「清除這次的資料」時，畫面要留在第一步。
+        // 清除後才完成時仍會下載按下時的那份課表（job 是按下時取得的），這是使用者要求的下載，屬於預期行為
+        await exportWeeklySchedule(job.resultData, job.activeDays, job.slotMode, job.outputBaseName, job.clubs, { showSuccess: false });
+        if (status) status.textContent = '課表已重新開始下載';
+    } catch (err) {
+        if (status) status.textContent = '';
+        console.error("再下載一次失敗:", err);
+        const kept = isPaste ? "這次的課表與抽籤結果都還在" : "這次的課表還在";
+        if (err && err.name === 'ExcelJSLoadError') {
+            alert(EXCELJS_LOAD_ERROR_MESSAGE + `\n${kept}，連上網路後再按一次「再下載一次」即可，不需要重新整理網頁。`);
+            return;
+        }
+        const after = isPaste
+            ? "若仍失敗，請不要重新整理網頁：重新整理會清除抽籤結果，要重新加入社團並重新抽籤。"
+            : "若仍失敗，請按「整理另一份名冊」，重新選擇檔案後再轉換一次。";
+        alert(`再下載一次時發生錯誤，課表沒有下載。${kept}，請再按一次「再下載一次」。${after}` + errorTypeNote(err));
+    } finally {
+        if (restartBtn) restartBtn.disabled = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = origBtnText;
+            // 停用按鈕時焦點可能會離開，還原到按鈕上，鍵盤使用者不必重新找位置
+            if (hadFocus && !btn.hidden) btn.focus();
+        }
     }
 }
 
@@ -1007,13 +1088,13 @@ function runExcelProcessing(finalMapping, includeFreshmen = document.getElementB
 /**
  * 上傳 Excel 轉換時沒有可以匯出的學生：說明原因與該怎麼做。訊息不含名冊內容
  * 星期沒選好的社團在這之前就會擋下，所以不再請使用者檢查星期；
- * 取消勾選「包含沒有班級座號的新生名單」時，先實際判斷勾選後有沒有學生
+ * 取消勾選「包含沒有班級座號的新生」時，先實際判斷勾選後有沒有學生
  */
 function emptyExcelResultMessage(finalMapping) {
     if (!document.getElementById('include-freshmen').checked) {
         if (runExcelProcessing(finalMapping, true).resultData.length > 0) {
-            return "名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生名單」，所以沒有學生可以匯出。" +
-                "請勾選「包含沒有班級座號的新生名單」，再按一次「開始轉換並下載課表」，星期設定都還在。";
+            return "名冊中的學生都沒有班級座號（新生），目前沒有勾選「包含沒有班級座號的新生」，所以沒有學生可以匯出。" +
+                "請勾選「包含沒有班級座號的新生」，再按一次「開始轉換並下載課表」，星期設定都還在。";
         }
     }
     return "名冊中讀不到有姓名的學生，沒有資料可以匯出。請確認選擇的是學校系統匯出的錄取名冊，而且「姓名」欄有填入學生姓名，再重新選擇檔案。";
@@ -1037,6 +1118,9 @@ document.getElementById('btn-process-paste').addEventListener('click', processPa
 document.getElementById('btn-back-to-upload').addEventListener('click', resetToUpload);
 document.getElementById('btn-process-mapping').addEventListener('click', processAndDownload);
 document.getElementById('btn-restart').addEventListener('click', resetToUpload);
+document.getElementById('btn-redownload').addEventListener('click', redownloadLastExport);
+// 還沒有成功匯出前隱藏「再下載一次」（index.html 已有 hidden 屬性，這裡同時設定 style.display）
+setLastExport(null);
 
 // ==========================================
 // 預先載入 ExcelJS

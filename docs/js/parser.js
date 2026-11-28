@@ -50,14 +50,15 @@ function normalizePastedText(text) {
     return result;
 }
 
-// 欄位索引匹配 (優先完全吻合，其次模糊包含；排除衝突欄位)
-function findColumnByKeywords(headers, keywords, isSeat = false, isName = false) {
+// 找座號欄時略過的欄位（學號不是座號）
+const SEAT_EXCLUDE_KEYWORDS = ['學號', '學生編號'];
+// 班級、座號欄的索引（優先完全吻合，其次模糊包含；座號欄略過學號）。學生姓名欄改用 findNameColumn
+function findColumnByKeywords(headers, keywords, isSeat = false) {
+    const excluded = (val) => isSeat && SEAT_EXCLUDE_KEYWORDS.some(k => val.includes(k));
     // 1. 先尋找完全吻合欄位
     for (let idx = 0; idx < headers.length; idx++) {
         const val = String(headers[idx] || "").trim();
-        if (!val) continue;
-        if (isSeat && (val.includes('學號') || val.includes('學生編號'))) continue;
-        if (isName && (val.includes('課程') || val.includes('社團') || val.includes('項目') || val.includes('學校'))) continue;
+        if (!val || excluded(val)) continue;
         if (keywords.includes(val)) {
             return idx;
         }
@@ -65,9 +66,7 @@ function findColumnByKeywords(headers, keywords, isSeat = false, isName = false)
     // 2. 其次尋找模糊包含欄位
     for (let idx = 0; idx < headers.length; idx++) {
         const val = String(headers[idx] || "").trim();
-        if (!val) continue;
-        if (isSeat && (val.includes('學號') || val.includes('學生編號'))) continue;
-        if (isName && (val.includes('課程') || val.includes('社團') || val.includes('項目') || val.includes('學校'))) continue;
+        if (!val || excluded(val)) continue;
         if (keywords.some(kw => val.includes(kw))) {
             return idx;
         }
@@ -75,10 +74,67 @@ function findColumnByKeywords(headers, keywords, isSeat = false, isName = false)
     return -1;
 }
 
-// 班級、座號、姓名欄位的關鍵字（總表與各社團工作表共用）
+// 班級、座號欄位的關鍵字（總表與各社團工作表共用）
 const CLASS_KEYWORDS = ['班級', '班', 'Class', 'class'];
 const SEAT_KEYWORDS = ['座號', '座', 'Seat', 'seat'];
-const NAME_KEYWORDS = ['學生姓名', '姓名', 'Name', 'name', '名'];
+
+// ---------- 學生姓名欄（單一清單總表與各社團工作表共用） ----------
+// 不是學生本人姓名的欄位（0 分）。比對的是 nameColumnScore 去掉括號說明、空白並轉小寫後的欄位名稱：
+// - 課程、社團、項目、學校名稱
+// - 教師與課程表上的其他人員：「師」（教師、老師、導師、師資）、「指導」（指導員）、助教、工作人員，
+//   以及跳脫寫法的六個詞（英文是 person in charge、organizer、coach、volunteer、outside hire、speaker；
+//   舊版這些欄是 2 分，人員會被讀成學生）
+// - 家長、監護人、母，以及跳脫寫法的 father、contact、emergency 三個詞
+// - 英文欄：teacher、instructor、coach、speaker、staff、tutor、club、school、course、parent、guardian、mother、father、
+//   contact、emergency、user（Username）、nick；Class Name 是班級名稱要排除，Classmate Name 是學生，所以 class 後面接 mate 時不排除
+// 貼上路徑的 PASTE_NOT_STUDENT_RE 的每個字詞也都在這裡（測試會檢查）。字型檔沒有的字一律用跳脫寫法
+const NAME_COLUMN_EXCLUDE_RE = /課程|社團|項目|學校|師|指導|\u8ca0\u8cac|\u627f\u8fa6|家長|監護|\u7236|母|\u806f\u7d61|\u7dca\u6025|教\u7df4|助教|\u5fd7工|外\u8058|工作人員|\u8b1b者|teacher|instructor|coach|speaker|staff|tutor|club|school|course|class(?!mate)|parent|guardian|mother|father|contact|emergency|user|nick/;
+// 整格就是學生姓名欄的名稱（3 分），比對前已去掉空白並轉小寫
+const NAME_EXACT_HEADERS = ['姓名', '學生姓名', '名字', '學生名', '學生名稱', '名', 'name', 'studentname'];
+// 含有「名」卻不是人名的詞：只含單字「名」（1 分）的欄位，先去掉這些詞，剩下的部分還有「名」才算。
+// 不去掉的話「名額」「報名人數」「名次」「班級名稱」「隊名」「社名」都會被當成姓名欄，課程表的名額數字就會被讀成學生。
+// 用去掉而不是整欄排除，「錄取名單」才仍選得到。含「姓名」的欄位在這之前已是 2 分，之後去掉「名稱」不影響這類欄位
+const NAME_NOT_PERSON_WORDS = /名額|名次|排名|報名|名稱|\u7c3d名|班名|校名|隊名|社名|課名|組名|\u6d3b動名/g;
+
+// 欄位名稱比對用的寫法：去掉不可見字元與所有空白（含全形空白）、全形英數字轉半形、英文轉小寫
+function normalizeHeaderForMatch(val) {
+    return toHalfwidthAlnum(cleanInvisibleChars(val)).replace(/\s+/g, '').toLowerCase();
+}
+
+/**
+ * 一格欄位名稱當成學生姓名欄的分數：3 整格是姓名欄名稱，2 含「姓名」或 name，1 去掉非人名的詞後仍含「名」，0 不是。
+ * 先去掉括號裡的說明（和貼上路徑的 pasteHeaderCellScores 一致）：「姓名(導師確認)」「學生姓名（非家長）」是 3 分，
+ * 括號裡的「師」「家長」不會讓整欄被排除。整格都在括號裡時不是姓名欄
+ */
+function nameColumnScore(header) {
+    const v = normalizeHeaderForMatch(String(header || '').replace(PASTE_HEADER_NOTE_RE, ''));
+    if (!v || NAME_COLUMN_EXCLUDE_RE.test(v)) return 0;
+    if (NAME_EXACT_HEADERS.includes(v)) return 3;
+    if (v.includes('姓名') || v.includes('name')) return 2;
+    return v.replace(NAME_NOT_PERSON_WORDS, '').includes('名') ? 1 : 0;
+}
+
+/**
+ * 找學生姓名欄：取分數最高的欄，同分取最前面的。回傳 { index, score }（找不到是 { index: -1, score: 0 }）。
+ * 舊版是「第一個含有關鍵字的欄就選它」，「家長姓名」「社名」在學生欄前面時會選錯
+ */
+function findNameColumnWithScore(headers) {
+    let index = -1;
+    let score = 0;
+    headers.forEach((h, idx) => {
+        const sc = nameColumnScore(h);
+        if (sc > score) {
+            score = sc;
+            index = idx;
+        }
+    });
+    return { index, score };
+}
+
+function findNameColumn(headers) {
+    return findNameColumnWithScore(headers).index;
+}
+
 // 名冊底部的合計列，不是學生
 const TOTAL_ROW_KEYWORDS = ['合計', '總計', '統計', '人數', '小計'];
 
@@ -95,27 +151,181 @@ function readRowValues(ws, rowNum) {
 }
 
 /**
- * 在工作表前幾列找表頭（同一列出現班級、座號、姓名等字詞至少兩個）；找不到時用第 1 列
+ * 單一清單總表的表頭：在前 maxRows 列中，取第一個班級、座號、姓名等字詞至少兩個、而且是 strict 名單表頭
+ * （rosterHeaderRowKind：例如有整格的班級或座號欄）的列；沒有 strict 的列時取第一個字詞至少兩個的列，再沒有才用第 1 列。
+ * 只看字詞時，上方的標題「延平國小各班級社團錄取名單」或說明「說明：各班級…」（「班級」「班」算兩個字詞）會被當成表頭，
+ * 下方真正的「班級｜座號｜姓名｜社團」變成學生，跳出缺少必要欄位。回傳 { headers, rowIndex }
  */
 function findHeaderRow(ws, maxRows = 10) {
+    let fallback = null;
     for (let r = 1; r <= maxRows; r++) {
         const values = readRowValues(ws, r);
-        const matchCount = ['班級', '班', '座號', '姓名'].filter(kw => values.some(v => v.includes(kw))).length;
-        if (matchCount >= 2) return { headers: values, rowIndex: r };
+        if (headerKeywordCount(values) < 2) continue;
+        if (rosterHeaderRowKind(values) === 'strict') return { headers: values, rowIndex: r };
+        if (!fallback) fallback = { headers: values, rowIndex: r };
     }
-    return { headers: readRowValues(ws, 1), rowIndex: 1 };
+    return fallback || { headers: readRowValues(ws, 1), rowIndex: 1 };
+}
+
+// 一列含有幾個表頭字詞（班級、班、座號、姓名）。
+// 「班」也比對到「班級」，同一格「班級」（或資料列的「各班級」）會算成 2 個字詞，
+// 只有班級欄的列也會被當成表頭。呼叫者要另外確認是不是欄位標題列（rosterHeaderRowKind）與姓名欄的分數
+function headerKeywordCount(values) {
+    return ['班級', '班', '座號', '姓名'].filter(kw => values.some(v => v.includes(kw))).length;
+}
+
+// 社團名單表頭常見的其他欄位名稱（比對前已去掉空白並轉小寫）。姓名欄只有 2 分（「中文姓名」）的列，
+// 其他格都是這些名稱（或也是姓名、班級、座號欄）時才算欄位標題列；資料列「王小明｜請寫姓名」的「王小明」不是。
+// 「學生」「生日」「手機」「家長姓名」也算：資訊列下方的「班級｜座號｜學生」「中文姓名｜生日｜手機」才認得出是名單表頭
+const ROSTER_OTHER_HEADERS = ['年級', '學號', '序號', '編號', '性別', '備註', '說明', '組別', '組', '社團', '社團名稱',
+    '課程', '課程名稱', '星期', '上課時間', '時間', '時段', '錄取', '狀態', '電話', '學生', '生日', '出生日期', '手機',
+    '家長姓名', '家長電話', 'no', 'gender', 'note', 'notes', 'remark', 'remarks', 'group', 'grade'];
+
+// 找社團名單表頭時看的列數。資訊列與表頭之間可能有好幾列說明，只看前 10 列時，
+// 表頭在第 11 列以後的名單會被當成課程表略過（學生靜默消失），資訊列下方的學生也會被當成上課時間讀進來
+const ROSTER_HEADER_SCAN_ROWS = 50;
+// 這幾列以內和舊版的前 10 列相同；以後只接受每格都是名單欄位名稱的表頭，見 findRosterHeaderRow
+const ROSTER_HEADER_NEAR_ROWS = 10;
+
+// 一格看起來像欄位名稱：去掉括號裡的說明後不超過 PASTE_HEADER_CELL_MAX 個字、沒有數字、不是星期值（「週三」「三」）。
+// 課程表資料列同一列有上課星期，名單資料列有班級、座號數字，長的備註也不像欄位名稱
+function isHeaderLikeCell(val) {
+    const v = normalizeHeaderForMatch(String(val || '').replace(PASTE_HEADER_NOTE_RE, ''));
+    return v.length <= PASTE_HEADER_CELL_MAX && !/[0-9]/.test(v) && !WEEKDAY_REGEX.test(v) && !/^[一二三四五六日]$/.test(v);
+}
+
+// 整格是班級或座號欄的名稱（「班級」「座號」「班級(例:301)」「Class」）；課程表資料列的「各班級」不算
+function isClassOrSeatHeaderCell(val) {
+    const s = pasteHeaderCellScores(val);
+    return s.class === 2 || s.seat === 2;
+}
+
+// 只含單字「名」（1 分）、但整格就是名單欄位名稱的詞（比對前已去掉空白並轉小寫）。
+// 「桌遊社錄取名單」這種標題也是 1 分，所以 1 分的格只有整格是這些詞時才算欄位名稱
+const ROSTER_WEAK_NAME_HEADERS = ['錄取名單', '名單', '名冊', '學生名單', '錄取名冊', '正取名單', '錄取學生', '英文名'];
+
+// 一格是名單常見的欄位名稱：姓名欄（2 分以上，或整格是 ROSTER_WEAK_NAME_HEADERS）、整格的班級或座號欄、ROSTER_OTHER_HEADERS。
+// 標題常用的「總覽」「一覽」「清單」「列表」不算（「學生姓名總覽」是標題，不是姓名欄）
+function isRosterLabelCell(val) {
+    const v = normalizeHeaderForMatch(val);
+    if (/總覽|一覽|清單|列表/.test(v)) return false;
+    return nameColumnScore(val) >= 2 || isClassOrSeatHeaderCell(val) || ROSTER_OTHER_HEADERS.includes(v) || ROSTER_WEAK_NAME_HEADERS.includes(v);
+}
+
+/**
+ * 一列是不是社團學生名單的欄位標題列，回傳 'strict'、'loose' 或 null。
+ * - strict：可以拿來當表頭讀學生。符合其中一種：
+ *   (1) 班級、座號、姓名字詞至少兩個（findHeaderRow 的條件），而且有整格的班級或座號欄（資料列的「各班級」不算）。
+ *       「班級｜座號｜錄取名單」「班級｜座號｜學生」也算，姓名欄分數由呼叫者自行判斷
+ *   (2) 每格都像欄位名稱（isHeaderLikeCell），而且有整格的姓名欄名稱（3 分：「姓名」「學生姓名」「name」）
+ *   (3) 每格都像欄位名稱、姓名欄 2 分（「中文姓名」），至少兩格，而且其他格都是常見欄位名稱
+ * - loose：不是 strict，但每格都像欄位名稱、姓名欄至少 2 分（例如只有一格「中文姓名」，或標題「學生姓名總覽」）。
+ *   沒有 strict 的列時，每格都是常見欄位名稱的 loose 列（isRosterLabelRow）才拿來當表頭；資料列「王小明｜Name tag」不是
+ * 舊版只看姓名欄分數，資料列的「Bring name tag」「Mr. Name」「rename」「English name Amy」都是 2 分，
+ * 會被當成表頭：課程表的社團名稱變成學生、名單上方的學生消失。這些列同一列有星期值或學生姓名、或文字太長，都不算
+ */
+function rosterHeaderRowKind(values) {
+    if (headerKeywordCount(values) >= 2 && values.some(isClassOrSeatHeaderCell)) return 'strict';
+    const cells = values.filter(v => normalizeHeaderForMatch(v));
+    if (!cells.length || !cells.every(isHeaderLikeCell)) return null;
+    const { index, score } = findNameColumnWithScore(values);
+    if (score === 3) return 'strict';
+    if (score < 2) return null;
+    const othersAreLabels = values.every((v, i) => i === index || !normalizeHeaderForMatch(v) || isRosterLabelCell(v));
+    return cells.length >= 2 && othersAreLabels ? 'strict' : 'loose';
+}
+
+// 姓名欄的值其實是欄位標題（重複的表頭列，或表頭退回標題列時下方真正的表頭「錄取名單」「中文姓名」）：不是學生。
+// 只含單字「名」的姓名（1 分）是真的學生姓名，不能用 nameColumnScore >= 1 判斷；含 name 的英文姓名也一樣，只看整格的 name
+function isRosterHeaderText(val) {
+    const v = normalizeHeaderForMatch(val);
+    return nameColumnScore(val) === 3 || v.includes('姓名') || isClassOrSeatHeaderCell(val) ||
+        ROSTER_OTHER_HEADERS.includes(v) || /名單|名冊/.test(v);
+}
+
+/**
+ * 一列是名單的欄位標題列，而且每格都像欄位名稱、也都是常見的名單欄位名稱（isRosterLabelCell）：
+ * 「班級｜座號｜學生」「姓名｜備註」「中文姓名」，以及姓名欄只有 1 分或沒有姓名欄的「錄取名單｜備註」「學生｜備註」
+ * （這兩種要有整格的 ROSTER_WEAK_NAME_HEADERS 或「學生」）。
+ * 課程表的資料列「桌遊社｜下午｜姓名」（社團名稱不是欄位名稱）、英文副標頭「Name｜Time」、
+ * 重複的課程表標頭「課程名稱｜上課時間」、標題「桌遊社錄取名單」都不算
+ */
+function isRosterLabelRow(values) {
+    const cells = values.filter(v => normalizeHeaderForMatch(v));
+    if (!cells.length || !cells.every(v => isHeaderLikeCell(v) && isRosterLabelCell(v))) return false;
+    if (rosterHeaderRowKind(values)) return true;
+    return cells.some(v => { const n = normalizeHeaderForMatch(v); return n === '學生' || ROSTER_WEAK_NAME_HEADERS.includes(n); });
+}
+
+/**
+ * 社團工作表的學生名單表頭：從第 fromRow 列起看 ROSTER_HEADER_SCAN_ROWS 列。
+ * 取第一個 strict 的列（前面已有 isRosterLabelRow 的列時，strict 列本身也要是 isRosterLabelRow）；沒有時取第一個每格都是名單欄位名稱的列（isRosterLabelRow），或 loose 而且有班級、座號、
+ * 姓名字詞兩個以上的列；都沒有時取第一個班級、座號、姓名字詞至少兩個的列（findHeaderRow 的條件），再沒有才退回第 fromRow 列。
+ * 前 ROSTER_HEADER_NEAR_ROWS 列以後（資訊列或標題與表頭之間有好幾列說明）只接受 isRosterLabelRow 的列，
+ * 表頭不是欄位標題的名單才不會把下方遠處、備註寫「姓名」的學生列當成表頭。
+ * - 標題「各班級學生名單」（「班級」「班」算兩個字詞，姓名欄只有 1 分）或「學生姓名總覽」（loose）下方是
+ *   「班級｜座號｜姓名」時，取下方的表頭；舊版先用 findHeaderRow 取了標題列，表頭文字與班級、座號都變成學生
+ * - 標題「桌遊社錄取名單」（只含「名」1 分）下方是「中文姓名」或「錄取名單｜備註」時，取下方那一列；
+ *   舊版退回標題列，把「中文姓名」四個字當成學生，標題下方隔了好幾列說明時連說明也變成學生
+ * - 「社團｜桌遊社｜上課時間｜週三」資訊列下方只有「姓名」一欄時，呼叫者從資訊列下一列開始找，表頭才不會是資訊列
+ * 只看姓名欄分數會選到資料列（備註「English name Amy」、課程名「Name Art」都是 2 分），所以要整列像欄位標題。
+ * 回傳 { headers, rowIndex, kind, nameIdx, score }：kind 是 rosterHeaderRowKind 的結果（可能是 null）。
+ * 只用在社團名單，單一清單模式仍用 findHeaderRow
+ */
+function findRosterHeaderRow(ws, fromRow = 1) {
+    const last = Math.max(fromRow, Math.min(ws.rowCount, fromRow + ROSTER_HEADER_SCAN_ROWS - 1));
+    const make = (headers, rowIndex, kind) => {
+        const best = findNameColumnWithScore(headers);
+        return { headers, rowIndex, kind, nameIdx: best.index, score: best.score };
+    };
+    let labelRow = null;
+    let keywordRow = null;
+    for (let r = fromRow; r <= last; r++) {
+        const headers = readRowValues(ws, r);
+        const kind = rosterHeaderRowKind(headers);
+        const keywords = headerKeywordCount(headers) >= 2;
+        const near = r < fromRow + ROSTER_HEADER_NEAR_ROWS;
+        const isLabelRow = isRosterLabelRow(headers);
+        if (!near && !isLabelRow) continue;
+        // 已經有每格都是名單欄位名稱的列（「中文姓名」）時，後面不是這種列的 strict 列多半是學生資料（備註寫「Name」），不取
+        if (kind === 'strict' && (!labelRow || isLabelRow)) return make(headers, r, kind);
+        if (!labelRow && (isLabelRow || (kind === 'loose' && keywords))) labelRow = make(headers, r, kind);
+        if (!keywordRow && keywords) keywordRow = make(headers, r, kind);
+    }
+    if (labelRow || keywordRow) return labelRow || keywordRow;
+    const first = readRowValues(ws, fromRow);
+    return make(first, fromRow, rosterHeaderRowKind(first));
 }
 
 /**
  * 讀取一張社團工作表的學生（多工作表模式）
- * 只有姓名欄是必要的，沒有班級或座號欄時留空；找不到姓名欄回傳 null
+ * 只有姓名欄是必要的，沒有班級或座號欄時留空；找不到姓名欄回傳 null（列入「找不到姓名欄」的提醒，
+ * 或由 isCourseScheduleSheet 判斷是課程表而略過；有姓名欄的課程表列入「看起來是課程表」的提醒）。
+ * 有課程表標頭（findScheduleHeader）時：
+ * - 標頭是名單上方的資訊列（isInfoRowAboveRoster）：從資訊列下一列開始找表頭，照常讀學生
+ * - 不是資訊列（真的是課程表標頭）：表頭在課程表標頭下方時一律不讀（英文副標頭「Name｜Time」、
+ *   資料列「桌遊社｜下午｜姓名」都不是學生名單）；在同一列時，有整格的班級或座號欄，
+ *   或姓名欄至少 2 分而且課程欄沒有兩個以上不同的社團（isMultiCourseSchedule），才是名單
+ *   （「中文姓名｜課程名稱｜上課時間」的單一社團名單照常讀；「課程名稱｜上課時間｜Name」而且有兩個以上課程是課程表）；
+ *   在上方時（標題列），表頭要是 strict 而且姓名欄至少 2 分
+ * 讀到 0 位學生時：有課程表標頭一律回傳 null；沒有時，表頭像名單欄位標題（kind 不是 null）是 0 人的社團，
+ * 退回的列（標題、說明）回傳 null：表頭多半選錯了，列入提醒比變成一個沒有學生的社團更快發現
  */
 function readClubSheetStudents(ws) {
-    const { headers, rowIndex } = findHeaderRow(ws);
-    const nameIdx = findColumnByKeywords(headers, NAME_KEYWORDS, false, true);
+    const sched = findScheduleHeader(ws);
+    const info = !!sched && isInfoRowAboveRoster(ws, sched);
+    const { headers, rowIndex, kind, nameIdx, score } = findRosterHeaderRow(ws, info ? sched.headerRow + 1 : 1);
     if (nameIdx === -1) return null;
+    if (sched && !info) {
+        if (rowIndex > sched.headerRow) return null;
+        if (rowIndex === sched.headerRow) {
+            if (!headers.some(isClassOrSeatHeaderCell) && (score < 2 || isMultiCourseSchedule(ws, sched))) return null;
+        } else if (kind !== 'strict' || score < 2) {
+            return null;
+        }
+    }
     const classIdx = findColumnByKeywords(headers, CLASS_KEYWORDS);
-    const seatIdx = findColumnByKeywords(headers, SEAT_KEYWORDS, true, false);
+    const seatIdx = findColumnByKeywords(headers, SEAT_KEYWORDS, true);
     const cellText = (row, idx) => (idx === -1 ? '' : cleanInvisibleChars(getCellValueAsString(row.getCell(idx + 1))));
 
     const students = [];
@@ -124,13 +334,101 @@ function readClubSheetStudents(ws) {
         const name = cellText(row, nameIdx);
         if (!name) return;
         const cls = cellText(row, classIdx);
-        if (isTotalRow(name, cls)) return;
+        if (isTotalRow(name, cls) || isRosterHeaderText(name)) return;
         students.push({ class: cls, seat: cellText(row, seatIdx), name });
     });
+    if (students.length === 0 && (sched || !kind)) return null;
     return students;
 }
 
-// 讀取檔案內的內置對照工作表或課程總表 (支援 1152、對照表、個別社團 Sheet)
+/**
+ * 課程時間表的標頭：前 5 列中同一列有「課程名稱」（或「社團」）與「上課時間」（或「時間」「星期」）欄。
+ * 學校系統匯出的課程表（例如名為「1152」的工作表，名稱是學期代碼、每學期不同）就是這種格式。
+ * 找到時回傳 { headerRow, courseCol, dayCol }（都是從 1 起算），找不到回傳 null。
+ * 社團名單上方的資訊列「社團｜桌遊社｜上課時間｜週三」也符合，要再用 isInfoRowAboveRoster 區分
+ */
+function findScheduleHeader(ws) {
+    for (let r = 1; r <= Math.min(5, ws.rowCount); r++) {
+        const vals = readRowValues(ws, r);
+        const cIdx = vals.findIndex(v => v.includes('課程名稱') || v === '社團');
+        const dIdx = vals.findIndex(v => v.includes('上課時間') || v === '時間' || v.includes('星期'));
+        if (cIdx !== -1 && dIdx !== -1) return { headerRow: r, courseCol: cIdx + 1, dayCol: dIdx + 1 };
+    }
+    return null;
+}
+
+// 一格是上課星期的值（「週三」「三」「一、四」「晨間」「週三 15:30」）。只看數字的「第1節」「15:30」不算
+function isDayValue(val) {
+    const s = cleanInvisibleChars(val).replace(/\s+/g, '');
+    return !!s && (s.startsWith('晨間') || /[一二三四五六日]/.test(s) || WEEKDAY_REGEX.test(s));
+}
+
+// 課程表上課時間欄的值其實是欄位名稱（英文副標頭「Name｜Time」、重複的標頭列）：不是上課時間
+const SCHEDULE_DAY_LABEL_RE = /^(上課)?(時間|星期|時段)$|^(time|day|weekday|schedule|classtime)$/;
+
+/**
+ * 課程表標頭其實是社團工作表學生名單上方的資訊列，符合其中一種就是：
+ * - 版面就是資訊列：「社團」（或「課程名稱」）右方一格是社團名稱，「上課時間」（或「星期」）右方一格是星期值
+ *   （「社團｜桌遊社｜上課時間｜週三」）。課程表的標頭列右方是其他欄位名稱或空白
+ * - 下方 ROSTER_HEADER_SCAN_ROWS 列內有名單的欄位標題列（isRosterLabelRow：每格都是名單欄位名稱），
+ *   資訊列的星期空白時靠這一項（「社團｜桌遊社｜上課時間｜」下方是「班級｜座號｜學生」）
+ * 是資訊列時，下方的表頭與學生列不可被當成「社團→上課時間」寫進來，讀不到學生時也要列入提醒（不是課程表）。
+ * 課程表資料列「桌遊社｜下午｜姓名」「直笛社｜週三｜各班級｜限20名」、英文副標頭「Name｜Time」都不算名單表頭，
+ * 否則整張課程表的上課時間都不讀。舊版只看前 10 列，表頭在第 11 列以後的名單被當成課程表略過
+ */
+function isInfoRowAboveRoster(ws, sched) {
+    const vals = readRowValues(ws, sched.headerRow);
+    const c = sched.courseCol - 1;
+    const d = sched.dayCol - 1;
+    if (c + 1 !== d && d + 1 !== c && cleanInvisibleChars(vals[c + 1] || '') && isDayValue(vals[d + 1] || '')) return true;
+    const last = Math.min(ws.rowCount, sched.headerRow + ROSTER_HEADER_SCAN_ROWS);
+    for (let r = sched.headerRow + 1; r <= last; r++) {
+        const row = readRowValues(ws, r);
+        // 分頁重複出現的課程表標頭（課程欄、上課時間欄和標頭列相同）不是名單表頭
+        if (row[c] === vals[c] && row[d] === vals[d]) continue;
+        if (isRosterLabelRow(row)) return true;
+    }
+    return false;
+}
+
+// 課程表標頭下方的課程欄有兩個以上不同的社團：是課程表（每個課程一列），不是單一社團的名單
+function isMultiCourseSchedule(ws, sched) {
+    const courses = new Set();
+    ws.eachRow((row, rowNum) => {
+        if (rowNum <= sched.headerRow) return;
+        const v = cleanInvisibleChars(getCellValueAsString(row.getCell(sched.courseCol)));
+        if (v) courses.add(v);
+    });
+    return courses.size >= 2;
+}
+
+/**
+ * 多工作表模式中，讀不到學生的工作表是不是課程表（略過，不列入「找不到姓名欄」的提醒）：
+ * 有課程表標頭、不是名單上方的資訊列，而且標頭那一列不是名單的表頭（沒有整格的班級或座號欄，
+ * 姓名欄不到 2 分或課程欄有兩個以上不同的社團）。和 readClubSheetStudents 的判斷一致：
+ * 這裡回傳 false 而又讀不到學生的工作表是名單，要列入提醒，不可靜默略過。
+ * 回傳 true 的工作表中，標頭有姓名欄的（courseScheduleKind 是 'named'）另外列入「看起來是課程表」的提醒
+ */
+function isCourseScheduleSheet(ws) {
+    return courseScheduleKind(ws) !== null;
+}
+
+/**
+ * 課程表的種類：null 不是課程表；'plain' 標頭沒有 2 分以上的姓名欄（靜默略過）；
+ * 'named' 標頭有 2 分以上的姓名欄、但課程欄有兩個以上不同的社團（略過，但要列入「看起來是課程表」的提醒）。
+ * 「姓名｜社團｜星期」、社團欄寫「桌遊社A組」「桌遊社B組」的名單和「課程名稱｜上課時間｜Name」的課程表分不出來：
+ * 依名單讀會讓課程表的人員變成學生，所以不讀；但靜默略過時學生會從課表消失，使用者也不知道要加上班級、座號欄
+ */
+function courseScheduleKind(ws) {
+    const sched = findScheduleHeader(ws);
+    if (!sched || isInfoRowAboveRoster(ws, sched)) return null;
+    const vals = readRowValues(ws, sched.headerRow);
+    if (vals.some(isClassOrSeatHeaderCell)) return null;
+    if (findNameColumnWithScore(vals).score < 2) return 'plain';
+    return isMultiCourseSchedule(ws, sched) ? 'named' : null;
+}
+
+// 讀取檔案內的內置對照工作表或課程總表 (支援 1152 等課程時間表、對照表、個別社團 Sheet)
 function loadScheduleFromExcel(workbook) {
     // 鍵是社團或工作表名稱（名冊字串），用沒有原型的物件，「__proto__」等名稱才不會被吞掉
     const mapping = createDict();
@@ -139,35 +437,18 @@ function loadScheduleFromExcel(workbook) {
     workbook.eachSheet((ws) => {
         const sheetName = ws.name.trim();
 
-        // 1. 檢查前 5 列看是否有「課程名稱」與「上課時間」標頭 (如 1152 工作表)
-        let courseColIdx = -1;
-        let dayColIdx = -1;
-        let headerRow = -1;
-
-        for (let r = 1; r <= Math.min(5, ws.rowCount); r++) {
-            const row = ws.getRow(r);
-            const vals = [];
-            row.eachCell({ includeEmpty: true }, (c) => {
-                vals.push(getCellValueAsString(c));
-            });
-
-            const cIdx = vals.findIndex(v => v.includes('課程名稱') || v === '社團');
-            const dIdx = vals.findIndex(v => v.includes('上課時間') || v === '時間' || v.includes('星期'));
-
-            if (cIdx !== -1 && dIdx !== -1) {
-                courseColIdx = cIdx + 1;
-                dayColIdx = dIdx + 1;
-                headerRow = r;
-                break;
-            }
-        }
-
-        if (headerRow !== -1 && courseColIdx !== -1 && dayColIdx !== -1) {
+        // 1. 前 5 列有「課程名稱」與「上課時間」標頭的課程時間表 (如 1152 工作表)。
+        // 標頭是學生名單上方的資訊列時不讀，否則下方的表頭與學生列會被當成「社團→上課時間」寫進來
+        // （名稱以「社團」開頭的工作表，資訊列的上課時間由第 2 段讀取）。
+        // 上課時間欄是欄位名稱（英文副標頭「Name｜Time」）的列不是課程
+        const scheduleHeader = findScheduleHeader(ws);
+        if (scheduleHeader && !isInfoRowAboveRoster(ws, scheduleHeader)) {
+            const { headerRow, courseCol, dayCol } = scheduleHeader;
             ws.eachRow((row, rowNum) => {
                 if (rowNum <= headerRow) return;
-                const club = getCellValueAsString(row.getCell(courseColIdx));
-                const day = getCellValueAsString(row.getCell(dayColIdx));
-                if (club && day) {
+                const club = getCellValueAsString(row.getCell(courseCol));
+                const day = getCellValueAsString(row.getCell(dayCol));
+                if (club && day && !SCHEDULE_DAY_LABEL_RE.test(normalizeHeaderForMatch(day))) {
                     const cleanDay = day.replace(/\s+/g, '');
                     mapping[club] = cleanDay;
                     foundAny = true;
@@ -175,16 +456,19 @@ function loadScheduleFromExcel(workbook) {
             });
         }
 
-        // 2. 檢查個別社團工作表 (如 社團-晨間棒球A班)
+        // 2. 檢查個別社團工作表 (如 社團-晨間棒球A班)：前 5 列中「上課時間」或「星期」那一格右方的星期值
+        // （右方一格空白時再看右方第 2 格，合併儲存格的版面）。
+        // 舊版優先取右方第 2 格，「社團｜桌遊社｜上課時間｜週三｜指導員｜假老師」會讀成「指導員」；
+        // 不是星期值的格（名單表頭「姓名｜上課時間｜備註」的「備註」）不讀
         if (sheetName.startsWith('社團-') || sheetName.startsWith('社團')) {
             const clubFromSheet = sheetName.replace(/^社團-?/, '').trim();
             for (let r = 1; r <= Math.min(5, ws.rowCount); r++) {
                 const row = ws.getRow(r);
                 for (let c = 1; c <= Math.min(15, row.cellCount); c++) {
                     const val = getCellValueAsString(row.getCell(c));
-                    if (val === '上課時間') {
-                        const dayVal = getCellValueAsString(row.getCell(c + 2)) || getCellValueAsString(row.getCell(c + 1));
-                        if (dayVal) {
+                    if (val === '上課時間' || val === '星期') {
+                        const dayVal = getCellValueAsString(row.getCell(c + 1)) || getCellValueAsString(row.getCell(c + 2));
+                        if (isDayValue(dayVal)) {
                             const cleanDay = dayVal.replace(/\s+/g, '');
                             mapping[clubFromSheet] = cleanDay;
                             foundAny = true;
@@ -226,9 +510,11 @@ function pasteHeaderCellKinds(cell) {
     return ['name', 'seat', 'class'].filter(k => scores[k] > 0);
 }
 
-// 不是學生本人的欄位（家長、監護人的姓名等）：不能當成學生的姓名、班級、座號欄。
-// 其他三個字詞（不是學生本人的字樣）用 \u 寫法：這幾個字不在介面字型檔裡
-const PASTE_NOT_STUDENT_RE = /家長|監護|\u7236|母|\u806f\u7d61|\u7dca\u6025/;
+// 不是學生本人的欄位（家長、監護人、導師或指導老師的姓名等）：不能當成學生的姓名、班級、座號欄。
+// 字詞分類同 NAME_COLUMN_EXCLUDE_RE 的說明（家長、監護人、教師與課程表上的其他人員），但字詞比它少：
+// 每個字詞也都在 NAME_COLUMN_EXCLUDE_RE 裡（測試會檢查；比對前已轉小寫），後者另外還有課程、社團、英文欄等字詞。
+// 字型檔沒有的字用跳脫寫法
+const PASTE_NOT_STUDENT_RE = /家長|監護|\u7236|母|\u806f\u7d61|\u7dca\u6025|師|指導|\u8ca0\u8cac|\u627f\u8fa6|教\u7df4|助教|\u5fd7工|外\u8058|工作人員|\u8b1b者|teacher/;
 // 整格就是欄位名稱（2 分）優先於只是含有欄位字詞（1 分），例如「姓名」優先於「中文姓名」
 const PASTE_EXACT_HEADERS = {
     name: ['姓名', '學生姓名', '名字', '學生名', '姓', '名', 'name', 'studentname'],
